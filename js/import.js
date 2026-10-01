@@ -1,4 +1,4 @@
-/* MOZE CSV Import V25.2 — based on MOZE_CHT.xlsx */
+/* MOZE CSV Import V25.4 — based on MOZE_CHT.xlsx */
 (() => {
   const HEADERS = ['帳戶','幣種','記錄類型＊','主類別＊','子類別＊','金額＊','手續費','折扣','名稱','商家','日期＊','時間','專案','描述','標籤','對象'];
   const TYPES = new Set(['支出','收入','轉出','轉入','應收款項','應付款項','餘額調整','退款']);
@@ -259,7 +259,12 @@
       const text=await readText(file), rows=parseCSV(text);
       if(!rows.length)throw new Error('CSV 沒有資料。');
       const header=rows[0].map(norm);
-      if(header.length!==HEADERS.length || header.some((v,i)=>v!==HEADERS[i])) throw new Error(`CSV 欄位格式不符合 MOZE 匯入格式。\n需要：${HEADERS.join(',')}`);
+      const headerKey = v => String(v ?? '').replace(/\uFEFF/g,'').replace(/＊/g,'*').replace(/\s+/g,'').replace(/\*$/,'');
+      const expectedKeys = HEADERS.map(headerKey);
+      const actualKeys = header.map(headerKey);
+      if(header.length!==HEADERS.length || actualKeys.some((v,i)=>v!==expectedKeys[i])) {
+        throw new Error(`CSV 欄位格式不符合 MOZE 匯入格式。\n可接受必要欄位標題：${HEADERS.join(',')}\n（必要欄位的 *／＊ 可省略）`);
+      }
       const current=window.MozeApp.getState();
       const draft=JSON.parse(JSON.stringify(current));
       const result=buildImport(draft,rows);
