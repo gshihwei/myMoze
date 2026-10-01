@@ -1,7 +1,7 @@
 {
-  "name": "MOZE Clone V24",
+  "name": "MOZE 個人記帳 V25",
   "short_name": "MOZE",
-  "description": "個人記帳 PWA：桌面、手機與雲端同步",
+  "description": "MOZE 個人記帳 PWA V25：手機、桌面與逐筆雲端同步",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b121c",

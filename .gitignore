@@ -1,57 +1,32 @@
-# ==========================================
 # MOZE PWA
-# ==========================================
-
-# Secrets / local configuration
 .env
 .env.*
 !.env.example
-
 js/sync-config.local.js
 supabase/.env
 supabase/.env.*
-
-# User data / backups
 moze-backup*.json
 moze-export*.json
 backup/
 backups/
-
-# Local databases
-*.db
 *.sqlite
 *.sqlite3
-
-# Development
 node_modules/
 dist/
 build/
 coverage/
 test-results/
 playwright-report/
-
-# IDE
 .vscode/
 .idea/
-
-# OS
 .DS_Store
 Thumbs.db
-desktop.ini
-
-# Logs / temporary files
 *.log
 *.tmp
 *.temp
-
-# Python cache (if used for local tooling)
+*.zip
 __pycache__/
-*.py[cod]
 .venv/
 venv/
-
-# Release archives
-*.zip
-
-# Local notes
-*.local.md
+*.old
+*.orig

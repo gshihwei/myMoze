@@ -2,11 +2,11 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#172638"><meta name="description" content="MOZE 個人記帳 PWA V24：桌面、手機與雲端同步">
+<meta name="theme-color" content="#172638"><meta name="description" content="MOZE 個人記帳 PWA V25：桌面、手機與逐筆雲端同步">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#101820">
-<title>MOZE Clone V24 · 個人財務</title>
+<title>MOZE Clone V25.1 · 個人財務</title>
 <!-- V18: runtime works from http(s) and directly from file:// -->
 
 
@@ -95,14 +95,10 @@
 
     <section class="view" id="view-settings"><div class="page-head"><div><h2>設定</h2><p>資料備份、外觀與雲端同步</p></div></div>
 <div class="panel sync-panel" id="syncPanel">
-  <div class="panel-head"><div><h2>雲端同步</h2><p>同一個帳號可在手機與桌面共用資料；離線時仍可使用本機資料。</p></div><span class="sync-badge" id="syncBadge">未設定</span></div>
-  <div class="sync-config-grid">
-    <label>Supabase Project URL<input id="syncUrl" type="url" placeholder="https://xxxxx.supabase.co" autocomplete="off"></label>
-    <label>Publishable Key<input id="syncKey" type="password" placeholder="sb_publishable_…" autocomplete="off"></label>
-  </div>
-  <div class="sync-actions"><button type="button" class="secondary" id="saveSyncConfig">儲存同步設定</button><button type="button" class="primary" id="syncNowBtn">立即同步</button></div>
+  <div class="panel-head"><div><h2>雲端同步</h2><p>同一個帳號可在手機與桌面共用資料；每筆資料獨立同步，離線時仍可使用本機資料。</p></div><span class="sync-badge" id="syncBadge">未設定</span></div>
+  <div class="sync-actions"><button type="button" class="primary" id="syncNowBtn">立即同步</button></div>
   <div class="sync-account" id="syncAccountArea"></div>
-  <div class="sync-note" id="syncNote">第一次使用：先建立 Supabase 專案並輸入 Project URL 與 Publishable Key，再建立／登入帳號。</div>
+  <div class="sync-note" id="syncNote">V25.1 的 Supabase 連線資訊由 App 內建，使用者不需要輸入 URL 或 Publishable Key。每個使用者使用自己的帳號登入，資料由 Supabase Auth + RLS 隔離。</div>
 </div>
 <div class="settings-grid"><div class="panel"><h2>資料</h2><div class="setting-actions"><button class="secondary" id="exportJson">匯出 JSON</button><button class="secondary" id="importJson">匯入 JSON</button><input hidden id="importFile" type="file" accept="application/json"></div><p class="hint">本機資料使用 IndexedDB；登入雲端帳號後可在手機與桌面同步。建議仍定期匯出 JSON 備份。</p></div><div class="panel"><h2>偏好</h2><label class="setting"><span>深色主題</span><input type="checkbox" id="darkMode" checked></label><label class="setting"><span>新增交易後停留在當日</span><input type="checkbox" checked></label><label class="setting"><span>顯示快速記帳</span><input type="checkbox" id="showQuick" checked></label></div><div class="panel danger"><h2>危險區域</h2><button class="secondary danger-btn" id="resetAll">清除並重設示範資料</button></div></div></section>
   </main>
@@ -136,7 +132,7 @@
 
 
 
-<!-- V24: local config + cloud sync runtime + file-compatible app bundle -->
+<!-- V25: local config + per-record cloud sync runtime + file-compatible app bundle -->
 <script src="./js/sync-config.js"></script>
 <script src="./js/sync.js"></script>
 <script src="./js/app.bundle.js"></script>

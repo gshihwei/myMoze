@@ -1,32 +1,16 @@
-MOZE PWA V24
+MOZE PWA V25.1
 
-目標：桌面 + 手機共用同一份資料，支援離線本機記帳與 Supabase 雲端同步。
+V25.1 將 V24 的整份 Snapshot 同步升級為逐筆資料同步。每個帳戶、分類、專案、交易、預算、週期交易與借貸都是獨立雲端記錄；每筆記錄有 version 與 updated_at，使用 optimistic concurrency 防止兩台裝置覆蓋彼此的同一筆資料。
 
-1. 本機離線
-- 交易資料仍保存在 IndexedDB（DB=moze-v7 / STORE=state）。
-- 沒有網路時仍可新增、修改、刪除交易。
+多使用者：每筆記錄都帶 user_id，Supabase Auth + RLS 僅允許登入使用者存取自己的資料。前端只使用 Publishable Key，不要放 service_role / sb_secret。
 
-2. 雲端同步
-- V24 使用 Supabase Auth + PostgreSQL JSON snapshot。
-- 同一個帳號在桌面與手機登入即可共用資料。
-- 每次本機儲存後約 1.2 秒自動同步；重新開啟、切回視窗、恢復網路、每 20 秒也會檢查。
-- 若兩台裝置同時修改，V24 不會默默覆蓋：偵測到雲端較新版本時會詢問要使用雲端或保留本機。
+V25.1：一般使用者不需要輸入 Supabase URL 或 Publishable Key。正式部署時，管理者只需要在 js/sync-config.js 填入一次 Project URL 與 Publishable Key，再把整個專案部署到 GitHub Pages / HTTPS。使用者看到的設定頁只提供登入、登出與同步狀態。
 
-3. Supabase 設定
-- 建立一個 Supabase project。
-- 在 SQL Editor 執行 supabase/schema.sql。
-- Auth 使用 Email + Password。
-- 取得 Project URL 與 Publishable Key（不要把 service_role key 放進前端）。
-- 在 MOZE「設定 → 雲端同步」填入兩者並儲存。
-- 每台裝置使用相同的 Supabase 設定與同一個帳號即可同步。
+相容性：若內建 sync-config.js 留白，V25.1 會暫時讀取 V24/V25 舊版 localStorage 設定，方便開發測試；正式部署建議填入內建設定。
 
-4. 正式手機使用
-- 直接雙擊 index.html 仍可作為本機工具；但 PWA 安裝與 Service Worker 需要 HTTP/HTTPS。
-- 建議部署到 HTTPS 網址後，把網址加入手機主畫面。
+V24 升級：V25 第一次登入時會檢查舊 moze_snapshots，使用者可選擇把舊雲端 Snapshot 升級為 V25 逐筆資料，或保留本機資料建立 V25 雲端資料。舊 Snapshot 不會自動刪除。
 
-5. 第一次同步
-- 雲端沒有資料：目前裝置的本機資料會上傳。
-- 雲端已有資料：V24 會詢問使用雲端或上傳本機，避免無聲覆蓋。
+部署前：先在 Supabase SQL Editor 執行 supabase/schema.sql；確認 RLS；將 js/sync-config.js 的 url / publishableKey 填好；Publishable Key 可以放前端，但絕對不要把 service_role / sb_secret 放進前端。
 
-6. 備份
-- 仍保留 JSON 匯出／匯入。正式開始長期記帳後，建議定期保留 JSON 備份。
+本機測試：python -m http.server 5500
+正式使用：GitHub Pages / 其他 HTTPS 靜態主機。
