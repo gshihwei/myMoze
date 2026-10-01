@@ -6,7 +6,7 @@
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#101820">
-<title>MOZE Clone V25.4 · 個人財務</title>
+<title>MOZE Clone V25.4.1 · 個人財務</title>
 <!-- V18: runtime works from http(s) and directly from file:// -->
 
 
@@ -101,7 +101,7 @@
   <div class="panel-head"><div><h2>雲端同步</h2><p>同一個帳號可在手機與桌面共用資料；每筆資料獨立同步，離線時仍可使用本機資料。</p></div><span class="sync-badge" id="syncBadge">未設定</span></div>
   <div class="sync-actions"><button type="button" class="primary" id="syncNowBtn">立即同步</button></div>
   <div class="sync-account" id="syncAccountArea"></div>
-  <div class="sync-note" id="syncNote">V25.4 的 Supabase 連線資訊由 App 內建，使用者不需要輸入 URL 或 Publishable Key。每個使用者使用自己的帳號登入，資料由 Supabase Auth + RLS 隔離。</div>
+  <div class="sync-note" id="syncNote">V25.4.1 的 Supabase 連線資訊由 App 內建，使用者不需要輸入 URL 或 Publishable Key。每個使用者使用自己的帳號登入，資料由 Supabase Auth + RLS 隔離。</div>
 </div>
 <div class="settings-grid"><div class="panel"><h2>資料</h2><div class="setting-actions"><button class="secondary" id="exportJson">匯出 JSON</button><button class="secondary" id="importJson">匯入 JSON</button><button class="secondary" id="importCsv">匯入 MOZE CSV</button><button class="secondary" id="downloadImportTemplate">下載 CSV 範本</button><input hidden id="importFile" type="file" accept="application/json"><input hidden id="importCsvFile" type="file" accept=".csv,text/csv"></div><p class="hint">MOZE CSV 匯入依照官方欄位順序；可選擇「追加紀錄」或「完整覆蓋」。帳戶、主／子類別與專案不存在時會自動建立；重複匯入會自動略過相同資料。</p></div><div class="panel"><h2>偏好</h2><label class="setting"><span>深色主題</span><input type="checkbox" id="darkMode" checked></label><label class="setting"><span>新增交易後停留在當日</span><input type="checkbox" checked></label><label class="setting"><span>顯示快速記帳</span><input type="checkbox" id="showQuick" checked></label></div><div class="panel danger"><h2>危險區域</h2><button class="secondary danger-btn" id="resetAll">清除並重設示範資料</button></div></div></section>
   </main>

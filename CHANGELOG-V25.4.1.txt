@@ -1,0 +1,4 @@
+V25.4.1
+- Accept zero-value balance adjustments as zero-opening-balance account markers.
+- Do not create a transaction for those rows; the account is still created.
+- Keep all other zero-amount transaction types invalid.

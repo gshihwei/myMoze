@@ -1,7 +1,7 @@
 /* MOZE CSV Import V25.4 — based on MOZE_CHT.xlsx */
 (() => {
   const HEADERS = ['帳戶','幣種','記錄類型＊','主類別＊','子類別＊','金額＊','手續費','折扣','名稱','商家','日期＊','時間','專案','描述','標籤','對象'];
-  const TYPES = new Set(['支出','收入','轉出','轉入','應收款項','應付款項','餘額調整','退款']);
+  const TYPES = new Set(['支出','收入','轉出','轉入','應收款項','應付款項','餘額調整','退款','初始金額']);
   const $ = id => document.getElementById(id);
   const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const norm = s => String(s ?? '').replace(/^\uFEFF/, '').trim();
@@ -129,9 +129,27 @@
     const amountRaw=parseAmount(row[5]);
     if(!accountName) throw new Error('帳戶不可空白');
     if(!TYPES.has(type)) throw new Error(`不支援的記錄類型「${type}」`);
+
+    // MOZE exported "初始金額" is an account-creation marker, not a transaction.
+    // Keep it as-is. When the account does not exist, create it and set its
+    // opening balance. When the account already exists (append mode), do not
+    // overwrite the user's current balance with the historical opening value.
+    if(type==='初始金額') {
+      if(amountRaw===null || !Number.isFinite(amountRaw)) throw new Error('初始金額必須是數字');
+      const r=ensureAccount(st,accountName,currency,created);
+      if(r.created) {
+        r.account.balance=amountRaw;
+        warnings.push({row:index+1,message:`保留「初始金額」：已建立帳戶「${accountName}」，初始餘額 ${amountRaw}，不建立交易。`});
+        return {tx:null, amountRaw, type, account:r.account, newAccount:true, accountOnly:true, zeroOpeningAdjustment:amountRaw===0};
+      }
+      warnings.push({row:index+1,message:`保留「初始金額」：帳戶「${accountName}」已存在，未覆蓋目前餘額 ${Number(r.account.balance||0)}。`});
+      return {tx:null, amountRaw, type, account:r.account, newAccount:false, accountOnly:false, skipped:true, zeroOpeningAdjustment:amountRaw===0};
+    }
+
     if(!mainName) throw new Error('主類別不可空白');
     if(!subName) throw new Error('子類別不可空白');
-    if(amountRaw===null || amountRaw===0) throw new Error('金額必須是非 0 數字');
+    const zeroOpeningAdjustment = type==='餘額調整' && amountRaw===0;
+    if(amountRaw===null || (amountRaw===0 && !zeroOpeningAdjustment)) throw new Error('金額必須是非 0 數字');
     const expected=signExpected(type);
     if(expected && Math.sign(amountRaw)!==expected) warnings.push({row:index+1,message:`「${type}」金額符號與規範不同，已依記錄類型自動正規化。`});
     const date=parseDate(row[10]); if(!date) throw new Error('日期格式錯誤');
@@ -149,7 +167,7 @@
       recordType:type,category:cat.id,mainCategory:mainName,subcategory:subName,account:account.id,
       project:project?.id||'',note:norm(row[13]).slice(0,300),tags:norm(row[14])?norm(row[14]).split(';').map(x=>x.trim()).filter(Boolean):[],person:norm(row[15])||'不限定對象',currency:currency||account.currency||'TWD',fee:Math.abs(fee),discount:Math.abs(discount),_importKey:fingerprint(row)
     };
-    return {tx, amountRaw, type, account, newAccount};
+    return {tx, amountRaw, type, account, newAccount, zeroOpeningAdjustment};
   }
 
   function buildImport(st, rows) {
@@ -161,13 +179,18 @@
       const key=fingerprint(row); if(existingKeys.has(key)){imported.push({row:i+1,skipped:true});continue;}
       try{
         const result=rowToTransaction(row,st,created,i,warnings);
-        imported.push({row:i+1,...result}); existingKeys.add(key);
+        if(result.zeroOpeningAdjustment){
+          imported.push({row:i+1,...result, tx:null, accountOnly:true});
+        } else {
+          imported.push({row:i+1,...result});
+        }
+        existingKeys.add(key);
       }catch(err){errors.push({row:i+1,message:err.message||String(err)});}
     }
     // Convert adjacent transfer rows into one transfer transaction.
     const final=[]; const used=new Set();
     for(let i=0;i<imported.length;i++){
-      const a=imported[i]; if(a.skipped||!a.tx) continue;
+      const a=imported[i]; if(a.skipped||a.accountOnly||!a.tx) continue;
       if(a.type==='轉出'){
         const next=imported[i+1];
         if(next?.tx && next.type==='轉入' && !next.skipped && a.tx.date===next.tx.date && a.tx.time===next.tx.time){
@@ -191,7 +214,7 @@
       else if(tx.kind==='balance_adjustment') a.balance+=Number(tx.amount)*(tx.recordType==='餘額調整'&&tx._importKey? (parseAmount(rows.find(r=>fingerprint(r)===tx._importKey)?.[5])<0?-1:1):1);
     }
     st.transactions.push(...final);
-    return {state:st,transactions:final,errors,warnings,created,skipped:imported.filter(x=>x.skipped).length,totalDataRows:rows.length-1};
+    return {state:st,transactions:final,errors,warnings,created,skipped:imported.filter(x=>x.skipped).length,accountOnly:imported.filter(x=>x.accountOnly).length,totalDataRows:rows.length-1};
   }
 
   function downloadBackup(state, filename='moze-before-csv-overwrite.json') {
@@ -224,17 +247,17 @@
           <label class="import-mode-option ${mode==='overwrite'?'active':''}"><input type="radio" name="csvImportMode" value="overwrite" ${mode==='overwrite'?'checked':''}><span><b>完整覆蓋</b><small>清除現有帳務資料後重新匯入</small></span></label>
         </div>
         ${mode==='overwrite'?overwriteNotice:appendNotice}
-        <div class="import-summary"><div><b>${previewResult.transactions.length}</b><span>筆可匯入交易</span></div><div><b>${previewResult.skipped}</b><span>筆重複略過</span></div><div><b>${previewResult.errors.length}</b><span>筆錯誤</span></div></div>
+        <div class="import-summary"><div><b>${previewResult.transactions.length}</b><span>筆可匯入交易</span></div><div><b>${previewResult.accountOnly||0}</b><span>筆零餘額帳戶</span></div><div><b>${previewResult.skipped}</b><span>筆重複略過</span></div><div><b>${previewResult.errors.length}</b><span>筆錯誤</span></div></div>
         ${errs}${warn}
         <div class="import-created"><b>本次自動建立</b><span>帳戶 ${previewResult.created.accounts.length} · 分類 ${previewResult.created.categories.length} · 專案 ${previewResult.created.projects.length}</span></div>
         <p class="hint">帳戶與分類不存在時會自動建立；新建立帳戶會依匯入資料計算餘額。轉帳需符合「轉出＋下一列轉入」且日期、時間一致的格式。</p>
         <div class="import-preview"><b>預覽前 10 筆</b>${previewResult.transactions.slice(0,10).map(t=>`<div><span>${escapeHtml(t.date)} ${escapeHtml(t.time)} · ${escapeHtml(t.name)}</span><b>${t.kind==='expense'?'−':'+'}${Number(t.amount).toLocaleString()}</b></div>`).join('')||'<div class="empty">沒有可匯入的交易</div>'}</div>`;
       body.querySelectorAll('input[name=csvImportMode]').forEach(r=>r.addEventListener('change',()=>{mode=r.value;renderBody()}));
       const active=mode==='overwrite'?previewResult:result;
-      $('csvImportConfirm').disabled = active.transactions.length===0;
+      $('csvImportConfirm').disabled = (active.transactions.length===0 && (active.accountOnly||0)===0);
       $('csvImportConfirm').textContent = mode==='overwrite'?'完整覆蓋並匯入':'追加匯入';
       $('csvImportConfirm').onclick = async()=>{
-        if(!active.transactions.length){bg.classList.remove('open');return;}
+        if(!active.transactions.length && !(active.accountOnly||0)){bg.classList.remove('open');return;}
         try {
           if(mode==='overwrite') {
             downloadBackup(currentState);
@@ -242,7 +265,7 @@
           }
           await window.MozeApp.setState(active.state,{persist:true,markDirty:true});
           bg.classList.remove('open');
-          alert(`${mode==='overwrite'?'完整覆蓋':'追加匯入'}完成：${active.transactions.length} 筆交易。${active.errors.length?`\n有 ${active.errors.length} 筆資料未匯入，請修正 CSV 後再試。`:''}`);
+          alert(`${mode==='overwrite'?'完整覆蓋':'追加匯入'}完成：${active.transactions.length} 筆交易${active.accountOnly?`、${active.accountOnly} 個零餘額帳戶`:''}。${active.errors.length?`\n有 ${active.errors.length} 筆資料未匯入，請修正 CSV 後再試。`:''}`);
         } catch(err){ alert('匯入儲存失敗：'+(err.message||err)); }
       };
     };
