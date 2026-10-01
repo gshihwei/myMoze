@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#172638"><meta name="description" content="MOZE 個人記帳 PWA V24：桌面、手機與雲端同步">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#101820">
+<title>MOZE Clone V24 · 個人財務</title>
+<!-- V18: runtime works from http(s) and directly from file:// -->
+
+
+
+
+
+
+<link rel="stylesheet" href="./css/app.css">
+<style>
+.calendar-controls{display:flex;align-items:center;gap:6px}.calendar-controls .icon{width:32px;height:32px}.calendar-controls .icon:hover{background:#25425b}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand" aria-label="MOZE Clone"><span class="brand-mark">M</span></div>
+    <button class="nav active" data-view="overview" aria-label="概覽"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.4 12 3.6l8.5 6.8v9.1a1.5 1.5 0 0 1-1.5 1.5h-4.3v-6.1H9.3V21H5a1.5 1.5 0 0 1-1.5-1.5v-9.1Z"/><path d="M9.3 21v-5.7h5.4V21"/></svg></span><span>概覽</span></button>
+    <button class="nav" data-view="transactions" aria-label="交易"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v17l-2.3-1.6-1.9 1.6L12 18.9l-1.8 1.6-1.9-1.6L6 20.5v-17Z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span><span>交易</span></button>
+    <button class="nav" data-view="accounts" aria-label="帳戶"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H19v4H6.5A2.5 2.5 0 0 0 4 10.5v7A2.5 2.5 0 0 0 6.5 20H19a1 1 0 0 0 1-1v-9H6.5"/><path d="M20 13h-5a2 2 0 0 0 0 4h5"/><circle cx="15.5" cy="15" r=".6" fill="currentColor" stroke="none"/></svg></span><span>帳戶</span></button>
+    <button class="nav" data-view="analysis" aria-label="分析"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5V5.5M4 19.5h16"/><path d="m7 15 3-3 2.4 2.2L18 8.5"/><circle cx="7" cy="15" r="1"/><circle cx="10" cy="12" r="1"/><circle cx="12.4" cy="14.2" r="1"/><circle cx="18" cy="8.5" r="1"/></svg></span><span>分析</span></button>
+    <button class="nav" data-view="budgets" aria-label="預算"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v8.5h8.5A8.5 8.5 0 0 0 12 3.5Z"/><path d="M10.5 6A8.5 8.5 0 1 0 18 18.1l-6-6v-6.1Z"/></svg></span><span>預算</span></button>
+    <button class="nav" data-view="recurring" aria-label="週期"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7.5h-11A4.5 4.5 0 0 0 4.5 12v1"/><path d="m17 4.5 3 3-3 3"/><path d="M4 16.5h11A4.5 4.5 0 0 1 19.5 12v-1"/><path d="m7 19.5-3-3 3-3"/></svg></span><span>週期</span></button>
+    <button class="nav" data-view="projects" aria-label="專案"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5A2.5 2.5 0 0 1 6 5h4l2 2h6a2.5 2.5 0 0 1 2.5 2.5v8A2.5 2.5 0 0 1 18 20H6a2.5 2.5 0 0 1-2.5-2.5v-10Z"/><path d="M3.5 10h17"/></svg></span><span>專案</span></button>
+    <button class="nav" data-view="categories" aria-label="分類"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5v5.2a2 2 0 0 0 .6 1.4l7.3 7.3a2 2 0 0 0 2.8 0l3.8-3.8a2 2 0 0 0 0-2.8l-7.3-7.3a2 2 0 0 0-1.4-.6H4Z"/><circle cx="8.5" cy="9" r="1.2"/></svg></span><span>分類</span></button>
+    <button class="nav" data-view="loans" aria-label="借還款"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="3"/><path d="M3.5 19.5A5.5 5.5 0 0 1 9 14h0a5.5 5.5 0 0 1 5.5 5.5"/><circle cx="17" cy="10" r="2.2"/><path d="M14.8 15.5A4.8 4.8 0 0 1 20.5 20"/></svg></span><span>借還款</span></button>
+    <button class="nav" data-view="settings" aria-label="設定"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.2A3.2 3.2 0 1 0 12 8.8a3.2 3.2 0 0 0 0 6.4Z"/><path d="m19.1 13.1 1.1 1.6-2 2-1.6-1.1a7.2 7.2 0 0 1-2 .8l-.4 1.9h-2.8l-.4-1.9a7.2 7.2 0 0 1-2-.8l-1.6 1.1-2-2 1.1-1.6a7.2 7.2 0 0 1-.8-2L5 10.7V7.9l1.9-.4a7.2 7.2 0 0 1 .8-2L6.6 3.9l2-2 1.6 1.1a7.2 7.2 0 0 1 2-.8l.4-1.9h2.8l.4 1.9a7.2 7.2 0 0 1 2 .8l1.6-1.1 2 2-1.1 1.6a7.2 7.2 0 0 1 .8 2l1.9.4v2.8l-1.9.4a7.2 7.2 0 0 1-.8 2Z" transform="scale(.83) translate(2.46 2.46)"/></svg></span><span>設定</span></button>
+    <div class="spacer"></div><button class="fab" id="quickAdd" aria-label="新增記帳"><span class="plus-mark">＋</span></button>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div><div class="eyebrow">個人財務</div><h1 id="pageTitle">概覽</h1></div>
+      <div class="period"><button id="prevPeriod">‹</button><b id="periodLabel">2026/08</b><button id="nextPeriod">›</button></div>
+      <div class="sync-widget" id="syncWidget"><span class="sync-dot" id="syncDot"></span><div><b id="syncStatus">本機模式</b><small id="syncUserLabel">尚未連線</small></div><button type="button" class="sync-top-btn" id="syncTopAction">設定同步</button></div>
+      <div class="today"><span>今天</span><b id="todayLabel"></b></div>
+    </header>
+
+    <section class="view active" id="view-overview">
+      <div class="overview-grid">
+        <div class="content">
+          <div class="metrics">
+            <article class="metric"><small>淨資產</small><strong id="mBalance">$0</strong><span id="mBalanceDelta">—</span></article>
+            <article class="metric"><small>本月支出</small><strong class="expense" id="mExpense">$0</strong><span id="mExpenseDelta">—</span></article>
+            <article class="metric"><small>本月收入</small><strong class="income" id="mIncome">$0</strong><span id="mIncomeDelta">—</span></article>
+          </div>
+          <div class="panel chart-panel"><div class="panel-head"><div><h2>現金流</h2><p>收入、支出與累積資產</p></div><select id="chartRange"><option value="6">近 6 個月</option><option value="12" selected>近 12 個月</option></select></div><div id="cashflowChart" class="chart"></div></div>
+          <div class="split">
+            <div class="panel"><div class="panel-head"><h2>信用卡帳單</h2><button class="ghost" data-view="accounts">查看帳戶</button></div><div id="creditCards"></div></div>
+            <div class="panel"><div class="panel-head"><h2>即將到來</h2><button class="ghost" data-view="recurring">管理週期</button></div><div id="upcoming"></div></div>
+          </div>
+          <div class="panel"><div class="panel-head"><h2>最近交易</h2><button class="ghost" data-view="transactions">全部交易</button></div><div id="recent"></div></div>
+          <div class="split">
+            <div class="panel"><div class="panel-head"><h2>待完成</h2><button class="ghost" data-view="transactions">查看</button></div><div id="pending"></div></div>
+            <div class="panel"><div class="panel-head"><h2>借還款</h2><button class="ghost" data-view="loans">查看</button></div><div id="loanSummary"></div></div>
+          </div>
+        </div>
+        <aside class="rail">
+          <div class="panel calendar"><div class="panel-head"><div><h2 id="monthTitle">2026 年 8 月</h2><p>點日期查看當日交易</p></div><div class="calendar-controls"><button type="button" class="icon" id="calendarPrev" aria-label="上個月">‹</button><button type="button" class="icon" id="todayBtn" aria-label="回到本月">●</button><button type="button" class="icon" id="calendarNext" aria-label="下個月">›</button></div></div><div class="dow"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div id="calendarGrid" class="cal-grid"></div></div>
+          <div class="panel"><div class="panel-head"><div><h2>每日統計</h2><p id="dailyCaption"></p></div><button class="ghost" data-view="transactions">展開</button></div><div id="dailyList"></div></div>
+          <div class="panel"><div class="panel-head"><h2>快速記帳</h2></div><div class="quick-grid"><button data-quick="expense">− 支出</button><button data-quick="income">＋ 收入</button><button data-quick="transfer">⇄ 轉帳</button><button data-quick="loan">👤 借還款</button></div></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="view" id="view-transactions"><div class="page-head"><div><h2>交易</h2><p>支出、收入、轉帳與拆帳</p></div><button class="primary" id="newTx">＋ 新增交易</button></div><div class="filters"><input id="txSearch" placeholder="搜尋項目、商家、備註…"><select id="txType"><option value="all">全部</option><option value="expense">支出</option><option value="income">收入</option><option value="transfer">轉帳</option></select><select id="txCategory"><option value="all">全部分類</option></select><select id="txAccount"><option value="all">全部帳戶</option></select></div><div id="txTable"></div></section>
+
+    <section class="view" id="view-accounts">
+  <div class="page-head"><div><h2>帳戶</h2><p>銀行、現金、信用卡與電子支付</p></div><button class="primary" id="newAccount">＋ 新增帳戶</button></div>
+  <div id="accountGrid" class="account-layout"></div>
+  <div id="creditAccountDetail" class="credit-detail" hidden></div>
+  <div class="card-center" id="creditSettingsPanel">
+    <div class="card-section-title"><div><h3>信用卡設定</h3><p>額度與帳單週期</p></div><span class="section-badge">設定</span></div>
+    <div id="cardSettings"></div>
+  </div>
+</section>
+
+    <section class="view" id="view-analysis"><div class="page-head"><div><h2>分析</h2><p>看懂你的收入、支出與資產變化</p></div><select id="analysisRange"><option value="month">本月</option><option value="year" selected>今年</option></select></div><div class="analysis-grid"><div class="panel"><div class="panel-head"><h2>分類支出</h2></div><div id="categoryBars"></div></div><div class="panel"><div class="panel-head"><h2>資產分布</h2></div><div id="assetBars"></div></div><div class="panel wide"><div class="panel-head"><h2>月度趨勢</h2></div><div id="trendChart" class="chart"></div></div></div></section>
+
+    <section class="view" id="view-budgets"><div class="page-head"><div><h2>預算</h2><p>追蹤每月分類與專案花費上限</p></div><button class="primary" id="newBudget">＋ 新增預算</button></div><div id="budgetGrid" class="card-grid"></div></section>
+
+    <section class="view" id="view-recurring"><div class="page-head"><div><h2>週期交易</h2><p>訂閱、薪資、帳單與固定付款</p></div><button class="primary" id="newRecurring">＋ 新增週期</button></div><div id="recurringGrid" class="card-grid"></div></section>
+
+    <section class="view" id="view-projects"><div class="page-head"><div><h2>專案</h2><p>把旅行、裝修、婚禮等費用獨立追蹤</p></div><button class="primary" id="newProject">＋ 新增專案</button></div><div id="projectGrid" class="card-grid"></div></section>
+    <section class="view" id="view-categories"><div class="page-head"><div><h2>分類</h2><p>自訂支出與收入分類</p></div><button class="primary" id="newCategory">＋ 新增分類</button></div><div id="categoryGrid" class="card-grid"></div></section>
+
+    <section class="view" id="view-loans"><div class="page-head"><div><h2>借還款</h2><p>管理應收與應付</p></div><button class="primary" id="newLoan">＋ 新增借還款</button></div><div id="loanGrid" class="card-grid"></div></section>
+
+    <section class="view" id="view-settings"><div class="page-head"><div><h2>設定</h2><p>資料備份、外觀與雲端同步</p></div></div>
+<div class="panel sync-panel" id="syncPanel">
+  <div class="panel-head"><div><h2>雲端同步</h2><p>同一個帳號可在手機與桌面共用資料；離線時仍可使用本機資料。</p></div><span class="sync-badge" id="syncBadge">未設定</span></div>
+  <div class="sync-config-grid">
+    <label>Supabase Project URL<input id="syncUrl" type="url" placeholder="https://xxxxx.supabase.co" autocomplete="off"></label>
+    <label>Publishable Key<input id="syncKey" type="password" placeholder="sb_publishable_…" autocomplete="off"></label>
+  </div>
+  <div class="sync-actions"><button type="button" class="secondary" id="saveSyncConfig">儲存同步設定</button><button type="button" class="primary" id="syncNowBtn">立即同步</button></div>
+  <div class="sync-account" id="syncAccountArea"></div>
+  <div class="sync-note" id="syncNote">第一次使用：先建立 Supabase 專案並輸入 Project URL 與 Publishable Key，再建立／登入帳號。</div>
+</div>
+<div class="settings-grid"><div class="panel"><h2>資料</h2><div class="setting-actions"><button class="secondary" id="exportJson">匯出 JSON</button><button class="secondary" id="importJson">匯入 JSON</button><input hidden id="importFile" type="file" accept="application/json"></div><p class="hint">本機資料使用 IndexedDB；登入雲端帳號後可在手機與桌面同步。建議仍定期匯出 JSON 備份。</p></div><div class="panel"><h2>偏好</h2><label class="setting"><span>深色主題</span><input type="checkbox" id="darkMode" checked></label><label class="setting"><span>新增交易後停留在當日</span><input type="checkbox" checked></label><label class="setting"><span>顯示快速記帳</span><input type="checkbox" id="showQuick" checked></label></div><div class="panel danger"><h2>危險區域</h2><button class="secondary danger-btn" id="resetAll">清除並重設示範資料</button></div></div></section>
+  </main>
+</div>
+
+<div class="mobile-nav"><button data-view="overview">概覽</button><button data-view="transactions">交易</button><button class="mobile-add" id="mobileAdd">＋</button><button data-view="analysis">分析</button><button data-view="accounts">帳戶</button></div>
+
+<div class="modal-bg" id="modalBg"><div class="modal"><div class="modal-head"><h2 id="modalTitle">新增交易</h2><button class="icon" id="modalClose">×</button></div><form id="txForm"><div class="seg"><label><input type="radio" name="kind" value="expense" checked>支出</label><label><input type="radio" name="kind" value="income">收入</label><label><input type="radio" name="kind" value="transfer">轉帳</label></div><div class="form-grid"><label>名稱<input name="name" required placeholder="例如：午餐"></label><label class="amount-field">金額
+<div class="amount-display" id="amountDisplay">0</div>
+<input name="amount" id="amountInput" required type="number" min="0" step="1" inputmode="decimal" aria-label="金額">
+<div class="amount-keypad" id="amountKeypad">
+<button type="button" data-key="7">7</button><button type="button" data-key="8">8</button><button type="button" data-key="9">9</button>
+<button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button>
+<button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button>
+<button type="button" data-key="00">00</button><button type="button" data-key="0">0</button><button type="button" data-key="back">⌫</button>
+</div></label><label>日期<input name="date" required type="date"></label><label class="choice-field">分類<select name="category" id="formCategory"></select><div class="choice-grid" id="categoryChoices"></div></label><label class="choice-field">帳戶<select name="account" id="formAccount"></select><div class="choice-grid account-choices" id="accountChoices"></div></label><label class="transfer-only">轉入帳戶<select name="toAccount" id="formToAccount"></select></label><label>專案<select name="project" id="formProject"><option value="">無專案</option></select></label><label>商家<input name="merchant" placeholder="例如：全家"></label><label>備註<input name="note" placeholder="可留空"></label></div><div class="split-section"><div class="split-head"><b>拆帳</b><button type="button" class="ghost" id="addSplit">＋ 新增分帳</button></div><div id="splitRows"></div><div id="splitSummary" class="split-summary"><span>未拆帳</span><b>$0</b></div></div><label class="check"><input type="checkbox" name="pending">標記為待完成交易</label><div class="form-actions"><button type="button" class="secondary" id="modalCancel">取消</button><button class="primary">儲存</button></div></form></div></div>
+
+<div class="modal-bg" id="detailBg"><div class="modal"><div class="modal-head"><div><h2 id="detailTitle">交易明細</h2><div class="hint" id="detailSubtitle"></div></div><button class="icon" id="detailClose">×</button></div><div class="tx-detail-grid" id="detailGrid"></div><div class="form-actions"><button class="secondary danger-text" id="detailDelete">刪除交易</button><button class="primary" id="detailEdit">編輯交易</button></div></div></div>
+<div class="modal-bg" id="entityBg"><div class="modal"><div class="modal-head"><h2 id="entityTitle">新增</h2><button class="icon" id="entityClose">×</button></div><form id="entityForm"><div id="entityFields"></div><div class="form-actions"><button type="button" class="secondary" id="entityCancel">取消</button><button class="primary">儲存</button></div></form></div></div>
+<div class="modal-bg" id="paymentBg" hidden><div class="payment-sheet">
+  <div class="payment-head"><div><div class="eyebrow">信用卡繳款</div><h2 id="paymentCardName">信用卡</h2></div><button class="icon" id="paymentClose">×</button></div>
+  <div class="payment-balance"><div><span>目前待繳</span><strong id="paymentOutstanding">$0</strong></div><div class="payment-limit"><span>可用額度</span><b id="paymentAvailable">$0</b></div></div>
+  <label class="payment-label">繳款金額</label>
+  <div class="payment-amount"><span>$</span><input id="paymentAmount" type="number" min="1" inputmode="numeric"><button type="button" data-pay-full>全額</button></div>
+  <div class="payment-quick"><button type="button" data-pay-percent="25">25%</button><button type="button" data-pay-percent="50">50%</button><button type="button" data-pay-percent="75">75%</button><button type="button" data-pay-percent="100">全額</button></div>
+  <div class="payment-label source-title">扣款帳戶</div><div id="paymentSources" class="payment-sources"></div>
+  <div class="payment-footer"><div><span>付款後可用額度</span><b id="paymentAfter">$0</b></div><button class="primary" id="confirmPayment">確認繳款</button></div>
+</div></div>
+
+
+
+
+
+<!-- V24: local config + cloud sync runtime + file-compatible app bundle -->
+<script src="./js/sync-config.js"></script>
+<script src="./js/sync.js"></script>
+<script src="./js/app.bundle.js"></script>
+<script>if('serviceWorker' in navigator && location.protocol !== 'file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
+</body></html>
+
+
+
