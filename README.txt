@@ -14,3 +14,9 @@ V24 升級：V25 第一次登入時會檢查舊 moze_snapshots，使用者可選
 
 本機測試：python -m http.server 5500
 正式使用：GitHub Pages / 其他 HTTPS 靜態主機。
+
+
+V25.1.1
+- 修正同步初始化呼叫 renderAuth 未定義導致的同步失敗。
+- 補回登入、建立帳號、登出、從雲端載入、上傳本機等同步帳號 UI。
+- 保留 V25.1 的內建 Supabase 設定，不讓一般使用者輸入 URL / Publishable Key。

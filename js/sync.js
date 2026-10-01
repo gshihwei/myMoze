@@ -76,6 +76,33 @@
   async function resolveLocal(index){const c=state.conflicts[index];if(!c?.row)return;const q=readQueue(),op=q[c.key]||c.op;const res=await writeRecord(op,{forceBaseVersion:Number(c.row.version)||0});if(res.conflict)throw new Error('雲端資料又被其他裝置修改，請重新同步。');state.conflicts.splice(index,1);renderAuth();setStatus(isDirty()?'待同步':'已同步','ok',state.user?.email)}
   async function syncNow(mode='auto'){if(state.loading)return;state.loading=true;try{if(!state.client||!state.user)await ensureClient();if(!state.user){setStatus('已連線，尚未登入','idle');return}setStatus('同步中…','syncing',state.user.email);if(!getMeta().bootstrapped){await bootstrap();state.conflicts=[];setStatus('已同步','ok',state.user.email);renderAuth();return}state.conflicts=await pushQueued();const m=getMeta(),rows=await fetchRows(m.lastPull||'');if(rows.length){const q=readQueue(),safe=rows.filter(r=>!q[queueKey(r.entity,r.record_id)]);await applyRemoteRows(safe,{replace:false});const latest=rows.map(r=>r.updated_at).filter(Boolean).sort().at(-1);if(latest){const mm=getMeta();mm.lastPull=latest;writeMeta(mm)}}if(state.conflicts.length){renderAuth();setStatus('有同步衝突','error',state.user.email);return}setStatus(isDirty()?'待同步':'已同步','ok',state.user.email);renderAuth()}catch(err){console.error('MOZE Sync V25.1',err);setStatus('同步失敗','error',err.message||'請檢查設定');if(mode!=='silent')alert('同步失敗：'+(err.message||err))}finally{state.loading=false}}
   function conflictLabel(c){const local=localRecord(c.op.entity,c.op.recordId);return `${c.op.entity} · ${local?.name||local?.person||c.op.recordId}`}
+  function renderAuth(){
+    const box=$('syncAccountArea');
+    if(!box)return;
+    if(state.user){
+      box.innerHTML=`<div class="sync-user-card">
+        <div><b>已登入雲端帳號</b><span>${String(state.user.email||'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}</span><small>${isDirty()?'有待同步變更':'資料已同步或尚未有變更'}</small></div>
+        <div class="sync-user-actions">
+          <button type="button" class="secondary" id="syncForcePull">從雲端載入</button>
+          <button type="button" class="secondary" id="syncForcePush">上傳本機</button>
+          <button type="button" class="secondary" id="syncLogout">登出</button>
+        </div>
+      </div><div id="syncConflictArea"></div>`;
+    }else{
+      box.innerHTML=`<div class="sync-login-grid">
+        <label>Email<input id="syncEmail" type="email" autocomplete="email" placeholder="you@example.com"></label>
+        <label>密碼<input id="syncPassword" type="password" autocomplete="current-password" placeholder="至少 6 碼"></label>
+        <div class="sync-login-actions">
+          <button type="button" class="secondary" id="syncSignup">建立帳號</button>
+          <button type="button" class="primary" id="syncLogin">登入</button>
+        </div>
+      </div><div id="syncConflictArea"></div>`;
+    }
+    bindAuthButtons();
+    renderConflicts();
+    renderConflictButtons();
+  }
+
   function renderConflicts(){const box=$('syncConflictArea');if(!box)return;if(!state.conflicts.length){box.innerHTML='';return}box.innerHTML=`<div class="sync-conflict-box"><div><b>同步衝突 ${state.conflicts.length} 筆</b><p>只有同一筆資料被兩台裝置同時修改時才需要處理；其他資料已自動合併。</p></div>${state.conflicts.map((c,i)=>`<div class="sync-conflict-row"><span>${conflictLabel(c)}</span><div><button type="button" class="secondary" data-conflict-cloud="${i}">保留雲端</button><button type="button" class="primary" data-conflict-local="${i}">保留本機</button></div></div>`).join('')}</div>`}
   function renderConflictButtons(){document.querySelectorAll('[data-conflict-cloud]').forEach(b=>b.onclick=async()=>{try{await resolveCloud(Number(b.dataset.conflictCloud))}catch(e){alert('保留雲端失敗：'+e.message)}});document.querySelectorAll('[data-conflict-local]').forEach(b=>b.onclick=async()=>{try{await resolveLocal(Number(b.dataset.conflictLocal))}catch(e){alert('保留本機失敗：'+e.message)}})}
   function bindAuthButtons(){$('syncLogin')?.addEventListener('click',async()=>{const e=$('syncEmail')?.value.trim(),p=$('syncPassword')?.value||'';if(!e||!p)return alert('請輸入 Email 與密碼。');try{await signIn(e,p)}catch(err){alert('登入失敗：'+err.message)}});$('syncSignup')?.addEventListener('click',async()=>{const e=$('syncEmail')?.value.trim(),p=$('syncPassword')?.value||'';if(!e||p.length<6)return alert('請輸入 Email，密碼至少 6 碼。');try{const msg=await signUp(e,p);alert(msg)}catch(err){alert('建立帳號失敗：'+err.message)}});$('syncLogout')?.addEventListener('click',()=>signOut());$('syncForcePull')?.addEventListener('click',async()=>{try{await pullAllFromCloud()}catch(err){alert('從雲端載入失敗：'+err.message)}});$('syncForcePush')?.addEventListener('click',async()=>{try{const rows=await fetchRows('');await pushFullLocal(rows);await syncNow('auto')}catch(err){alert('上傳本機失敗：'+err.message)}})}
