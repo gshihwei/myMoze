@@ -1,7 +1,7 @@
 {
-  "name": "MOZE 個人記帳 V25.4",
+  "name": "MOZE 個人記帳 V25.7",
   "short_name": "MOZE",
-  "description": "MOZE 個人記帳 PWA V25.4：手機、桌面與逐筆雲端同步",
+  "description": "MOZE 個人記帳 PWA V25.7：手機、桌面、逐筆雲端同步與借還款追蹤",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b121c",
