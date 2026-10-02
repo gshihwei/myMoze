@@ -1,4 +1,4 @@
-/* MOZE PWA V25 classic bundle — file:// compatible runtime */
+/* MOZE PWA V25.5 low-memory bundle — file:// compatible runtime */
 const iconPaths={
 food:'<path d="M7 3v7M4.5 3v4a2.5 2.5 0 0 0 5 0V3M7 10v11M17 3v18M14 3v5a3 3 0 0 0 6 0V3"/>',
 transport:'<path d="M5 16h14l-1-7a2 2 0 0 0-2-1H8a2 2 0 0 0-2 1l-1 7Z"/><path d="M7 16v3M17 16v3M4 13h16"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/>',
@@ -18,23 +18,10 @@ function svgForAccount(a){return svg(accountIcon(a))}
 
 const DB='moze-v7', STORE='state';
 const SYNC_ENTITIES=['accounts','categories','projects','transactions','budgets','recurring','loans'];
-let lastPersistedState=null;
-function recordMap(obj,key){const m=new Map();for(const row of (obj?.[key]||[])){m.set(String(row.id),row)}return m;}
-function diffSyncState(before,after){
-  if(!before||!after)return [];
-  const changes=[];
-  for(const entity of SYNC_ENTITIES){
-    const b=recordMap(before,entity), a=recordMap(after,entity);
-    const ids=new Set([...b.keys(),...a.keys()]);
-    for(const rid of ids){
-      const bv=b.get(rid), av=a.get(rid);
-      if(!bv && av) changes.push({entity,recordId:rid,op:'upsert'});
-      else if(bv && !av) changes.push({entity,recordId:rid,op:'delete'});
-      else if(bv && av && JSON.stringify(bv)!==JSON.stringify(av)) changes.push({entity,recordId:rid,op:'upsert'});
-    }
-  }
-  return changes;
-}
+let lastPersistedSignatures=null;
+function recordSignature(row){const text=JSON.stringify(row);let h=2166136261;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(16)+':'+text.length}
+function buildSyncSignatures(obj){const out={};for(const entity of SYNC_ENTITIES){const m=new Map();for(const row of (obj?.[entity]||[]))m.set(String(row.id),recordSignature(row));out[entity]=m;}return out}
+function diffSyncState(before,after){if(!before||!after)return [];const changes=[];for(const entity of SYNC_ENTITIES){const b=before[entity]||new Map(),a=after[entity]||new Map();const ids=new Set([...b.keys(),...a.keys()]);for(const rid of ids){const bv=b.get(rid),av=a.get(rid);if(!bv&&av)changes.push({entity,recordId:rid,op:'upsert'});else if(bv&&!av)changes.push({entity,recordId:rid,op:'delete'});else if(bv&&av&&bv!==av)changes.push({entity,recordId:rid,op:'upsert'});}}return changes}
 
 const seed={accounts:[{id:'cash',name:'現金',type:'cash',balance:6200},{id:'bank',name:'銀行帳戶',type:'bank',balance:38500},{id:'card',name:'信用卡',type:'card',balance:-8200,limit:50000,statement:15,due:5}],categories:[{id:'food',name:'飲食',icon:'🍜',kind:'expense'},{id:'transport',name:'交通',icon:'🚗',kind:'expense'},{id:'shopping',name:'購物',icon:'🛍️',kind:'expense'},{id:'home',name:'居家',icon:'⌂',kind:'expense'},{id:'ent',name:'娛樂',icon:'◉',kind:'expense'},{id:'salary',name:'薪資',icon:'＄',kind:'income'}],projects:[{id:'trip',name:'台南旅行',budget:12000}],transactions:[{id:1,date:'2026-08-01',name:'薪資',amount:52000,kind:'income',category:'salary',account:'bank',merchant:'公司'},{id:2,date:'2026-08-03',name:'午餐',amount:180,kind:'expense',category:'food',account:'cash',merchant:'自助餐'},{id:3,date:'2026-08-05',name:'加油',amount:900,kind:'expense',category:'transport',account:'card',merchant:'中油'},{id:4,date:'2026-08-09',name:'日用品',amount:1250,kind:'expense',category:'shopping',account:'card',merchant:'家樂福'},{id:5,date:'2026-08-12',name:'台南住宿',amount:2800,kind:'expense',category:'ent',account:'card',project:'trip',merchant:'旅館'},{id:6,date:'2026-08-18',name:'晚餐',amount:420,kind:'expense',category:'food',account:'cash',merchant:'餐廳'},{id:7,date:'2026-08-22',name:'水電費',amount:1650,kind:'expense',category:'home',account:'bank',merchant:'台電'}],budgets:[{id:1,category:'food',limit:6000},{id:2,category:'transport',limit:4000},{id:3,category:'shopping',limit:5000}],recurring:[{id:1,name:'Netflix',amount:390,next:'2026-09-05',category:'ent'},{id:2,name:'薪資',amount:52000,next:'2026-09-01',category:'salary'}],loans:[]};
 let state, selectedDate=new Date().toISOString().slice(0,10), editId=null;
@@ -47,13 +34,14 @@ function clone(x){return JSON.parse(JSON.stringify(x))}
 function openDB(){return new Promise((res,rej)=>{let r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore(STORE);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 async function load(){let db=await openDB();return new Promise((res,rej)=>{let t=db.transaction(STORE,'readonly').objectStore(STORE).get('state');t.onsuccess=()=>res(t.result||clone(seed));t.onerror=()=>rej(t.error)})}
 async function save(markDirty=true){
-  const before=lastPersistedState?clone(lastPersistedState):null;
+  const before=lastPersistedSignatures;
   let db=await openDB();
   return new Promise((res,rej)=>{
     let t=db.transaction(STORE,'readwrite').objectStore(STORE).put(state,'state');
     t.onsuccess=()=>{
-      const changes=markDirty?diffSyncState(before,state):[];
-      lastPersistedState=clone(state);
+      const after=buildSyncSignatures(state);
+      const changes=markDirty?diffSyncState(before,after):[];
+      lastPersistedSignatures=after;
       if(markDirty&&changes.length){try{window.MozeSync?.queueStateDiff?.(changes)}catch(e){console.warn('sync queue',e)}}
       if(markDirty){try{window.MozeSync?.markDirty?.()}catch(e){console.warn('sync markDirty',e)}}
       res();
@@ -231,13 +219,13 @@ window.MozeApp.openTx=openTx;
 window.MozeApp.nav=nav;
 window.MozeApp.getState=()=>state;
 window.MozeApp.refresh=render;
-window.MozeApp.setState=async(next,{persist=true,markDirty=false}={})=>{state=clone(next);window.state=state;window.mozeState=state;if(persist)await save(markDirty);render();window.refreshEntryChoices?.();return state};
+window.MozeApp.setState=async(next,{persist=true,markDirty=false,cloneData=true}={})=>{state=cloneData?clone(next):next;window.state=state;window.mozeState=state;if(persist)await save(markDirty);render();window.refreshEntryChoices?.();return state};
 window.MozeApp.isReady=true;
 window.openTx=openTx;
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>nav(b.dataset.view));document.querySelectorAll('[data-quick]').forEach(b=>b.onclick=()=>openTx(b.dataset.quick));
 const bind=(el,event,fn)=>{if(el)el.addEventListener(event,fn)};
 bind(quickAdd,'click',()=>openTx());bind(mobileAdd,'click',()=>openTx());bind(newTx,'click',()=>openTx());bind(modalClose,'click',closeModals);bind(detailClose,'click',()=>detailBg.classList.remove('open'));bind(detailEdit,'click',()=>{let t=state.transactions.find(x=>String(x.id)===String(window.detailId));detailBg.classList.remove('open');if(t)openTx('expense',t)});bind(detailDelete,'click',()=>deleteTx(window.detailId));bind(modalCancel,'click',closeModals);bind(entityClose,'click',closeModals);bind(entityCancel,'click',closeModals);bind(txForm,'submit',submitTx);bind(entityFormEl,'submit',submitEntity);bind(addSplit,'click',()=>addSplitRow());document.querySelectorAll('input[name=kind]').forEach(x=>x.onchange=updateKind);[txSearch,txType,txCategory,txAccount].forEach(x=>bind(x,'input',renderTransactions));bind(newAccount,'click',()=>openEntity('account'));bind(newBudget,'click',()=>openEntity('budget'));bind(newProject,'click',()=>openEntity('project'));bind(newCategory,'click',()=>openEntity('category'));bind(newRecurring,'click',()=>openEntity('recurring'));bind(newLoan,'click',()=>openEntity('loan'));document.addEventListener('click',e=>{let b=e.target.closest('[data-save-one-card]');if(b){e.preventDefault();let row=b.closest('[data-card-setting]'),a=acct(b.dataset.saveOneCard);if(row&&a){a.limit=Math.max(0,Number(row.querySelector('[data-field=limit]').value||0));a.statement=Math.min(31,Math.max(1,Number(row.querySelector('[data-field=statement]').value||15)));a.due=Math.min(31,Math.max(1,Number(row.querySelector('[data-field=due]').value||5)));save().then(()=>{render();openCreditAccount(a.id)}).catch(err=>alert('儲存失敗：'+err.message))}}});bind(todayBtn,'click',()=>{const now=new Date();selectedDate=now.toISOString().slice(0,10);calendarMonth=new Date(now.getFullYear(),now.getMonth(),1);renderCalendar();renderDaily();renderMetrics();renderChart();renderCards()});bind(prevPeriod,'click',()=>{calendarMonth.setMonth(calendarMonth.getMonth()-1);selectedDate=monthKey(calendarMonth)+'-01';render()});bind(nextPeriod,'click',()=>{calendarMonth.setMonth(calendarMonth.getMonth()+1);selectedDate=monthKey(calendarMonth)+'-01';render()});bind(calendarPrev,'click',()=>{calendarMonth.setMonth(calendarMonth.getMonth()-1);selectedDate=monthKey(calendarMonth)+'-01';renderCalendar();renderDaily();renderMetrics();renderChart();renderCards()});bind(calendarNext,'click',()=>{calendarMonth.setMonth(calendarMonth.getMonth()+1);selectedDate=monthKey(calendarMonth)+'-01';renderCalendar();renderDaily();renderMetrics();renderChart();renderCards()});bind(resetAll,'click',async()=>{if(confirm('確定重設所有示範資料？')){state=clone(seed);await save();render()}});bind(exportJson,'click',()=>{let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));a.download='moze-backup.json';a.click()});bind(importJson,'click',()=>importFile?.click());bind(importFile,'change',async e=>{let f=e.target.files[0];if(!f)return;try{state=JSON.parse(await f.text());await save();render()}catch{alert('JSON 格式錯誤')}});
-(async()=>{try{state=await load();lastPersistedState=clone(state);window.state=state;window.mozeState=state;if(todayLabel)todayLabel.textContent=new Date().toLocaleDateString('zh-TW',{month:'long',day:'numeric',weekday:'short'});if(periodLabel)periodLabel.textContent=`${calendarMonth.getFullYear()}/${String(calendarMonth.getMonth()+1).padStart(2,'0')}`;await save(false);render();window.MozeSync?.appReady?.();}catch(err){console.error('MOZE 初始化失敗',err);alert('MOZE 初始化失敗：'+err.message)}})();
+(async()=>{try{state=await load();lastPersistedSignatures=buildSyncSignatures(state);window.state=state;window.mozeState=state;if(todayLabel)todayLabel.textContent=new Date().toLocaleDateString('zh-TW',{month:'long',day:'numeric',weekday:'short'});if(periodLabel)periodLabel.textContent=`${calendarMonth.getFullYear()}/${String(calendarMonth.getMonth()+1).padStart(2,'0')}`;await save(false);render();window.MozeSync?.appReady?.();}catch(err){console.error('MOZE 初始化失敗',err);alert('MOZE 初始化失敗：'+err.message)}})();
 
 
 (function(){

@@ -1,0 +1,7 @@
+V25.5
+- 逐批上傳待同步記錄，避免逐筆序列化整份 queue。
+- metadata 改為記憶體快取，批次寫入 localStorage。
+- 遠端資料套用改為批次 metadata 更新。
+- 首次把本機資料完整上傳後不再重新抓取整份雲端資料。
+- 本機 state sync diff 改用逐筆簽章，避免 save() 深拷貝整份 state。
+- setState 支援 cloneData:false，減少大型同步資料的重複複製。
