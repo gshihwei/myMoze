@@ -165,7 +165,7 @@
       id:makeId('tx',`${date}|${time}|${fingerprint(row)}|${index}`),
       date,time,name:cleanName(row[8],30)||type,merchant:cleanName(row[9],30),amount:abs,kind,
       recordType:type,category:cat.id,mainCategory:mainName,subcategory:subName,account:account.id,
-      project:project?.id||'',note:norm(row[13]).slice(0,300),tags:norm(row[14])?norm(row[14]).split(';').map(x=>x.trim()).filter(Boolean):[],person:norm(row[15])||'不限定對象',currency:currency||account.currency||'TWD',fee:Math.abs(fee),discount:Math.abs(discount),_importKey:fingerprint(row)
+      project:project?.id||'',note:norm(row[13]).slice(0,300),tags:norm(row[14])?norm(row[14]).split(';').map(x=>x.trim()).filter(Boolean):[],person:norm(row[15])||'不限定對象',currency:currency||account.currency||'TWD',fee:Math.abs(fee),discount:Math.abs(discount),_importKey:fingerprint(row),imported:true,balanceEffect:amountRaw
     };
     return {tx, amountRaw, type, account, newAccount, zeroOpeningAdjustment};
   }
@@ -194,7 +194,7 @@
       if(a.type==='轉出'){
         const next=imported[i+1];
         if(next?.tx && next.type==='轉入' && !next.skipped && a.tx.date===next.tx.date && a.tx.time===next.tx.time){
-          a.tx.kind='transfer'; a.tx.account=a.tx.account; a.tx.toAccount=next.tx.account; a.tx.amount=Math.abs(a.amountRaw); a.tx.transferPair=true; a.tx._importKey=`${a.tx._importKey}\u001e${next.tx._importKey}`;
+          a.tx.kind='transfer'; a.tx.account=a.tx.account; a.tx.toAccount=next.tx.account; a.tx.amount=Math.abs(a.amountRaw); a.tx.balanceEffect=a.amountRaw; a.tx.toAmount=Math.abs(next.amountRaw); a.tx.toBalanceEffect=next.amountRaw; a.tx.toCurrency=next.tx.currency; a.tx.transferPair=true; a.tx._importKey=`${a.tx._importKey}\u001e${next.tx._importKey}`;
           final.push(a.tx); used.add(i+1); continue;
         }
         errors.push({row:a.row,message:'轉出找不到相鄰、日期時間相同的轉入紀錄'}); continue;
@@ -203,15 +203,21 @@
       if(a.type==='轉入') { errors.push({row:a.row,message:'轉入必須緊接在轉出紀錄之後'}); continue; }
       final.push(a.tx);
     }
-    // Apply balances only to accounts newly created by this import.
+    // Apply the original signed CSV effects only to accounts created in this import.
+    // This preserves the semantics of 應收款項／應付款項 and 餘額調整, whose sign
+    // can legitimately be positive or negative in MOZE exports. Cross-currency
+    // transfers use the destination row's own amount.
     const newIds=new Set(created.accounts.map(a=>String(a.id)));
     for(const tx of final){
       const a=st.accounts.find(x=>String(x.id)===String(tx.account));
       if(!a||!newIds.has(String(a.id))) continue;
-      if(tx.kind==='expense') a.balance-=tx.amount;
-      else if(tx.kind==='income') a.balance+=tx.amount;
-      else if(tx.kind==='transfer'){a.balance-=tx.amount;const b=st.accounts.find(x=>String(x.id)===String(tx.toAccount));if(b&&newIds.has(String(b.id)))b.balance+=tx.amount;}
-      else if(tx.kind==='balance_adjustment') a.balance+=Number(tx.amount)*(tx.recordType==='餘額調整'&&tx._importKey? (parseAmount(rows.find(r=>fingerprint(r)===tx._importKey)?.[5])<0?-1:1):1);
+      if(tx.kind==='transfer'){
+        a.balance += Number(tx.balanceEffect??(-tx.amount));
+        const b=st.accounts.find(x=>String(x.id)===String(tx.toAccount));
+        if(b&&newIds.has(String(b.id))) b.balance += Number(tx.toBalanceEffect??tx.toAmount??tx.amount);
+      } else {
+        a.balance += Number(tx.balanceEffect ?? (tx.kind==='expense'?-tx.amount:tx.kind==='income'?tx.amount:tx.kind==='balance_adjustment'?tx.amount:0));
+      }
     }
     st.transactions.push(...final);
     return {state:st,transactions:final,errors,warnings,created,skipped:imported.filter(x=>x.skipped).length,accountOnly:imported.filter(x=>x.accountOnly).length,totalDataRows:rows.length-1};
@@ -263,7 +269,20 @@
             downloadBackup(currentState);
             if(!confirm('確定要完整覆蓋目前資料嗎？\n\n目前帳務資料會先自動下載 JSON 備份，接著清除並改用這份 CSV 建立新資料。')) return;
           }
-          await window.MozeApp.setState(active.state,{persist:true,markDirty:true});
+          await window.MozeApp.setState(active.state,{persist:true,markDirty:false,cloneData:false,skipSyncSignature:true});
+          if(mode==='overwrite') {
+            const remote=await window.MozeSync?.getAllCloudRows?.();
+            if(remote) await window.MozeSync.replaceCloudWithLocal(remote);
+            else if(window.MozeSync?.syncNow) await window.MozeSync.syncNow('auto');
+          } else {
+            const changes=[];
+            for(const a of active.created.accounts||[]) changes.push({entity:'accounts',recordId:a.id,op:'upsert'});
+            for(const c of active.created.categories||[]) changes.push({entity:'categories',recordId:c.id,op:'upsert'});
+            for(const pr of active.created.projects||[]) changes.push({entity:'projects',recordId:pr.id,op:'upsert'});
+            for(const t of active.transactions||[]) changes.push({entity:'transactions',recordId:t.id,op:'upsert'});
+            window.MozeSync?.queueStateDiff?.(changes);
+            window.MozeSync?.markDirty?.();
+          }
           bg.classList.remove('open');
           alert(`${mode==='overwrite'?'完整覆蓋':'追加匯入'}完成：${active.transactions.length} 筆交易${active.accountOnly?`、${active.accountOnly} 個零餘額帳戶`:''}。${active.errors.length?`\n有 ${active.errors.length} 筆資料未匯入，請修正 CSV 後再試。`:''}`);
         } catch(err){ alert('匯入儲存失敗：'+(err.message||err)); }

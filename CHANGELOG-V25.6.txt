@@ -1,0 +1,6 @@
+V25.6
+- 逐筆同步佇列改為獨立 localStorage record，避免整包 queue JSON 反覆 parse/stringify。
+- 每筆雲端 version metadata 改為獨立 record，避免大型 metadata JSON 反覆序列化。
+- 大量 CSV 匯入時跳過完整同步 signature clone；追加模式只同步本次新增記錄。
+- 完整覆蓋使用批次雲端重建。
+- 修正應收款項／應付款項正負號語意與跨幣別轉帳目的金額。

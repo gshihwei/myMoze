@@ -1,6 +1,7 @@
 (function(){
   'use strict';
-  const LS_DEVICE='moze-sync-device-v25', LS_QUEUE='moze-sync-queue-v25', LS_META='moze-sync-meta-v25', LS_LAST_USER='moze-sync-last-user-v25';
+  const LS_DEVICE='moze-sync-device-v25', LS_QUEUE_LEGACY='moze-sync-queue-v25', LS_META_LEGACY='moze-sync-meta-v25', LS_LAST_USER='moze-sync-last-user-v25';
+  const LS_QUEUE_ITEM='moze-sync-q-item-v26', LS_META_ITEM='moze-sync-meta-item-v26', LS_META_STATE='moze-sync-meta-state-v26', LS_DIRTY='moze-sync-dirty-v26';
   const CDN='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
   const ENTITIES=['accounts','categories','projects','transactions','budgets','recurring','loans'];
   const state={client:null,user:null,ready:false,loading:false,timer:null,authSub:null,clientKey:'',conflicts:[],metaCache:null,metaKey:'',progress:{done:0,total:0}};
@@ -15,24 +16,35 @@
     try{
       const saved=JSON.parse(localStorage.getItem('moze-sync-config-v25')||'{}');
       const legacy=JSON.parse(localStorage.getItem('moze-sync-config-v24')||'{}');
-      return {
-        url:String(saved.url||legacy.url||'').trim(),
-        publishableKey:String(saved.publishableKey||legacy.publishableKey||'').trim()
-      };
+      return {url:String(saved.url||legacy.url||'').trim(),publishableKey:String(saved.publishableKey||legacy.publishableKey||'').trim()};
     }catch{return base}
   }
   function deviceId(){let v=localStorage.getItem(LS_DEVICE);if(!v){v=(crypto.randomUUID?crypto.randomUUID():'device-'+Date.now()+'-'+Math.random().toString(16).slice(2));localStorage.setItem(LS_DEVICE,v)}return v}
-  function scopedKey(base){return state.user?base+'|'+state.user.id:base+'|anonymous'}
-  function readQueue(){try{return JSON.parse(localStorage.getItem(scopedKey(LS_QUEUE))||'{}')||{}}catch{return {}}}
-  function writeQueue(q){const k=scopedKey(LS_QUEUE);if(Object.keys(q).length)localStorage.setItem(k,JSON.stringify(q));else localStorage.removeItem(k)}
+  function userScope(){return state.user?String(state.user.id):'anonymous'}
+  function scopedKey(base){return base+'|'+userScope()}
   function queueKey(entity,id){return entity+'|'+String(id)}
-  function readMeta(){try{return JSON.parse(localStorage.getItem(scopedKey(LS_META))||'{}')||{}}catch{return {}}}
-  function writeMeta(m){localStorage.setItem(scopedKey(LS_META),JSON.stringify(m))}
-  function getMeta(){const key=scopedKey(LS_META);if(!state.metaCache||state.metaKey!==key){state.metaKey=key;state.metaCache=readMeta();}const m=state.metaCache;m.deviceId=m.deviceId||deviceId();m.records=m.records||{};m.lastPull=m.lastPull||'';m.bootstrapped=!!m.bootstrapped;return m}
+  function queueStorageKey(k){return `${LS_QUEUE_ITEM}|${userScope()}|${k}`}
+  function queueStoragePrefix(){return `${LS_QUEUE_ITEM}|${userScope()}|`}
+  function listQueueStorageKeys(){const p=queueStoragePrefix(),out=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(p))out.push(k)}return out}
+  function readQueueOpByStorageKey(sk){try{return JSON.parse(localStorage.getItem(sk)||'null')}catch{return null}}
+  function hasQueuedKey(k){return !!localStorage.getItem(queueStorageKey(k))}
+  function removeQueuedKey(k){localStorage.removeItem(queueStorageKey(k))}
+  function clearQueue(){for(const k of listQueueStorageKeys())localStorage.removeItem(k);localStorage.removeItem(scopedKey(LS_DIRTY))}
+  function hasLegacySyncData(){return !!localStorage.getItem(scopedKey(LS_QUEUE_LEGACY))||!!localStorage.getItem(scopedKey(LS_META_LEGACY))}
+  function clearLegacySyncData(){localStorage.removeItem(scopedKey(LS_QUEUE_LEGACY));localStorage.removeItem(scopedKey(LS_META_LEGACY));}
+
+  function readMeta(){try{return JSON.parse(localStorage.getItem(scopedKey(LS_META_STATE))||'{}')||{}}catch{return {}}}
+  function writeMeta(m){localStorage.setItem(scopedKey(LS_META_STATE),JSON.stringify(m))}
+  function getMeta(){const key=scopedKey(LS_META_STATE);if(!state.metaCache||state.metaKey!==key){state.metaKey=key;state.metaCache=readMeta();}const m=state.metaCache;m.deviceId=m.deviceId||deviceId();m.lastPull=m.lastPull||'';m.bootstrapped=!!m.bootstrapped;return m}
   function flushMeta(){if(state.metaCache)writeMeta(state.metaCache)}
   function resetMetaCache(){state.metaCache=null;state.metaKey=''}
   function markBootstrapped(){const m=getMeta();m.bootstrapped=true;flushMeta()}
-  function isDirty(){return Object.keys(readQueue()).length>0||localStorage.getItem('moze-sync-unauth-dirty-v25')==='1'}
+  function metaStorageKey(entity,recordId){return `${LS_META_ITEM}|${userScope()}|${entity}|${String(recordId)}`}
+  function metaSet(entity,recordId,version,updatedAt){localStorage.setItem(metaStorageKey(entity,recordId),JSON.stringify({version:Number(version)||0,updatedAt:updatedAt||''}))}
+  function metaSetMany(rows){for(const row of rows||[]){if(row?.entity&&row?.record_id!==undefined)metaSet(row.entity,row.record_id,row.version,row.updated_at)}}
+  function metaGetVersion(entity,recordId){try{const v=JSON.parse(localStorage.getItem(metaStorageKey(entity,recordId))||'null');return Number(v?.version||0)}catch{return 0}}
+  function isDirty(){return localStorage.getItem(scopedKey(LS_DIRTY))==='1'||localStorage.getItem('moze-sync-unauth-dirty-v25')==='1'}
+
   function setStatus(text,kind='idle',userText){const dot=$('syncDot'),label=$('syncStatus'),user=$('syncUserLabel'),badge=$('syncBadge');if(label)label.textContent=text;if(user)user.textContent=userText||(state.user?.email||'尚未登入');if(badge){badge.textContent=text;badge.dataset.kind=kind}if(dot)dot.dataset.kind=kind}
   function loadScript(src){return new Promise((resolve,reject)=>{if(window.supabase?.createClient)return resolve();const s=document.createElement('script');s.src=src;s.onload=()=>resolve();s.onerror=()=>reject(new Error('無法載入 Supabase JavaScript；請確認網路連線。'));document.head.appendChild(s)})}
   async function ensureClient(){
@@ -61,11 +73,27 @@
   function localRecord(entity,recordId){const st=localState()||{};return (st[entity]||[]).find(x=>String(x.id)===String(recordId))||null}
   function listLocalRecords(st){const out=[];for(const entity of ENTITIES){for(const row of (st?.[entity]||[]))out.push({entity,recordId:String(row.id),data:row})}return out}
   function applyRowToState(st,row){if(!st[row.entity])st[row.entity]=[];const arr=st[row.entity],idx=arr.findIndex(x=>String(x.id)===String(row.record_id));if(row.deleted){if(idx>=0)arr.splice(idx,1);return}if(idx>=0)arr[idx]=row.data;else arr.push(row.data)}
-  function metaSet(entity,recordId,version,updatedAt){const m=getMeta();m.records[queueKey(entity,recordId)]={version:Number(version)||0,updatedAt:updatedAt||''};}
-  function metaSetMany(rows){const m=getMeta();for(const row of rows||[]){if(row?.entity&&row?.record_id!==undefined)m.records[queueKey(row.entity,row.record_id)]={version:Number(row.version)||0,updatedAt:row.updated_at||''};}}
-  function metaGetVersion(entity,recordId){return Number(getMeta().records[queueKey(entity,recordId)]?.version||0)}
-  function queueStateDiff(changes){if(!changes?.length)return;if(!state.user){localStorage.setItem('moze-sync-unauth-dirty-v25','1');setStatus('待同步','dirty','尚未登入');return}const q=readQueue();for(const ch of changes){const k=queueKey(ch.entity,ch.recordId),existing=q[k];q[k]={entity:ch.entity,recordId:String(ch.recordId),op:ch.op,baseVersion:existing?Number(existing.baseVersion)||0:metaGetVersion(ch.entity,ch.recordId),queuedAt:existing?.queuedAt||new Date().toISOString()}}writeQueue(q);setStatus('待同步','dirty',state.user.email)}
-  function markDirty(){if(state.timer)clearTimeout(state.timer);setStatus('待同步','dirty',state.user?.email||'尚未登入');if(state.user)state.timer=setTimeout(()=>syncNow('auto'),1200)}
+  function queueStateDiff(changes){
+    if(!changes?.length)return;
+    if(!state.user){localStorage.setItem('moze-sync-unauth-dirty-v25','1');setStatus('待同步','dirty','尚未登入');return}
+    const now=new Date().toISOString();
+    for(const ch of changes){
+      const k=queueKey(ch.entity,ch.recordId),sk=queueStorageKey(k),existing=readQueueOpByStorageKey(sk);
+      const op={entity:ch.entity,recordId:String(ch.recordId),op:ch.op,baseVersion:existing?Number(existing.baseVersion)||0:metaGetVersion(ch.entity,ch.recordId),queuedAt:existing?.queuedAt||now};
+      localStorage.setItem(sk,JSON.stringify(op));
+    }
+    localStorage.setItem(scopedKey(LS_DIRTY),'1');
+    setStatus('待同步','dirty',state.user.email);
+  }
+  async function queueAllLocal(records){
+    if(!state.user) return;
+    const st=localState()||{};
+    let rows=records;
+    if(!rows){rows=[];for(const entity of ENTITIES)for(const row of (st[entity]||[]))rows.push({entity,recordId:String(row.id),op:'upsert'})}
+    queueStateDiff(rows);
+    await yieldToBrowser();
+  }
+  function markDirty(){if(state.timer)clearTimeout(state.timer);setStatus('待同步','dirty',state.user?.email||'尚未登入');localStorage.setItem(scopedKey(LS_DIRTY),'1');if(state.user)state.timer=setTimeout(()=>syncNow('auto'),1200)}
   async function fetchRows(since=''){
     if(!state.user)throw new Error('尚未登入。');
     const pageSize=500;
@@ -102,27 +130,28 @@
   }
   async function writeRecord(op,{forceBaseVersion=null}={}){
     const result=await writeRecordRaw(op,{forceBaseVersion});
-    if(result.ok){const q=readQueue();delete q[result.key];writeQueue(q);flushMeta();}
+    if(result.ok){removeQueuedKey(result.key);flushMeta();if(!listQueueStorageKeys().length)localStorage.removeItem(scopedKey(LS_DIRTY));}
     return result;
   }
   async function pushQueued(){
-    const q=readQueue(),keys=Object.keys(q),conflicts=[];
+    const keys=listQueueStorageKeys(),conflicts=[];
     const local=localState()||{},localMap=new Map();
     for(const entity of ENTITIES)for(const row of (local[entity]||[]))localMap.set(queueKey(entity,row.id),row);
     const total=keys.length;let done=0;updateProgress(0,total);
     for(let offset=0;offset<keys.length;offset+=BATCH){
       const batch=keys.slice(offset,offset+BATCH);
-      for(const k of batch){
-        const op=q[k];if(!op)continue;
+      for(const sk of batch){
+        const op=readQueueOpByStorageKey(sk);if(!op)continue;
         try{
-          const result=await writeRecordRaw(op,{localRow:localMap.get(k)||null});
-          if(result.conflict)conflicts.push(result); else delete q[k];
-        }catch(err){console.warn('MOZE Sync record upload',k,err);throw err}
+          const result=await writeRecordRaw(op,{localRow:localMap.get(queueKey(op.entity,op.recordId))||null});
+          if(result.conflict)conflicts.push(result);else localStorage.removeItem(sk);
+        }catch(err){console.warn('MOZE Sync record upload',op?.entity,op?.recordId,err);throw err}
         done++;if(done%10===0)updateProgress(done,total);
       }
-      writeQueue(q);flushMeta();updateProgress(done,total);await yieldToBrowser();
+      flushMeta();updateProgress(done,total);await yieldToBrowser();
     }
-    writeQueue(q);flushMeta();return conflicts;
+    if(!listQueueStorageKeys().length)localStorage.removeItem(scopedKey(LS_DIRTY));
+    return conflicts;
   }
   async function applyRemoteRows(rows,{replace=false}={}){
     const base=localState()||{},st=replace?freshState():base;
@@ -134,36 +163,48 @@
     await window.MozeApp.setState(st,{persist:true,markDirty:false});
   }
   async function pushFullLocal(remoteRows=[]){
-    const remoteMap=new Map(remoteRows.map(r=>[queueKey(r.entity,r.record_id),r]));
-    const local=localState()||{};const records=[];for(const entity of ENTITIES)for(const row of (local[entity]||[]))records.push({entity,recordId:String(row.id)});
-    const remoteKeys=new Set(remoteRows.map(r=>queueKey(r.entity,r.record_id)));
-    const total=records.length;let done=0;updateProgress(0,total+remoteRows.length);
+    const remoteMap=new Map((remoteRows||[]).map(r=>[queueKey(r.entity,r.record_id),r]));
+    const remoteKeys=new Set((remoteRows||[]).map(r=>queueKey(r.entity,r.record_id)));
+    const local=localState()||{}, records=[];
+    for(const entity of ENTITIES)for(const row of (local[entity]||[]))records.push({entity,recordId:String(row.id),data:row});
+    const total=records.length;let done=0;updateProgress(0,total+(remoteRows?.length||0));
     for(let offset=0;offset<records.length;offset+=BATCH){
       const batch=records.slice(offset,offset+BATCH);
-      for(const r of batch){const rr=remoteMap.get(queueKey(r.entity,r.recordId));const base=rr?Number(rr.version)||0:0;const res=await writeRecordRaw({entity:r.entity,recordId:r.recordId,op:'upsert',baseVersion:base},{forceBaseVersion:base,localRow:local[r.entity].find(x=>String(x.id)===String(r.recordId))});if(res.conflict)throw new Error(`無法上傳 ${r.entity}/${r.recordId}：雲端同筆資料正在變更。`);done++;updateProgress(done,total+remoteRows.length);}
-      flushMeta();await yieldToBrowser();
+      for(const rec of batch){
+        const rr=remoteMap.get(queueKey(rec.entity,rec.recordId));const base=rr?Number(rr.version)||0:0;
+        const res=await writeRecordRaw({entity:rec.entity,recordId:rec.recordId,op:'upsert',baseVersion:base},{forceBaseVersion:base,localRow:rec.data});
+        if(res.conflict)throw new Error(`無法上傳 ${rec.entity}/${rec.recordId}：雲端同筆資料正在變更。`);
+        done++;updateProgress(done,total+(remoteRows?.length||0));
+      }
+      await yieldToBrowser();
     }
     const localKeys=new Set(records.map(r=>queueKey(r.entity,r.recordId)));
     let deletedDone=0;
-    for(let offset=0;offset<remoteRows.length;offset+=BATCH){
+    for(let offset=0;offset<(remoteRows?.length||0);offset+=BATCH){
       const batch=remoteRows.slice(offset,offset+BATCH);
-      for(const rr of batch){if(!localKeys.has(queueKey(rr.entity,rr.record_id))&&!rr.deleted){const base=Number(rr.version)||0;const res=await writeRecordRaw({entity:rr.entity,recordId:rr.record_id,op:'delete',baseVersion:base},{forceBaseVersion:base});if(res.conflict)throw new Error(`無法刪除雲端多餘資料 ${rr.entity}/${rr.record_id}。`);}deletedDone++;updateProgress(total+deletedDone,total+remoteRows.length);}
-      flushMeta();await yieldToBrowser();
+      for(const rr of batch){
+        if(!localKeys.has(queueKey(rr.entity,rr.record_id))&&!rr.deleted){
+          const base=Number(rr.version)||0;const res=await writeRecordRaw({entity:rr.entity,recordId:rr.record_id,op:'delete',baseVersion:base},{forceBaseVersion:base});
+          if(res.conflict)throw new Error(`無法刪除雲端多餘資料 ${rr.entity}/${rr.record_id}。`);
+        }
+        deletedDone++;updateProgress(total+deletedDone,total+(remoteRows?.length||0));
+      }
+      await yieldToBrowser();
     }
-    const all=await fetchRows('');await applyRemoteRows(all,{replace:true});writeQueue({});markBootstrapped();
+    clearQueue();clearLegacySyncData();markBootstrapped();
   }
   async function bootstrap(){
     const m=getMeta();if(m.bootstrapped)return;
     const rows=await fetchRows('');const legacy=rows.length?null:await fetchLegacySnapshot();
-    if(rows.length){const useCloud=confirm('已找到這個帳號的 V25 逐筆資料。\n\n按「確定」：以雲端資料建立本機資料。\n按「取消」：以目前本機資料覆蓋雲端。');if(useCloud)await applyRemoteRows(rows,{replace:true});else await pushFullLocal(rows)}
+    if(rows.length){const useCloud=confirm('已找到這個帳號的 V25 逐筆資料。\n\n按「確定」：以雲端資料建立本機資料。\n按「取消」：以目前本機資料覆蓋雲端。');if(useCloud){await applyRemoteRows(rows,{replace:true});clearQueue();clearLegacySyncData();}else await pushFullLocal(rows)}
     else if(legacy?.state){const useLegacy=confirm('找到這個帳號的舊版 V24 雲端 Snapshot。\n\n按「確定」：將 V24 雲端資料升級成 V25 逐筆資料。\n按「取消」：保留本機資料並用本機資料建立 V25 雲端資料。');if(useLegacy){await window.MozeApp.setState(legacy.state,{persist:true,markDirty:false});await pushFullLocal([])}else await pushFullLocal([])}
     else await pushFullLocal([]);
     markBootstrapped();
   }
-  async function pullAllFromCloud(){const remote=await fetchRows('');if(!remote.length)throw new Error('雲端目前沒有逐筆資料。');if(isDirty()&&!confirm('本機有尚未同步的變更。\n\n按「確定」會直接以雲端資料覆蓋本機。'))return;await applyRemoteRows(remote,{replace:true});writeQueue({});markBootstrapped();setStatus('已同步','ok',state.user?.email);renderAuth()}
-  async function resolveCloud(index){const c=state.conflicts[index];if(!c?.row)return;const st=JSON.parse(JSON.stringify(localState()||{}));applyRowToState(st,c.row);await window.MozeApp.setState(st,{persist:true,markDirty:false});const q=readQueue();delete q[c.key];writeQueue(q);metaSet(c.row.entity,c.row.record_id,c.row.version,c.row.updated_at);flushMeta();state.conflicts.splice(index,1);renderAuth();setStatus(isDirty()?'待同步':'已同步','ok',state.user?.email)}
-  async function resolveLocal(index){const c=state.conflicts[index];if(!c?.row)return;const q=readQueue(),op=q[c.key]||c.op;const res=await writeRecord(op,{forceBaseVersion:Number(c.row.version)||0});if(res.conflict)throw new Error('雲端資料又被其他裝置修改，請重新同步。');state.conflicts.splice(index,1);renderAuth();setStatus(isDirty()?'待同步':'已同步','ok',state.user?.email)}
-  async function syncNow(mode='auto'){if(state.loading)return;state.loading=true;try{if(!state.client||!state.user)await ensureClient();if(!state.user){setStatus('已連線，尚未登入','idle');return}setStatus('同步中…','syncing',state.user.email);if(!getMeta().bootstrapped){await bootstrap();state.conflicts=[];setStatus('已同步','ok',state.user.email);renderAuth();return}state.conflicts=await pushQueued();const m=getMeta(),rows=await fetchRows(m.lastPull||'');if(rows.length){const q=readQueue(),safe=rows.filter(r=>!q[queueKey(r.entity,r.record_id)]);await applyRemoteRows(safe,{replace:false});const latest=rows.map(r=>r.updated_at).filter(Boolean).reduce((max,v)=>v>max?v:max,'');if(latest){const mm=getMeta();mm.lastPull=latest;flushMeta()}}if(state.conflicts.length){renderAuth();setStatus('有同步衝突','error',state.user.email);return}setStatus(isDirty()?'待同步':'已同步','ok',state.user.email);renderAuth()}catch(err){console.error('MOZE Sync V25.5',err);setStatus('同步失敗','error',err.message||'請檢查設定');if(mode!=='silent')alert('同步失敗：'+(err.message||err))}finally{state.loading=false}}
+  async function pullAllFromCloud(){const remote=await fetchRows('');if(!remote.length)throw new Error('雲端目前沒有逐筆資料。');if(isDirty()&&!confirm('本機有尚未同步的變更。\n\n按「確定」會直接以雲端資料覆蓋本機。'))return;await applyRemoteRows(remote,{replace:true});clearQueue();clearLegacySyncData();markBootstrapped();setStatus('已同步','ok',state.user?.email);renderAuth()}
+  async function resolveCloud(index){const c=state.conflicts[index];if(!c?.row)return;const st=JSON.parse(JSON.stringify(localState()||{}));applyRowToState(st,c.row);await window.MozeApp.setState(st,{persist:true,markDirty:false});removeQueuedKey(c.key);metaSet(c.row.entity,c.row.record_id,c.row.version,c.row.updated_at);flushMeta();state.conflicts.splice(index,1);renderAuth();setStatus(isDirty()?'待同步':'已同步','ok',state.user?.email)}
+  async function resolveLocal(index){const c=state.conflicts[index];if(!c?.row)return;const op=readQueueOpByStorageKey(queueStorageKey(c.key))||c.op;const res=await writeRecord(op,{forceBaseVersion:Number(c.row.version)||0});if(res.conflict)throw new Error('雲端資料又被其他裝置修改，請重新同步。');state.conflicts.splice(index,1);renderAuth();setStatus(isDirty()?'待同步':'已同步','ok',state.user?.email)}
+  async function syncNow(mode='auto'){if(state.loading)return;state.loading=true;try{if(!state.client||!state.user)await ensureClient();if(!state.user){setStatus('已連線，尚未登入','idle');return}setStatus('同步中…','syncing',state.user.email);if(!getMeta().bootstrapped){await bootstrap();state.conflicts=[];setStatus('已同步','ok',state.user.email);renderAuth();return}state.conflicts=await pushQueued();const m=getMeta(),rows=await fetchRows(m.lastPull||'');if(rows.length){const safe=rows.filter(r=>!hasQueuedKey(queueKey(r.entity,r.record_id)));await applyRemoteRows(safe,{replace:false});const latest=rows.map(r=>r.updated_at).filter(Boolean).reduce((max,v)=>v>max?v:max,'');if(latest){const mm=getMeta();mm.lastPull=latest;flushMeta()}}if(state.conflicts.length){renderAuth();setStatus('有同步衝突','error',state.user.email);return}setStatus(isDirty()?'待同步':'已同步','ok',state.user.email);renderAuth()}catch(err){console.error('MOZE Sync V25.5',err);setStatus('同步失敗','error',err.message||'請檢查設定');if(mode!=='silent')alert('同步失敗：'+(err.message||err))}finally{state.loading=false}}
   function conflictLabel(c){const local=localRecord(c.op.entity,c.op.recordId);return `${c.op.entity} · ${local?.name||local?.person||c.op.recordId}`}
   function renderAuth(){
     const box=$('syncAccountArea');
@@ -196,6 +237,8 @@
   function renderConflictButtons(){document.querySelectorAll('[data-conflict-cloud]').forEach(b=>b.onclick=async()=>{try{await resolveCloud(Number(b.dataset.conflictCloud))}catch(e){alert('保留雲端失敗：'+e.message)}});document.querySelectorAll('[data-conflict-local]').forEach(b=>b.onclick=async()=>{try{await resolveLocal(Number(b.dataset.conflictLocal))}catch(e){alert('保留本機失敗：'+e.message)}})}
   function bindAuthButtons(){$('syncLogin')?.addEventListener('click',async()=>{const e=$('syncEmail')?.value.trim(),p=$('syncPassword')?.value||'';if(!e||!p)return alert('請輸入 Email 與密碼。');try{await signIn(e,p)}catch(err){alert('登入失敗：'+err.message)}});$('syncSignup')?.addEventListener('click',async()=>{const e=$('syncEmail')?.value.trim(),p=$('syncPassword')?.value||'';if(!e||p.length<6)return alert('請輸入 Email，密碼至少 6 碼。');try{const msg=await signUp(e,p);alert(msg)}catch(err){alert('建立帳號失敗：'+err.message)}});$('syncLogout')?.addEventListener('click',()=>signOut());$('syncForcePull')?.addEventListener('click',async()=>{try{await pullAllFromCloud()}catch(err){alert('從雲端載入失敗：'+err.message)}});$('syncForcePush')?.addEventListener('click',async()=>{try{const rows=await fetchRows('');await pushFullLocal(rows);await syncNow('auto')}catch(err){alert('上傳本機失敗：'+err.message)}})}
   function bindUI(){$('syncNowBtn')?.addEventListener('click',()=>syncNow('auto'));$('syncTopAction')?.addEventListener('click',()=>{window.MozeApp?.nav('settings');setTimeout(()=>document.getElementById('syncPanel')?.scrollIntoView({behavior:'smooth',block:'start'}),30)});renderAuth();window.addEventListener('online',()=>{if(state.user)syncNow('auto')});window.addEventListener('offline',()=>setStatus('離線','offline',state.user?.email||'本機仍可使用'));document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&state.user)syncNow('silent')});setInterval(()=>{if(state.user&&navigator.onLine&&!state.loading)syncNow('silent')},20000)}
+  async function getAllCloudRows(){return fetchRows('')}
+  async function replaceCloudWithLocal(remoteRows){await pushFullLocal(remoteRows||[]);setStatus('已同步','ok',state.user?.email);renderAuth()}
   window.MozeSync={
     appReady:function(){
       setTimeout(async()=>{
@@ -214,6 +257,6 @@
         }
       },0);
     },
-    markDirty,queueStateDiff,syncNow,signIn,signUp,signOut,getCfg
+    markDirty,queueStateDiff,queueAllLocal,syncNow,signIn,signUp,signOut,getCfg
   };
 })();
