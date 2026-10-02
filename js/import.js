@@ -165,7 +165,7 @@
       id:makeId('tx',`${date}|${time}|${fingerprint(row)}|${index}`),
       date,time,name:cleanName(row[8],30)||type,merchant:cleanName(row[9],30),amount:abs,kind,
       recordType:type,category:cat.id,mainCategory:mainName,subcategory:subName,account:account.id,
-      project:project?.id||'',note:norm(row[13]).slice(0,300),tags:norm(row[14])?norm(row[14]).split(';').map(x=>x.trim()).filter(Boolean):[],person:norm(row[15])||'不限定對象',currency:currency||account.currency||'TWD',fee:Math.abs(fee),discount:Math.abs(discount),_importKey:fingerprint(row),imported:true,balanceEffect:amountRaw
+      project:project?.id||'',note:norm(row[13]).slice(0,300),tags:norm(row[14])?norm(row[14]).split(';').map(x=>x.trim()).filter(Boolean):[],person:norm(row[15])||'不限定對象',currency:currency||account.currency||'TWD',fee:Math.abs(fee),discount:Math.abs(discount),_importKey:fingerprint(row),imported:true,balanceEffect:amountRaw-Math.abs(fee)+Math.abs(discount)
     };
     return {tx, amountRaw, type, account, newAccount, zeroOpeningAdjustment};
   }
@@ -184,7 +184,6 @@
         } else {
           imported.push({row:i+1,...result});
         }
-        existingKeys.add(key);
       }catch(err){errors.push({row:i+1,message:err.message||String(err)});}
     }
     // Convert adjacent transfer rows into one transfer transaction.
@@ -194,7 +193,7 @@
       if(a.type==='轉出'){
         const next=imported[i+1];
         if(next?.tx && next.type==='轉入' && !next.skipped && a.tx.date===next.tx.date && a.tx.time===next.tx.time){
-          a.tx.kind='transfer'; a.tx.account=a.tx.account; a.tx.toAccount=next.tx.account; a.tx.amount=Math.abs(a.amountRaw); a.tx.balanceEffect=a.amountRaw; a.tx.toAmount=Math.abs(next.amountRaw); a.tx.toBalanceEffect=next.amountRaw; a.tx.toCurrency=next.tx.currency; a.tx.transferPair=true; a.tx._importKey=`${a.tx._importKey}\u001e${next.tx._importKey}`;
+          a.tx.kind='transfer'; a.tx.account=a.tx.account; a.tx.toAccount=next.tx.account; a.tx.amount=Math.abs(a.amountRaw); a.tx.balanceEffect=a.tx.balanceEffect; a.tx.toAmount=Math.abs(next.amountRaw); a.tx.toBalanceEffect=next.tx.balanceEffect; a.tx.toCurrency=next.tx.currency; a.tx.transferPair=true; a.tx._importKey=`${a.tx._importKey}\u001e${next.tx._importKey}`;
           final.push(a.tx); used.add(i+1); continue;
         }
         errors.push({row:a.row,message:'轉出找不到相鄰、日期時間相同的轉入紀錄'}); continue;
@@ -203,7 +202,7 @@
       if(a.type==='轉入') { errors.push({row:a.row,message:'轉入必須緊接在轉出紀錄之後'}); continue; }
       final.push(a.tx);
     }
-    // Apply the original signed CSV effects only to accounts created in this import.
+    // Apply each source row net effect (amount - fee + discount) only to accounts created in this import.
     // This preserves the semantics of 應收款項／應付款項 and 餘額調整, whose sign
     // can legitimately be positive or negative in MOZE exports. Cross-currency
     // transfers use the destination row's own amount.
