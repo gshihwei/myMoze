@@ -199,7 +199,7 @@ function openEntity(type){let fields={account:[['name','帳戶名稱'],['balance
 async function submitEntity(e){e.preventDefault();let f=new FormData(entityFormEl),type=entityFormEl.dataset.type;if(type==='account'){let at=f.get('accountType')||'bank',bal=Number(f.get('balance')||0);state.accounts.push({id:id(),name:f.get('name'),type:at,balance:at==='card'?-Math.abs(bal):bal,limit:at==='card'?Number(f.get('limit')||0):undefined,statement:at==='card'?Number(f.get('statement')||15):undefined,due:at==='card'?Number(f.get('due')||5):undefined})};if(type==='category')state.categories.push({id:id(),name:f.get('name'),icon:f.get('icon')||'•',kind:'expense'});if(type==='project')state.projects.push({id:id(),name:f.get('name'),budget:Number(f.get('budget')||0)});if(type==='budget')state.budgets.push({id:id(),category:state.categories[0]?.id,limit:Number(f.get('limit')||0)});if(type==='recurring')state.recurring.push({id:id(),name:f.get('name'),amount:Number(f.get('amount')||0),next:f.get('next'),category:state.categories[0]?.id});if(type==='loan')state.loans.push({id:id(),person:f.get('person'),amount:Number(f.get('amount')||0),paid:0});await save();closeModals();render()}
 
 
-/* V25.7 — full loan / receivable / payable page */
+/* V25.8 — full loan page + CSV receivable/payable integration */
 function loanDirection(l){return l&&l.direction==='payable'?'payable':'receivable'}
 function loanOutstanding(l){return Math.max(0,Number(l?.amount||0)-Number(l?.paid||0))}
 function loanStatus(l){return l?.status==='stopped'?'stopped':loanOutstanding(l)<=0?'completed':'active'}

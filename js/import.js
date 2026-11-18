@@ -124,6 +124,110 @@
     p={id:makeId('project',name),name,budget:0,imported:true};st.projects.push(p);created.projects.push(p);return p;
   }
 
+  function isLoanType(type){ return type==='應收款項' || type==='應付款項'; }
+
+  function loanDirectionFromType(type){ return type==='應付款項' ? 'payable' : 'receivable'; }
+
+  function loanOperationFromAmount(type, amountRaw){
+    const dir=loanDirectionFromType(type);
+    if(dir==='receivable') return amountRaw<0 ? 'lend' : 'collect';
+    return amountRaw>0 ? 'borrow' : 'repay';
+  }
+
+  function loanCandidateSort(a,b){
+    const ad=`${a.date||''} ${a.time||''}`;
+    const bd=`${b.date||''} ${b.time||''}`;
+    return ad.localeCompare(bd) || String(a.id).localeCompare(String(b.id));
+  }
+
+  function findLoanCandidates(st, direction, person, currency, subcategory){
+    const base=(st.loans||[]).filter(l=>loanDirectionFromType(l.recordType||'應收款項')===direction && loanStatusForImport(l)!=='completed' && loanOutstandingForImport(l)>0 && String(l.person||'')===String(person||''));
+    const sameCurrency=currency ? base.filter(l=>String(l.currency||'TWD')===String(currency)) : base;
+    const pool=sameCurrency.length ? sameCurrency : base;
+    const exactSub=pool.filter(l=>!subcategory || String(l.subcategory||'')===String(subcategory));
+    return (exactSub.length ? exactSub : pool).sort(loanCandidateSort);
+  }
+
+  function loanOutstandingForImport(l){ return Math.max(0,Number(l?.amount||0)-Number(l?.paid||0)); }
+  function loanStatusForImport(l){ return loanOutstandingForImport(l)<=0 ? 'completed' : (l?.status==='stopped'?'stopped':'active'); }
+
+  function rowToLoanRecords(row, st, created, index, warnings) {
+    const accountName=cleanName(row[0],60), currency=norm(row[1]), type=norm(row[2]), subcategory=cleanName(row[4],30);
+    const amountRaw=parseAmount(row[5]);
+    if(!accountName) throw new Error('帳戶不可空白');
+    if(!isLoanType(type)) throw new Error(`不是借還款記錄：${type}`);
+    if(amountRaw===null || amountRaw===0) throw new Error('借還款金額必須是非 0 數字');
+    const date=parseDate(row[10]); if(!date) throw new Error('日期格式錯誤');
+    const time=parseTime(row[11]); if(!time) throw new Error('時間格式錯誤');
+    const accountInfo=ensureAccount(st,accountName,currency,created), account=accountInfo.account;
+    const person=norm(row[15])||'不限定對象';
+    const operation=loanOperationFromAmount(type,amountRaw), direction=loanDirectionFromType(type);
+    const fee=parseAmount(row[6])||0, discount=parseAmount(row[7])||0;
+    const baseKey=fingerprint(row);
+    const txs=[];
+    const changedLoans=[];
+    const abs=Math.abs(amountRaw);
+
+    if(operation==='lend' || operation==='borrow'){
+      const loan={
+        id:makeId('loan',`${date}|${time}|${baseKey}|${index}`),
+        person, direction, amount:abs, paid:0, account:account.id, currency:currency||account.currency||'TWD',
+        date, dueDate:'', name:cleanName(row[8],30)||(operation==='lend'?'借出':'借入'), note:norm(row[13]).slice(0,300),
+        payments:[], status:'active', subcategory:subcategory||'', recordType:type, sourceImportKey:baseKey, imported:true
+      };
+      st.loans=Array.isArray(st.loans)?st.loans:[]; st.loans.push(loan); created.loans.push(loan); changedLoans.push(loan);
+      txs.push({
+        id:makeId('tx',`${date}|${time}|${baseKey}|${index}|loan`), date,time,
+        name:loan.name, merchant:cleanName(row[9],30), amount:abs, kind:'loan', loanId:loan.id,
+        loanAction:operation, loanDirection:direction, recordType:type, category:'', mainCategory:'', subcategory:subcategory,
+        account:account.id, project:'', note:loan.note, tags:norm(row[14])?norm(row[14]).split(';').map(x=>x.trim()).filter(Boolean):[],
+        person, currency:currency||account.currency||'TWD', fee:Math.abs(fee), discount:Math.abs(discount),
+        _importKey:baseKey, imported:true, balanceEffect:amountRaw-Math.abs(fee)+Math.abs(discount)
+      });
+      return {tx:null, transactions:txs, type, amountRaw, account, newAccount:accountInfo.created, loanRecords:true, changedLoans, accountOnly:false};
+    }
+
+    let remaining=abs;
+    const candidates=findLoanCandidates(st,direction,person,currency,subcategory);
+    for(const loan of candidates){
+      if(remaining<=0) break;
+      const apply=Math.min(remaining,loanOutstandingForImport(loan));
+      if(apply<=0) continue;
+      const payment={id:makeId('pay',`${loan.id}|${baseKey}|${index}|${loan.payments.length}`),date,amount:apply,account:account.id,note:norm(row[13]).slice(0,300),sourceImportKey:baseKey};
+      loan.paid=Number(loan.paid||0)+apply;
+      loan.payments=Array.isArray(loan.payments)?loan.payments:[]; loan.payments.push(payment);
+      loan.status=loanOutstandingForImport(loan)<=0?'completed':'active';
+      changedLoans.push(loan);
+      txs.push({
+        id:makeId('tx',`${date}|${time}|${baseKey}|${index}|loan-payment|${loan.id}|${loan.payments.length}`),date,time,
+        name:cleanName(row[8],30)|| (direction==='receivable'?'收款':'還款'), merchant:cleanName(row[9],30), amount:apply,
+        kind:'loanPayment', loanId:loan.id, loanDirection:direction, recordType:type, category:'', mainCategory:'', subcategory:subcategory,
+        account:account.id, project:'', note:norm(row[13]).slice(0,300), tags:norm(row[14])?norm(row[14]).split(';').map(x=>x.trim()).filter(Boolean):[],
+        person, currency:currency||account.currency||'TWD', fee:0, discount:0, _importKey:baseKey, imported:true, balanceEffect:(direction==='receivable'?1:-1)*apply
+      });
+      remaining-=apply;
+    }
+    if(remaining>0){
+      const loan={
+        id:makeId('loan-history',`${date}|${time}|${baseKey}|${index}`), person, direction, amount:remaining, paid:remaining,
+        account:account.id, currency:currency||account.currency||'TWD', date, dueDate:'',
+        name:cleanName(row[8],30)||(direction==='receivable'?'歷史收款':'歷史還款'), note:norm(row[13]).slice(0,300),
+        payments:[{id:makeId('pay',`${baseKey}|orphan`),date,amount:remaining,account:account.id,note:norm(row[13]).slice(0,300),sourceImportKey:baseKey}],
+        status:'completed', subcategory:subcategory||'', recordType:type, sourceImportKey:baseKey, imported:true, historicalOnly:true
+      };
+      st.loans.push(loan); created.loans.push(loan); changedLoans.push(loan);
+      txs.push({
+        id:makeId('tx',`${date}|${time}|${baseKey}|${index}|loan-payment|history`),date,time,
+        name:loan.name, merchant:cleanName(row[9],30), amount:remaining, kind:'loanPayment', loanId:loan.id, loanDirection:direction,
+        recordType:type, category:'', mainCategory:'', subcategory:subcategory, account:account.id, project:'', note:loan.note,
+        tags:norm(row[14])?norm(row[14]).split(';').map(x=>x.trim()).filter(Boolean):[], person, currency:loan.currency, fee:0, discount:0,
+        _importKey:baseKey, imported:true, balanceEffect:(direction==='receivable'?1:-1)*remaining
+      });
+      warnings.push({row:index+1,message:`「${type}」找不到足夠的未結借還款，剩餘 ${remaining} 已建立為已完成的歷史${direction==='receivable'?'收款':'還款'}。`});
+    }
+    return {tx:null, transactions:txs, type, amountRaw, account, newAccount:accountInfo.created, loanRecords:true, changedLoans, accountOnly:false};
+  }
+
   function rowToTransaction(row, st, created, index, warnings) {
     const accountName=cleanName(row[0],60), currency=norm(row[1]), type=norm(row[2]), mainName=cleanName(row[3],30), subName=cleanName(row[4],30);
     const amountRaw=parseAmount(row[5]);
@@ -171,25 +275,31 @@
   }
 
   function buildImport(st, rows) {
-    const created={accounts:[],categories:[],projects:[]}, imported=[], errors=[], warnings=[];
+    const created={accounts:[],categories:[],projects:[],loans:[]}, imported=[], errors=[], warnings=[];
     const existingKeys=new Set(); (st.transactions||[]).forEach(t=>{if(t._importKey)String(t._importKey).split('\u001e').forEach(k=>existingKeys.add(k));});
     for(let i=1;i<rows.length;i++){
       const row=rows[i].map(v=>String(v??''));
       if(row.length!==HEADERS.length){errors.push({row:i+1,message:`欄位數量 ${row.length}，必須為 ${HEADERS.length}`});continue;}
       const key=fingerprint(row); if(existingKeys.has(key)){imported.push({row:i+1,skipped:true});continue;}
       try{
-        const result=rowToTransaction(row,st,created,i,warnings);
-        if(result.zeroOpeningAdjustment){
-          imported.push({row:i+1,...result, tx:null, accountOnly:true});
-        } else {
+        const type=norm(row[2]);
+        if(isLoanType(type)){
+          const result=rowToLoanRecords(row,st,created,i,warnings);
           imported.push({row:i+1,...result});
+        } else {
+          const result=rowToTransaction(row,st,created,i,warnings);
+          if(result.zeroOpeningAdjustment){
+            imported.push({row:i+1,...result, tx:null, accountOnly:true});
+          } else {
+            imported.push({row:i+1,...result});
+          }
         }
       }catch(err){errors.push({row:i+1,message:err.message||String(err)});}
     }
     // Convert adjacent transfer rows into one transfer transaction.
     const final=[]; const used=new Set();
     for(let i=0;i<imported.length;i++){
-      const a=imported[i]; if(a.skipped||a.accountOnly||!a.tx) continue;
+      const a=imported[i]; if(a.skipped||a.accountOnly||a.loanRecords||!a.tx) continue;
       if(a.type==='轉出'){
         const next=imported[i+1];
         if(next?.tx && next.type==='轉入' && !next.skipped && a.tx.date===next.tx.date && a.tx.time===next.tx.time){
@@ -202,6 +312,9 @@
       if(a.type==='轉入') { errors.push({row:a.row,message:'轉入必須緊接在轉出紀錄之後'}); continue; }
       final.push(a.tx);
     }
+    const loanTransactions=imported.filter(x=>x.loanRecords&&Array.isArray(x.transactions)).flatMap(x=>x.transactions);
+    final.push(...loanTransactions);
+    const changedLoans=[...new Map(imported.filter(x=>x.loanRecords&&Array.isArray(x.changedLoans)).flatMap(x=>x.changedLoans).map(l=>[String(l.id),l])).values()];
     // Apply each source row net effect (amount - fee + discount) only to accounts created in this import.
     // This preserves the semantics of 應收款項／應付款項 and 餘額調整, whose sign
     // can legitimately be positive or negative in MOZE exports. Cross-currency
@@ -219,7 +332,7 @@
       }
     }
     st.transactions.push(...final);
-    return {state:st,transactions:final,errors,warnings,created,skipped:imported.filter(x=>x.skipped).length,accountOnly:imported.filter(x=>x.accountOnly).length,totalDataRows:rows.length-1};
+    return {state:st,transactions:final,errors,warnings,created,changedLoans,loanCount:changedLoans.length,skipped:imported.filter(x=>x.skipped).length,accountOnly:imported.filter(x=>x.accountOnly).length,totalDataRows:rows.length-1};
   }
 
   function downloadBackup(state, filename='moze-before-csv-overwrite.json') {
@@ -252,9 +365,9 @@
           <label class="import-mode-option ${mode==='overwrite'?'active':''}"><input type="radio" name="csvImportMode" value="overwrite" ${mode==='overwrite'?'checked':''}><span><b>完整覆蓋</b><small>清除現有帳務資料後重新匯入</small></span></label>
         </div>
         ${mode==='overwrite'?overwriteNotice:appendNotice}
-        <div class="import-summary"><div><b>${previewResult.transactions.length}</b><span>筆可匯入交易</span></div><div><b>${previewResult.accountOnly||0}</b><span>筆零餘額帳戶</span></div><div><b>${previewResult.skipped}</b><span>筆重複略過</span></div><div><b>${previewResult.errors.length}</b><span>筆錯誤</span></div></div>
+        <div class="import-summary"><div><b>${previewResult.transactions.length}</b><span>筆可匯入交易</span></div><div><b>${previewResult.loanCount||0}</b><span>筆借還款變更</span></div><div><b>${previewResult.accountOnly||0}</b><span>筆帳戶建立</span></div><div><b>${previewResult.skipped}</b><span>筆重複略過</span></div><div><b>${previewResult.errors.length}</b><span>筆錯誤</span></div></div>
         ${errs}${warn}
-        <div class="import-created"><b>本次自動建立</b><span>帳戶 ${previewResult.created.accounts.length} · 分類 ${previewResult.created.categories.length} · 專案 ${previewResult.created.projects.length}</span></div>
+        <div class="import-created"><b>本次自動建立</b><span>帳戶 ${previewResult.created.accounts.length} · 分類 ${previewResult.created.categories.length} · 專案 ${previewResult.created.projects.length} · 借還款 ${previewResult.created.loans?.length||0}</span></div>
         <p class="hint">帳戶與分類不存在時會自動建立；新建立帳戶會依匯入資料計算餘額。轉帳需符合「轉出＋下一列轉入」且日期、時間一致的格式。</p>
         <div class="import-preview"><b>預覽前 10 筆</b>${previewResult.transactions.slice(0,10).map(t=>`<div><span>${escapeHtml(t.date)} ${escapeHtml(t.time)} · ${escapeHtml(t.name)}</span><b>${t.kind==='expense'?'−':'+'}${Number(t.amount).toLocaleString()}</b></div>`).join('')||'<div class="empty">沒有可匯入的交易</div>'}</div>`;
       body.querySelectorAll('input[name=csvImportMode]').forEach(r=>r.addEventListener('change',()=>{mode=r.value;renderBody()}));
@@ -279,6 +392,7 @@
             for(const c of active.created.categories||[]) changes.push({entity:'categories',recordId:c.id,op:'upsert'});
             for(const pr of active.created.projects||[]) changes.push({entity:'projects',recordId:pr.id,op:'upsert'});
             for(const t of active.transactions||[]) changes.push({entity:'transactions',recordId:t.id,op:'upsert'});
+            for(const l of active.changedLoans||[]) changes.push({entity:'loans',recordId:l.id,op:'upsert'});
             window.MozeSync?.queueStateDiff?.(changes);
             window.MozeSync?.markDirty?.();
           }
