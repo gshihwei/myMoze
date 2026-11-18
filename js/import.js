@@ -1,4 +1,4 @@
-/* MOZE CSV Import V25.4 — based on MOZE_CHT.xlsx */
+/* MOZE CSV Import V25.9 — based on MOZE_CHT.xlsx */
 (() => {
   const HEADERS = ['帳戶','幣種','記錄類型＊','主類別＊','子類別＊','金額＊','手續費','折扣','名稱','商家','日期＊','時間','專案','描述','標籤','對象'];
   const TYPES = new Set(['支出','收入','轉出','轉入','應收款項','應付款項','餘額調整','退款','初始金額']);
@@ -99,8 +99,15 @@
     return ['收入','轉入','應付款項','退款'].includes(type) ? 'income' : 'expense';
   }
 
+  // Accounts are identified by (name, currency): MOZE allows e.g. 玉山 TWD and 玉山 USD.
+  // Existing accounts without a currency are treated as TWD. A row with a blank
+  // currency prefers the same-name TWD account, else a unique same-name account.
   function ensureAccount(st, name, currency, created) {
-    let a = st.accounts.find(x => x.name === name);
+    const cur = norm(currency);
+    const sameName = st.accounts.filter(x => x.name === name);
+    let a = cur
+      ? sameName.find(x => (x.currency || 'TWD') === cur)
+      : (sameName.find(x => (x.currency || 'TWD') === 'TWD') || (sameName.length === 1 ? sameName[0] : null));
     if (a) return {account:a, created:false};
     a = {id:makeId('acct',`${name}:${currency||''}`), name, type:'cash', balance:0, currency:currency||'TWD', imported:true};
     st.accounts.push(a); created.accounts.push(a);
@@ -140,16 +147,24 @@
     return ad.localeCompare(bd) || String(a.id).localeCompare(String(b.id));
   }
 
+  // Manual loans carry only `direction`; imported ones also carry `recordType`.
+  function loanDirectionOf(l){
+    if(l?.direction==='payable' || l?.direction==='receivable') return l.direction;
+    return loanDirectionFromType(l?.recordType || '應收款項');
+  }
+
+  // Only active, same-direction, same-person, same-currency loans with an outstanding
+  // balance may be matched. Stopped loans are never auto-matched; there is no
+  // cross-currency fallback (unmatched amounts become historical records instead).
   function findLoanCandidates(st, direction, person, currency, subcategory){
-    const base=(st.loans||[]).filter(l=>loanDirectionFromType(l.recordType||'應收款項')===direction && loanStatusForImport(l)!=='completed' && loanOutstandingForImport(l)>0 && String(l.person||'')===String(person||''));
-    const sameCurrency=currency ? base.filter(l=>String(l.currency||'TWD')===String(currency)) : base;
-    const pool=sameCurrency.length ? sameCurrency : base;
+    const cur=String(currency||'TWD');
+    const pool=(st.loans||[]).filter(l=>loanDirectionOf(l)===direction && loanStatusForImport(l)==='active' && loanOutstandingForImport(l)>0 && String(l.person||'')===String(person||'') && String(l.currency||'TWD')===cur);
     const exactSub=pool.filter(l=>!subcategory || String(l.subcategory||'')===String(subcategory));
     return (exactSub.length ? exactSub : pool).sort(loanCandidateSort);
   }
 
   function loanOutstandingForImport(l){ return Math.max(0,Number(l?.amount||0)-Number(l?.paid||0)); }
-  function loanStatusForImport(l){ return loanOutstandingForImport(l)<=0 ? 'completed' : (l?.status==='stopped'?'stopped':'active'); }
+  function loanStatusForImport(l){ return l?.status==='stopped' ? 'stopped' : (loanOutstandingForImport(l)<=0 ? 'completed' : 'active'); }
 
   function rowToLoanRecords(row, st, created, index, warnings) {
     const accountName=cleanName(row[0],60), currency=norm(row[1]), type=norm(row[2]), subcategory=cleanName(row[4],30);
@@ -162,6 +177,7 @@
     const accountInfo=ensureAccount(st,accountName,currency,created), account=accountInfo.account;
     const person=norm(row[15])||'不限定對象';
     const operation=loanOperationFromAmount(type,amountRaw), direction=loanDirectionFromType(type);
+    const loanCurrency=currency||account.currency||'TWD';
     const fee=parseAmount(row[6])||0, discount=parseAmount(row[7])||0;
     const baseKey=fingerprint(row);
     const txs=[];
@@ -171,7 +187,7 @@
     if(operation==='lend' || operation==='borrow'){
       const loan={
         id:makeId('loan',`${date}|${time}|${baseKey}|${index}`),
-        person, direction, amount:abs, paid:0, account:account.id, currency:currency||account.currency||'TWD',
+        person, direction, amount:abs, paid:0, account:account.id, currency:loanCurrency,
         date, dueDate:'', name:cleanName(row[8],30)||(operation==='lend'?'借出':'借入'), note:norm(row[13]).slice(0,300),
         payments:[], status:'active', subcategory:subcategory||'', recordType:type, sourceImportKey:baseKey, imported:true
       };
@@ -188,7 +204,11 @@
     }
 
     let remaining=abs;
-    const candidates=findLoanCandidates(st,direction,person,currency,subcategory);
+    const candidates=findLoanCandidates(st,direction,person,loanCurrency,subcategory);
+    // The row's fee/discount hit the real account once: carry them on the first payment tx.
+    const feeEffect=-Math.abs(fee)+Math.abs(discount);
+    let feeApplied=false;
+    const takeFee=()=>{ if(feeApplied) return {fee:0,discount:0,effect:0}; feeApplied=true; return {fee:Math.abs(fee),discount:Math.abs(discount),effect:feeEffect}; };
     for(const loan of candidates){
       if(remaining<=0) break;
       const apply=Math.min(remaining,loanOutstandingForImport(loan));
@@ -196,34 +216,36 @@
       const payment={id:makeId('pay',`${loan.id}|${baseKey}|${index}|${loan.payments.length}`),date,amount:apply,account:account.id,note:norm(row[13]).slice(0,300),sourceImportKey:baseKey};
       loan.paid=Number(loan.paid||0)+apply;
       loan.payments=Array.isArray(loan.payments)?loan.payments:[]; loan.payments.push(payment);
-      loan.status=loanOutstandingForImport(loan)<=0?'completed':'active';
+      if(loan.status!=='stopped') loan.status=loanOutstandingForImport(loan)<=0?'completed':'active';
       changedLoans.push(loan);
+      const fd=takeFee();
       txs.push({
         id:makeId('tx',`${date}|${time}|${baseKey}|${index}|loan-payment|${loan.id}|${loan.payments.length}`),date,time,
         name:cleanName(row[8],30)|| (direction==='receivable'?'收款':'還款'), merchant:cleanName(row[9],30), amount:apply,
         kind:'loanPayment', loanId:loan.id, loanDirection:direction, recordType:type, category:'', mainCategory:'', subcategory:subcategory,
         account:account.id, project:'', note:norm(row[13]).slice(0,300), tags:norm(row[14])?norm(row[14]).split(';').map(x=>x.trim()).filter(Boolean):[],
-        person, currency:currency||account.currency||'TWD', fee:0, discount:0, _importKey:baseKey, imported:true, balanceEffect:(direction==='receivable'?1:-1)*apply
+        person, currency:loanCurrency, fee:fd.fee, discount:fd.discount, _importKey:baseKey, imported:true, balanceEffect:(direction==='receivable'?1:-1)*apply+fd.effect
       });
       remaining-=apply;
     }
     if(remaining>0){
       const loan={
         id:makeId('loan-history',`${date}|${time}|${baseKey}|${index}`), person, direction, amount:remaining, paid:remaining,
-        account:account.id, currency:currency||account.currency||'TWD', date, dueDate:'',
+        account:account.id, currency:loanCurrency, date, dueDate:'',
         name:cleanName(row[8],30)||(direction==='receivable'?'歷史收款':'歷史還款'), note:norm(row[13]).slice(0,300),
         payments:[{id:makeId('pay',`${baseKey}|orphan`),date,amount:remaining,account:account.id,note:norm(row[13]).slice(0,300),sourceImportKey:baseKey}],
         status:'completed', subcategory:subcategory||'', recordType:type, sourceImportKey:baseKey, imported:true, historicalOnly:true
       };
       st.loans.push(loan); created.loans.push(loan); changedLoans.push(loan);
+      const fd=takeFee();
       txs.push({
         id:makeId('tx',`${date}|${time}|${baseKey}|${index}|loan-payment|history`),date,time,
         name:loan.name, merchant:cleanName(row[9],30), amount:remaining, kind:'loanPayment', loanId:loan.id, loanDirection:direction,
         recordType:type, category:'', mainCategory:'', subcategory:subcategory, account:account.id, project:'', note:loan.note,
-        tags:norm(row[14])?norm(row[14]).split(';').map(x=>x.trim()).filter(Boolean):[], person, currency:loan.currency, fee:0, discount:0,
-        _importKey:baseKey, imported:true, balanceEffect:(direction==='receivable'?1:-1)*remaining
+        tags:norm(row[14])?norm(row[14]).split(';').map(x=>x.trim()).filter(Boolean):[], person, currency:loan.currency, fee:fd.fee, discount:fd.discount,
+        _importKey:baseKey, imported:true, balanceEffect:(direction==='receivable'?1:-1)*remaining+fd.effect
       });
-      warnings.push({row:index+1,message:`「${type}」找不到足夠的未結借還款，剩餘 ${remaining} 已建立為已完成的歷史${direction==='receivable'?'收款':'還款'}。`});
+      warnings.push({row:index+1,message:`「${type}」找不到足夠的未結借還款（對象「${person}」、幣別 ${loanCurrency}，不含已停止追蹤），剩餘 ${remaining} 已建立為已完成的歷史${direction==='receivable'?'收款':'還款'}。`});
     }
     return {tx:null, transactions:txs, type, amountRaw, account, newAccount:accountInfo.created, loanRecords:true, changedLoans, accountOnly:false};
   }
@@ -255,7 +277,7 @@
     const zeroOpeningAdjustment = type==='餘額調整' && amountRaw===0;
     if(amountRaw===null || (amountRaw===0 && !zeroOpeningAdjustment)) throw new Error('金額必須是非 0 數字');
     const expected=signExpected(type);
-    if(expected && Math.sign(amountRaw)!==expected) warnings.push({row:index+1,message:`「${type}」金額符號與規範不同，已依記錄類型自動正規化。`});
+    if(expected && Math.sign(amountRaw)!==expected) warnings.push({row:index+1,message:`「${type}」金額符號與規範不同，已保留原始正負號計算餘額，請確認。`});
     const date=parseDate(row[10]); if(!date) throw new Error('日期格式錯誤');
     const time=parseTime(row[11]); if(!time) throw new Error('時間格式錯誤');
     const fee=parseAmount(row[6])||0, discount=parseAmount(row[7])||0;
@@ -319,20 +341,27 @@
     // This preserves the semantics of 應收款項／應付款項 and 餘額調整, whose sign
     // can legitimately be positive or negative in MOZE exports. Cross-currency
     // transfers use the destination row's own amount.
+    // Effects on pre-existing accounts are NOT applied here; they are collected in
+    // existingDeltas so the append preview can let the user opt in explicitly.
     const newIds=new Set(created.accounts.map(a=>String(a.id)));
+    const accById=new Map(st.accounts.map(a=>[String(a.id),a]));
+    const existingDeltas=new Map();
+    const applyEffect=(id,effect)=>{
+      const a=accById.get(String(id)); if(!a||!Number.isFinite(effect)) return;
+      if(newIds.has(String(a.id))) a.balance += effect;
+      else existingDeltas.set(String(a.id),(existingDeltas.get(String(a.id))||0)+effect);
+    };
     for(const tx of final){
-      const a=st.accounts.find(x=>String(x.id)===String(tx.account));
-      if(!a||!newIds.has(String(a.id))) continue;
       if(tx.kind==='transfer'){
-        a.balance += Number(tx.balanceEffect??(-tx.amount));
-        const b=st.accounts.find(x=>String(x.id)===String(tx.toAccount));
-        if(b&&newIds.has(String(b.id))) b.balance += Number(tx.toBalanceEffect??tx.toAmount??tx.amount);
+        applyEffect(tx.account, Number(tx.balanceEffect??(-tx.amount)));
+        if(tx.toAccount) applyEffect(tx.toAccount, Number(tx.toBalanceEffect??tx.toAmount??tx.amount));
       } else {
-        a.balance += Number(tx.balanceEffect ?? (tx.kind==='expense'?-tx.amount:tx.kind==='income'?tx.amount:tx.kind==='balance_adjustment'?tx.amount:0));
+        applyEffect(tx.account, Number(tx.balanceEffect ?? (tx.kind==='expense'?-tx.amount:tx.kind==='income'?tx.amount:tx.kind==='balance_adjustment'?tx.amount:0)));
       }
     }
+    for(const [id,d] of existingDeltas){ if(Math.abs(d)<1e-9) existingDeltas.delete(id); }
     st.transactions.push(...final);
-    return {state:st,transactions:final,errors,warnings,created,changedLoans,loanCount:changedLoans.length,skipped:imported.filter(x=>x.skipped).length,accountOnly:imported.filter(x=>x.accountOnly).length,totalDataRows:rows.length-1};
+    return {state:st,transactions:final,errors,warnings,created,changedLoans,existingDeltas,loanCount:changedLoans.length,skipped:imported.filter(x=>x.skipped).length,accountOnly:imported.filter(x=>x.accountOnly).length,totalDataRows:rows.length-1};
   }
 
   function downloadBackup(state, filename='moze-before-csv-overwrite.json') {
@@ -351,14 +380,17 @@
 
   function showModal(result, currentState, rows) {
     const bg=$('csvImportBg'), body=$('csvImportBody'); if(!bg||!body)return;
-    let mode='append';
+    let mode='append', applyExisting=false;
     const renderBody=()=>{
       const previewState=mode==='overwrite'?makeOverwriteState(currentState):JSON.parse(JSON.stringify(currentState));
       const previewResult=mode==='overwrite'?buildImport(previewState,rows):result;
       const warn=previewResult.warnings?.length ? `<div class="import-warnings"><b>有 ${previewResult.warnings.length} 筆格式提醒</b>${previewResult.warnings.slice(0,20).map(e=>`<div>第 ${e.row} 列：${escapeHtml(e.message)}</div>`).join('')}${previewResult.warnings.length>20?`<div>…另有 ${previewResult.warnings.length-20} 筆</div>`:''}</div>` : '';
       const errs=previewResult.errors.length ? `<div class="import-errors"><b>需要修正 ${previewResult.errors.length} 筆</b>${previewResult.errors.slice(0,20).map(e=>`<div>第 ${e.row} 列：${escapeHtml(e.message)}</div>`).join('')}${previewResult.errors.length>20?`<div>…另有 ${previewResult.errors.length-20} 筆</div>`:''}</div>` : '';
       const overwriteNotice=mode==='overwrite'?`<div class="import-overwrite-warning"><b>⚠️ 完整覆蓋</b><p>會清除目前的交易、帳戶、分類、專案、預算、週期交易與借還款，再用這份 CSV 重建可匯入的資料。</p><p>確認前會自動下載目前資料的 JSON 備份。</p></div>`:'';
-      const appendNotice=`<div class="import-append-note"><b>追加紀錄</b><p>保留目前所有資料，只加入 CSV 中的新資料。相同匯入資料會自動略過。</p></div>`;
+      const deltaRows=[...(result.existingDeltas||new Map())].map(([id,d])=>{const a=(result.state.accounts||[]).find(x=>String(x.id)===id);return a?{a,d}:null}).filter(Boolean);
+      const fmt=n=>Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2});
+      const deltaList=deltaRows.length?`<label class="import-apply-existing"><input type="checkbox" id="csvApplyExisting" ${applyExisting?'checked':''}> <b>將本次新增交易套用到既有帳戶餘額</b></label><small>預設不套用：CSV 若是歷史資料，既有帳戶目前餘額通常已包含這些交易。只有確定是「之後才發生、尚未記入」的新交易才勾選。</small>${applyExisting?`<div class="import-delta-list">${deltaRows.map(({a,d})=>`<div><span>${escapeHtml(a.name)} · ${escapeHtml(a.currency||'TWD')}</span><b>${fmt(a.balance)} → ${fmt(Number(a.balance||0)+d)}（${d>0?'+':''}${fmt(d)}）</b></div>`).join('')}</div>`:''}`:'';
+      const appendNotice=`<div class="import-append-note"><b>追加紀錄</b><p>保留目前所有資料，只加入 CSV 中的新資料。相同匯入資料會自動略過。</p>${deltaList}</div>`;
       body.innerHTML=`
         <div class="import-mode">
           <label class="import-mode-option ${mode==='append'?'active':''}"><input type="radio" name="csvImportMode" value="append" ${mode==='append'?'checked':''}><span><b>追加紀錄</b><small>保留現有資料，只新增 CSV 的內容</small></span></label>
@@ -371,6 +403,7 @@
         <p class="hint">帳戶與分類不存在時會自動建立；新建立帳戶會依匯入資料計算餘額。轉帳需符合「轉出＋下一列轉入」且日期、時間一致的格式。</p>
         <div class="import-preview"><b>預覽前 10 筆</b>${previewResult.transactions.slice(0,10).map(t=>`<div><span>${escapeHtml(t.date)} ${escapeHtml(t.time)} · ${escapeHtml(t.name)}</span><b>${t.kind==='expense'?'−':'+'}${Number(t.amount).toLocaleString()}</b></div>`).join('')||'<div class="empty">沒有可匯入的交易</div>'}</div>`;
       body.querySelectorAll('input[name=csvImportMode]').forEach(r=>r.addEventListener('change',()=>{mode=r.value;renderBody()}));
+      body.querySelector('#csvApplyExisting')?.addEventListener('change',e=>{applyExisting=!!e.target.checked;renderBody()});
       const active=mode==='overwrite'?previewResult:result;
       $('csvImportConfirm').disabled = (active.transactions.length===0 && (active.accountOnly||0)===0);
       $('csvImportConfirm').textContent = mode==='overwrite'?'完整覆蓋並匯入':'追加匯入';
@@ -381,6 +414,13 @@
             downloadBackup(currentState);
             if(!confirm('確定要完整覆蓋目前資料嗎？\n\n目前帳務資料會先自動下載 JSON 備份，接著清除並改用這份 CSV 建立新資料。')) return;
           }
+          const touchedAccounts=[];
+          if(mode==='append' && applyExisting){
+            for(const [id,d] of active.existingDeltas||[]){
+              const a=(active.state.accounts||[]).find(x=>String(x.id)===id);
+              if(a){ a.balance=Number(a.balance||0)+d; touchedAccounts.push(a); }
+            }
+          }
           await window.MozeApp.setState(active.state,{persist:true,markDirty:false,cloneData:false,skipSyncSignature:true});
           if(mode==='overwrite') {
             const remote=await window.MozeSync?.getAllCloudRows?.();
@@ -388,7 +428,7 @@
             else if(window.MozeSync?.syncNow) await window.MozeSync.syncNow('auto');
           } else {
             const changes=[];
-            for(const a of active.created.accounts||[]) changes.push({entity:'accounts',recordId:a.id,op:'upsert'});
+            for(const a of [...(active.created.accounts||[]),...touchedAccounts]) changes.push({entity:'accounts',recordId:a.id,op:'upsert'});
             for(const c of active.created.categories||[]) changes.push({entity:'categories',recordId:c.id,op:'upsert'});
             for(const pr of active.created.projects||[]) changes.push({entity:'projects',recordId:pr.id,op:'upsert'});
             for(const t of active.transactions||[]) changes.push({entity:'transactions',recordId:t.id,op:'upsert'});
@@ -397,7 +437,7 @@
             window.MozeSync?.markDirty?.();
           }
           bg.classList.remove('open');
-          alert(`${mode==='overwrite'?'完整覆蓋':'追加匯入'}完成：${active.transactions.length} 筆交易${active.accountOnly?`、${active.accountOnly} 個零餘額帳戶`:''}。${active.errors.length?`\n有 ${active.errors.length} 筆資料未匯入，請修正 CSV 後再試。`:''}`);
+          alert(`${mode==='overwrite'?'完整覆蓋':'追加匯入'}完成：${active.transactions.length} 筆交易${active.accountOnly?`、${active.accountOnly} 個零餘額帳戶`:''}${touchedAccounts.length?`、更新 ${touchedAccounts.length} 個既有帳戶餘額`:''}。${active.errors.length?`\n有 ${active.errors.length} 筆資料未匯入，請修正 CSV 後再試。`:''}`);
         } catch(err){ alert('匯入儲存失敗：'+(err.message||err)); }
       };
     };
@@ -441,4 +481,6 @@
     tpl?.addEventListener('click',downloadTemplate);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+  // Pure helpers exposed for Node regression tests (tests/import.test.js). Not used by the UI.
+  window.MozeImportInternals = {parseCSV, buildImport, findLoanCandidates, ensureAccount};
 })();
