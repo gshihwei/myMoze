@@ -93,7 +93,7 @@ test('bundle txRow()：交易名稱、商家、帳戶、分類圖示不會變成
 });
 
 test('app.js：使用者文字欄位放進 HTML 前都經過 esc()', () => {
-  const src = ['app.js', 'analysis.js', 'budgets.js', 'categories.js'].map(f => fs.readFileSync(path.join(root, 'js', f), 'utf8')).join('\n')
+  const src = ['app.js', 'analysis.js', 'budgets.js', 'categories.js', 'search.js'].map(f => fs.readFileSync(path.join(root, 'js', f), 'utf8')).join('\n')
     .replace(/(?:alert|confirm)\(`[^`]*`|name:`[^`]*`/g, ''); // plain-text contexts, not HTML
   const raw = [...src.matchAll(/\$\{([^{}]*(?:\.name|\.note|\.person|\.merchant|\.icon|\.tags|\.time)\b[^{}]*)\}/g)]
     .map(m => m[1]).filter(e => !/^esc\(/.test(e));
@@ -150,4 +150,11 @@ test('bundle refreshFx()：主來源失敗時用備用來源、成功後 12 小�
   assert.equal(b.run(`fxRate('usd')`), 0.031);
   await b.run('refreshFx()');
   assert.equal(calls.length, 2, 'cached');
+});
+
+// A parse error in the bundle (e.g. a function named like an app.js const) must fail loudly:
+// the behaviour tests swallow bootstrap errors, so check compilation on its own.
+test('app.bundle.js 可以完整解析（沒有語法錯誤或重複宣告）', () => {
+  const src = fs.readFileSync(path.join(root, 'js', 'app.bundle.js'), 'utf8');
+  assert.doesNotThrow(() => new vm.Script(src, { filename: 'app.bundle.js' }));
 });

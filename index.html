@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#172638"><meta name="description" content="帳小簿 個人記帳 PWA V26.7：桌面、手機、逐筆雲端同步與借還款追蹤">
+<meta name="theme-color" content="#172638"><meta name="description" content="帳小簿 個人記帳 PWA V26.8：桌面、手機、逐筆雲端同步與借還款追蹤">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#101820">
@@ -76,7 +76,7 @@
       </div>
     </section>
 
-    <section class="view" id="view-transactions"><div class="page-head"><div><h2>交易</h2><p>支出、收入、轉帳與拆帳</p></div><button class="primary" id="newTx">＋ 新增交易</button></div><div class="filters"><input id="txSearch" placeholder="搜尋項目、商家、備註…"><select id="txType"><option value="all">全部</option><option value="expense">支出</option><option value="income">收入</option><option value="transfer">轉帳</option></select><select id="txCategory"><option value="all">全部分類</option></select><select id="txAccount"><option value="all">全部帳戶</option></select></div><div id="txTable"></div></section>
+    <section class="view" id="view-transactions"><div class="page-head"><div><h2>交易</h2><p>支出、收入、轉帳與拆帳</p></div><button class="primary" id="newTx">＋ 新增交易</button></div><div class="filters"><input id="txSearch" type="search" placeholder="搜尋名稱、商家、備註、對象、#標籤…" aria-label="搜尋"><select id="txType" aria-label="類型"><option value="all">全部類型</option><option value="expense">支出</option><option value="income">收入</option><option value="transfer">轉帳</option><option value="loan">借還款</option><option value="balance_adjustment">餘額調整</option></select><select id="txCategory"><option value="all">全部分類</option></select><select id="txAccount"><option value="all">全部帳戶</option></select></div><details class="tx-adv"><summary>進階篩選</summary><div class="tx-adv-grid"><label>期間<select id="txRange"><option value="all">全部時間</option><option value="thisMonth">本月</option><option value="lastMonth">上個月</option><option value="3m">近 3 個月</option><option value="ytd">今年</option><option value="12m">近 12 個月</option><option value="custom">自訂</option></select></label><span id="txCustomRange" class="tx-custom" hidden><label>從<input type="date" id="txFrom"></label><label>到<input type="date" id="txTo"></label></span><label>金額下限<input type="number" id="txMin" min="0" step="any" inputmode="decimal" placeholder="不限"></label><label>金額上限<input type="number" id="txMax" min="0" step="any" inputmode="decimal" placeholder="不限"></label><label>標籤<select id="txTag"><option value="all">全部標籤</option></select></label><label>專案<select id="txProject"><option value="all">全部專案</option></select></label><label>狀態<select id="txStatus"><option value="all">全部</option><option value="pending">待完成</option><option value="done">已完成</option><option value="imported">CSV 匯入</option></select></label><label>排序<select id="txSort"><option value="dateDesc">日期新→舊</option><option value="dateAsc">日期舊→新</option><option value="amountDesc">金額大→小</option><option value="amountAsc">金額小→大</option></select></label></div></details><div id="txTable"></div></section>
 
     <section class="view" id="view-accounts">
   <div class="page-head"><div><h2>帳戶</h2><p>銀行、現金、信用卡與電子支付</p></div><button class="primary" id="newAccount">＋ 新增帳戶</button></div>
@@ -118,7 +118,7 @@
   <div class="panel-head"><div><h2>雲端同步</h2><p>同一個帳號可在手機與桌面共用資料；每筆資料獨立同步，離線時仍可使用本機資料。</p></div><span class="sync-badge" id="syncBadge">未設定</span></div>
   <div class="sync-actions"><button type="button" class="primary" id="syncNowBtn">立即同步</button></div>
   <div class="sync-account" id="syncAccountArea"></div>
-  <div class="sync-note" id="syncNote">V26.7 的 Supabase 連線資訊由 App 內建，使用者不需要輸入 URL 或 Publishable Key。每個使用者使用自己的帳號登入，資料由 Supabase Auth + RLS 隔離。</div>
+  <div class="sync-note" id="syncNote">V26.8 的 Supabase 連線資訊由 App 內建，使用者不需要輸入 URL 或 Publishable Key。每個使用者使用自己的帳號登入，資料由 Supabase Auth + RLS 隔離。</div>
 </div>
 <div class="settings-grid"><div class="panel"><h2>資料</h2><div class="setting-actions"><button class="secondary" id="exportJson">匯出 JSON</button><button class="secondary" id="importJson">匯入 JSON</button><button class="secondary" id="importCsv">匯入 MOZE CSV</button><button class="secondary" id="downloadImportTemplate">下載 CSV 範本</button><button class="secondary" id="reconcileAccounts">帳戶對帳</button><input hidden id="importFile" type="file" accept="application/json"><input hidden id="importCsvFile" type="file" accept=".csv,text/csv"><input hidden id="reconcileCsvFile" type="file" accept=".csv,text/csv"></div><p class="hint">MOZE CSV 匯入依照官方欄位順序；可選擇「追加紀錄」或「完整覆蓋」。帳戶、主／子類別與專案不存在時會自動建立；重複匯入會自動略過相同資料。</p></div><div class="panel"><h2>偏好</h2><label class="setting"><span>深色主題</span><input type="checkbox" id="darkMode" checked></label><label class="setting"><span>新增交易後停留在當日</span><input type="checkbox" checked></label><label class="setting"><span>顯示快速記帳</span><input type="checkbox" id="showQuick" checked></label></div><div class="panel danger"><h2>危險區域</h2><button class="secondary danger-btn" id="resetAll">清除所有資料</button></div></div></section>
   </main>
