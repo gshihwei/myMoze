@@ -1,0 +1,73 @@
+// 帳小簿 V26.10 — 帳戶管理.
+// Bundled after js/projects.js; uses app.js globals (state, esc, money, acct, acctName, acctMoney,
+// acctCur, adjust, isoDate, selectedDate, openEntity, deleteAccount, save, render, id).
+// Function declarations / var only.
+//
+// Account record: { id, name, type: 'cash' | 'bank' | 'card', balance, currency?, limit?, statement?, due?, note?, archived? }
+
+function acctCurrencies() { return ['TWD', 'USD', 'JPY', 'EUR', 'CNY', 'HKD', 'KRW', 'GBP', 'AUD', 'SGD', 'CAD', 'THB']; }
+function acctTypeLabel(a) { return a?.type === 'card' ? '信用卡' : a?.type === 'cash' ? '現金' : '銀行'; }
+function acctHasTx(aid) { const k = String(aid); return (state.transactions || []).some(t => String(t.account) === k || String(t.toAccount ?? '') === k); }
+function acctActive(list, keepId) { return (list || []).filter(a => !a.archived || String(a.id) === String(keepId ?? '')); }
+
+function acctCurrencyField(cur, locked) {
+  return `<label>幣別<input name="acur" list="acctCurList" maxlength="3" value="${esc(cur || 'TWD')}" ${locked ? 'readonly' : ''} autocapitalize="characters"><datalist id="acctCurList">${acctCurrencies().map(c => `<option value="${c}"></option>`).join('')}</datalist></label>`;
+}
+
+function acctEditFormHTML(a) {
+  const locked = acctHasTx(a.id), card = a.type === 'card';
+  return `<div class="form-grid">
+    <label>帳戶名稱<input name="aname" required maxlength="30" value="${esc(a.name || '')}"></label>
+    <label>類型${card ? '<input value="信用卡" readonly>' : `<select name="atype"><option value="bank" ${a.type !== 'cash' ? 'selected' : ''}>銀行</option><option value="cash" ${a.type === 'cash' ? 'selected' : ''}>現金</option></select>`}</label>
+    ${acctCurrencyField(acctCur(a), locked)}
+    ${card ? `<label>信用額度<input name="alimit" type="number" min="0" step="any" value="${esc(a.limit ?? 0)}"></label><label>結帳日<input name="astatement" type="number" min="1" max="31" value="${esc(a.statement ?? 15)}"></label><label>繳款日<input name="adue" type="number" min="1" max="31" value="${esc(a.due ?? 5)}"></label>` : ''}
+  </div>
+  <div class="form-grid form-grid-1"><label>備註<input name="anote" maxlength="100" value="${esc(a.note || '')}" placeholder="可留空，例如帳號末四碼"></label></div>
+  <label class="proj-archive"><input type="checkbox" name="aarchived" ${a.archived ? 'checked' : ''}> 封存（不再出現在記帳的帳戶選單；餘額仍計入淨資產）</label>
+  ${locked ? '<p class="hint">這個帳戶已有交易，幣別不能修改。</p>' : ''}
+  <div class="acct-manage-actions">
+    <span class="hint">目前餘額 ${acctMoney(a.balance, a)}</span>
+    <button type="button" class="secondary" data-acct-adjust="${esc(a.id)}">調整餘額</button>
+    <button type="button" class="secondary danger-btn" data-acct-delete="${esc(a.id)}">刪除帳戶</button>
+  </div>`;
+}
+
+function acctFromEditForm(f, old) {
+  const name = String(f.get('aname') || '').trim().slice(0, 30);
+  if (!name) return { error: '請輸入帳戶名稱' };
+  const cur = String(f.get('acur') || acctCur(old)).trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(cur)) return { error: '幣別請輸入 3 個英文字母，例如 TWD、USD' };
+  if (cur !== acctCur(old) && acctHasTx(old.id)) return { error: '這個帳戶已有交易，幣別不能修改' };
+  if ((state.accounts || []).some(a => a !== old && a.name === name && acctCur(a) === cur)) return { error: `已經有「${name}（${cur}）」` };
+  const a = { ...old, name, currency: cur, note: String(f.get('anote') || '').trim(), archived: !!f.get('aarchived') };
+  if (old.type !== 'card') a.type = f.get('atype') === 'cash' ? 'cash' : 'bank';
+  else { a.limit = Math.max(0, Number(f.get('alimit') || 0)); a.statement = Math.min(31, Math.max(1, Math.round(Number(f.get('astatement') || 15)))); a.due = Math.min(31, Math.max(1, Math.round(Number(f.get('adue') || 5)))); }
+  if (!a.note) delete a.note;
+  if (!a.archived) delete a.archived;
+  return { account: a };
+}
+
+function acctAdjustFormHTML(a) {
+  return `<p>「${acctName(a)}」目前餘額 <b>${acctMoney(a.balance, a)}</b>。輸入實際餘額後，會建立一筆「餘額調整」交易補上差額，帳戶對帳也會一致。</p>
+  <div class="form-grid">
+    <label>實際餘額${a.type === 'card' ? '（欠款請輸入負數）' : ''}<input name="abalance" type="number" step="any" required value="${esc(a.balance)}"></label>
+    <label>日期<input name="adate" type="date" required value="${esc(selectedDate || isoDate(new Date()))}"></label>
+  </div>
+  <div class="form-grid form-grid-1"><label>備註<input name="anote" maxlength="100" placeholder="例如：對帳後修正"></label></div>`;
+}
+
+// Adjust to an absolute balance by recording the difference as a balance_adjustment transaction.
+function acctAdjustTo(a, target, date, note) {
+  const diff = Math.round((Number(target) - Number(a.balance || 0)) * 100) / 100;
+  if (!Number.isFinite(diff) || Math.abs(diff) < 0.005) return null;
+  const t = { id: id(), date: date || isoDate(new Date()), time: '', name: '餘額調整', amount: diff, kind: 'balance_adjustment', category: '', account: a.id, note: note || '', tags: [], balanceAdjustment: true };
+  state.transactions.push(t); adjust(t, 1);
+  return t;
+}
+
+document.addEventListener('click', async e => {
+  const find = v => (state.accounts || []).find(a => String(a.id) === String(v));
+  const mg = e.target.closest?.('[data-acct-manage]'); if (mg) { e.preventDefault(); e.stopPropagation(); const a = find(mg.dataset.acctManage); if (a) openEntity('accountEdit', a); return; }
+  const adj = e.target.closest?.('[data-acct-adjust]'); if (adj) { const a = find(adj.dataset.acctAdjust); if (a) openEntity('accountAdjust', a); return; }
+  const del = e.target.closest?.('[data-acct-delete]'); if (del) { closeModals(); await deleteAccount(del.dataset.acctDelete); }
+});

@@ -99,7 +99,7 @@ function catDeleteFormHTML(c) {
   const u = catUsage(c.id);
   const targets = catOrdered(c.kind || 'expense').filter(x => String(x.id) !== String(c.id));
   return `<p>「${esc(catLabel(c))}」目前用於 ${u.tx} 筆交易、${u.recurring} 個週期交易、${u.budgets} 個預算。刪除前請選擇要改用的分類：</p>
-  <label class="entity-field">改用分類<select name="ctarget">${targets.map(x => `<option value="${esc(x.id)}">${x.parentId ? '　└ ' : ''}${esc(x.icon)} ${esc(x.name)}</option>`).join('')}</select></label>
+  <div class="form-grid form-grid-1"><label>改用分類<select name="ctarget">${targets.map(x => `<option value="${esc(x.id)}">${x.parentId ? '　└ ' : ''}${esc(x.icon)} ${esc(x.name)}</option>`).join('')}</select></label></div>
   <p class="hint">這些交易、週期交易與預算會改成選擇的分類，帳戶餘額不受影響。</p>`;
 }
 

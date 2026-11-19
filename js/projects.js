@@ -79,7 +79,7 @@ function projFormHTML(p) {
     <label>開始日期<input name="pstart" type="date" value="${esc(r.start || '')}"></label>
     <label>結束日期<input name="pend" type="date" value="${esc(r.end || '')}"></label>
   </div>
-  <label class="entity-field">備註<input name="pnote" maxlength="200" value="${esc(r.note || '')}" placeholder="可留空"></label>
+  <div class="form-grid form-grid-1"><label>備註<input name="pnote" maxlength="200" value="${esc(r.note || '')}" placeholder="可留空"></label></div>
   ${r.id ? `<label class="proj-archive"><input type="checkbox" name="parchived" ${r.archived ? 'checked' : ''}> 封存（結束的專案；記帳表單不再列出，資料保留）</label>` : ''}`;
 }
 function projFromForm(f, old) {
