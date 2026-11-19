@@ -1,0 +1,6 @@
+V26.5
+- 介面字體改為 Google Fonts「Huninn」（justfont 粉圓，SIL Open Font License），套用於所有文字、按鈕、輸入框與圖表。
+  - Huninn 只有一種字重，粗體由瀏覽器模擬。
+  - 字型未載入前或載入失敗時，依序改用 Noto Sans TC／蘋方／微軟正黑體／系統字型。
+- Service worker 以獨立快取（moze-fonts-v1）保存 Google Fonts 的 CSS 與字型檔，第一次載入後離線也能顯示；版本更新時不會清除字型快取。
+- 注意：字型從 Google 的伺服器下載，瀏覽器會向 Google 送出一般的網路請求（IP 等），不含任何帳務資料。

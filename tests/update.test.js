@@ -47,7 +47,7 @@ assert.equal(p.reg.updates,1,'checks on foreground');
   const SL={};const posted=[];let added=null,deleted=[];
   const sctx=vm.createContext({self:{addEventListener:(t,f)=>SL[t]=f,skipWaiting:()=>Promise.resolve(),
       clients:{claim:()=>Promise.resolve(),matchAll:()=>Promise.resolve([{postMessage:m=>posted.push(m)}])}},
-    caches:{open:()=>Promise.resolve({addAll:r=>{added=r;return Promise.resolve()}}),keys:()=>Promise.resolve(['moze-v0-shell-v1',`moze-v${VERSION}-shell-v1`]),delete:k=>{deleted.push(k);return Promise.resolve(true)}},
+    caches:{open:()=>Promise.resolve({addAll:r=>{added=r;return Promise.resolve()}}),keys:()=>Promise.resolve(['moze-v0-shell-v1',`moze-v${VERSION}-shell-v1`,'moze-fonts-v1']),delete:k=>{deleted.push(k);return Promise.resolve(true)}},
     Request:class{constructor(u,o){this.url=u;this.cache=o.cache}},location:{origin:'o'},URL,Promise});
   vm.runInContext(fs.readFileSync(swPath,'utf8'),sctx);
   let w;SL.install({waitUntil:x=>w=x});await w;
