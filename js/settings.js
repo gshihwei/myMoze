@@ -58,6 +58,8 @@ function settingsInit() {
   const th = document.getElementById('prefTheme'); if (th) { th.value = p.theme || 'dark'; th.onchange = () => setPref('theme', th.value); }
   if (typeof matchMedia === 'function') { const mq = matchMedia('(prefers-color-scheme: light)'); mq.addEventListener?.('change', () => { if (prefs().theme === 'system') applyTheme(); }); }
   renderFxPrefs();
+  lockSettingsRender();
+  if (lockEnabled()) lockShow(); else delete document.documentElement.dataset.locked;
   const ex = document.getElementById('exportMozeCsv'); if (ex) ex.onclick = () => downloadMozeCsv();
   applyPrefs();
 }
