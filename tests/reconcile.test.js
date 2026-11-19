@@ -94,3 +94,25 @@ test('App 內手動交易、信用卡繳款、手動借還款都計入交易合�
   assert.equal(card.balance, -400);
   assert.equal(card.implied, -1000);         // = balance the card was created with
 });
+
+test('手動輸入的初始金額優先於 CSV；未填的帳戶不比對', () => {
+  const { st, openings } = imported();
+  const bank = st.accounts.find(a => a.name === '銀行');
+  const wallet = st.accounts.find(a => a.name === '錢包');
+  const manual = new Map([[String(bank.id), 9000]]);
+  const rows = M.reconcile(st, openings, manual);
+  const b = byName(rows, '銀行');
+  assert.equal(b.source, 'manual');
+  assert.equal(b.diff, 1000);           // actual opening was 10000
+  assert.equal(byName(rows, '錢包').source, 'csv');
+  const noCsv = M.reconcile(st, null, new Map([[String(wallet.id), 500]]));
+  assert.equal(byName(noCsv, '錢包').mismatch, false);
+  assert.equal(byName(noCsv, '銀行').opening, null);
+  assert.equal(byName(noCsv, '銀行').source, '');
+});
+
+test('以 0 比對：初始金額 0 的帳戶，差額等於推算初始金額', () => {
+  const { st } = imported();
+  const manual = new Map(st.accounts.map(a => [String(a.id), 0]));
+  for (const r of M.reconcile(st, null, manual)) assert.equal(r.diff, r.implied);
+});

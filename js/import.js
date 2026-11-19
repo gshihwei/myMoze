@@ -518,39 +518,62 @@
     }
     return map;
   }
-  function reconcile(state, openings){
+  // manual: Map(accountId → opening) typed by the user; it wins over the CSV value.
+  function reconcile(state, openings, manual){
     const {sum,count}=ledgerByAccount(state);
     return (state?.accounts||[]).map(a=>{
       const id=String(a.id), balance=round2(a.balance), ledger=round2(sum.get(id)||0);
-      const opening=openings?.has(accKey(a.name,a.currency))?round2(openings.get(accKey(a.name,a.currency))):null;
+      const key=accKey(a.name,a.currency);
+      const source=manual?.has(id)?'manual':openings?.has(key)?'csv':'';
+      const opening=source==='manual'?round2(manual.get(id)):source==='csv'?round2(openings.get(key)):null;
       const expected=opening===null?null:round2(opening+ledger);
       const diff=expected===null?null:round2(balance-expected);
-      return {id,name:a.name,currency:a.currency||'TWD',type:a.type,balance,ledger,txCount:count.get(id)||0,implied:round2(balance-ledger),opening,expected,diff,mismatch:diff!==null&&Math.abs(diff)>=0.01};
+      return {id,name:a.name,currency:a.currency||'TWD',type:a.type,balance,ledger,txCount:count.get(id)||0,implied:round2(balance-ledger),opening,source,expected,diff,mismatch:diff!==null&&Math.abs(diff)>=0.01};
     });
   }
+
+  // V25.18: initial balances typed in the reconcile window are remembered on this device.
+  const MANUAL_KEY='moze-reconcile-openings-v1';
+  function loadManual(){try{const o=JSON.parse(localStorage.getItem(MANUAL_KEY)||'{}');return new Map(Object.entries(o).filter(([,v])=>Number.isFinite(v)))}catch{return new Map()}}
+  function saveManual(m){try{localStorage.setItem(MANUAL_KEY,JSON.stringify(Object.fromEntries(m)))}catch{}}
 
   function openReconcile(){
     const bg=$('reconcileBg'), body=$('reconcileBody'); if(!bg||!body) return;
     let openings=null, fileName='';
+    const manual=loadManual();
     const fmt=n=>n===null||n===undefined?'—':Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
     const signed=n=>n===null?'—':`${n>0?'+':''}${fmt(n)}`;
     const render=()=>{
-      const rows=reconcile(window.MozeApp.getState(),openings);
-      const bad=rows.filter(r=>r.mismatch), missing=openings?rows.filter(r=>r.opening===null&&r.txCount):[];
-      const summary=!openings
-        ?`<div class="import-append-note"><b>尚未選擇 CSV</b><p>下表的「推算初始金額」＝目前餘額 − 交易合計。若和你在 MOZE 設定的初始金額不同，代表餘額曾被改錯。選擇原始 MOZE CSV 可自動比對。</p></div>`
-        :bad.length?`<div class="import-errors"><b>${bad.length} 個帳戶餘額和「CSV 初始金額 + 交易合計」不一致</b><div>差額＝目前餘額 − 應有餘額。修正會把餘額改成應有餘額，並同步到雲端；修正前會自動下載 JSON 備份。</div></div>`
-        :`<div class="import-append-note"><b>✓ 有初始金額的帳戶全部一致</b><p>比對 ${rows.filter(r=>r.opening!==null).length} 個帳戶，沒有差額。</p></div>`;
-      const miss=missing.length?`<div class="import-warnings"><b>${missing.length} 個帳戶在 CSV 中找不到初始金額，無法比對</b><div>${missing.map(r=>escapeHtml(`${r.name} · ${r.currency}`)).join('、')}（可能是在本 App 手動建立的帳戶）</div></div>`:'';
+      const st=window.MozeApp.getState();
+      for(const id of [...manual.keys()]) if(!(st.accounts||[]).some(a=>String(a.id)===id)) manual.delete(id);
+      const rows=reconcile(st,openings,manual);
+      const known=rows.filter(r=>r.opening!==null), bad=rows.filter(r=>r.mismatch);
+      const unknown=rows.filter(r=>r.opening===null);
+      const summary=!known.length
+        ?`<div class="import-append-note"><b>請提供初始金額</b><p>在每個帳戶的「初始金額」欄輸入你記得的開戶金額（例如在 MOZE 設定的初始金額），或按「未填的以 0 比對」，也可以選擇原始 MOZE CSV。灰字是依目前餘額倒推的「推算初始金額」，如果它看起來不合理，代表餘額可能曾被改錯。</p></div>`
+        :bad.length?`<div class="import-errors"><b>${bad.length} 個帳戶餘額和「初始金額 + 交易合計」不一致</b><div>差額＝目前餘額 − 應有餘額。修正會把餘額改成應有餘額，並同步到雲端；修正前會自動下載 JSON 備份。</div></div>`
+        :`<div class="import-append-note"><b>✓ 已比對的 ${known.length} 個帳戶全部一致</b><p>${unknown.length?`另有 ${unknown.length} 個帳戶未填初始金額，尚未比對。`:'所有帳戶都沒有差額。'}</p></div>`;
       body.innerHTML=`
-        <div class="reconcile-file"><button type="button" class="secondary" id="reconcilePick">${openings?'改選其他 CSV':'選擇原始 MOZE CSV'}</button><span class="hint">${fileName?escapeHtml(fileName):'只讀取「初始金額」列，不會匯入任何資料'}</span></div>
-        ${summary}${miss}
-        <div class="reconcile-table">
-          <div class="reconcile-row reconcile-head"><span>帳戶</span><span>目前餘額</span><span>交易合計</span><span>${openings?'CSV 初始金額':'推算初始金額'}</span><span>${openings?'差額':''}</span></div>
-          ${rows.map(r=>`<div class="reconcile-row ${r.mismatch?'mismatch':''}"><span><b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.currency)} · ${r.txCount} 筆</small></span><span>${fmt(r.balance)}</span><span>${signed(r.ledger)}</span><span>${openings?fmt(r.opening):fmt(r.implied)}</span><span>${openings?(r.mismatch?`<b class="expense-text">${signed(r.diff)}</b><button type="button" class="secondary" data-reconcile-fix="${escapeHtml(r.id)}">改為 ${fmt(r.expected)}</button>`:r.opening===null?'—':'✓'):''}</span></div>`).join('')||'<div class="empty">沒有帳戶</div>'}
+        <div class="reconcile-file">
+          <button type="button" class="secondary" id="reconcilePick">${openings?'改選其他 CSV':'選擇原始 MOZE CSV'}</button>
+          <button type="button" class="secondary" id="reconcileZero" ${unknown.length?'':'disabled'}>未填的以 0 比對</button>
+          <button type="button" class="secondary" id="reconcileClearManual" ${manual.size?'':'disabled'}>清除手動輸入</button>
+          <span class="hint">${fileName?escapeHtml(fileName):'CSV 只讀取「初始金額」列，不會匯入任何資料；手動輸入的初始金額會記在這台裝置'}</span>
         </div>
-        <p class="hint">交易合計包含支出、收入、轉帳（含跨幣別與手續費）、餘額調整與借還款。帳戶建立後若曾在 App 直接修改過餘額，也會顯示為差額。</p>`;
+        ${summary}
+        <div class="reconcile-table">
+          <div class="reconcile-row reconcile-head"><span>帳戶</span><span>目前餘額</span><span>交易合計</span><span>初始金額</span><span>差額</span></div>
+          ${rows.map(r=>`<div class="reconcile-row ${r.mismatch?'mismatch':''}"><span><b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.currency)} · ${r.txCount} 筆</small></span><span>${fmt(r.balance)}</span><span>${signed(r.ledger)}</span><span class="reconcile-opening"><input type="number" step="any" inputmode="decimal" data-reconcile-opening="${escapeHtml(r.id)}" value="${r.opening===null?'':r.opening}" placeholder="${escapeHtml(fmt(r.implied))}" aria-label="${escapeHtml(r.name)} 初始金額"><small>${r.source==='csv'?'CSV':r.source==='manual'?'手動輸入':'推算 '+escapeHtml(fmt(r.implied))}</small></span><span>${r.opening===null?'—':r.mismatch?`<b class="expense-text">${signed(r.diff)}</b><button type="button" class="secondary" data-reconcile-fix="${escapeHtml(r.id)}">改為 ${fmt(r.expected)}</button>`:'✓'}</span></div>`).join('')||'<div class="empty">沒有帳戶</div>'}
+        </div>
+        <p class="hint">交易合計包含支出、收入、轉帳（含跨幣別與手續費）、餘額調整與借還款。帳戶建立後若曾在 App 直接修改過餘額，也會顯示為差額，這種差額不需要修正。</p>`;
       body.querySelector('#reconcilePick').onclick=()=>$('reconcileCsvFile')?.click();
+      body.querySelector('#reconcileZero').onclick=()=>{for(const r of unknown) manual.set(r.id,0); saveManual(manual); render();};
+      body.querySelector('#reconcileClearManual').onclick=()=>{manual.clear(); saveManual(manual); render();};
+      body.querySelectorAll('[data-reconcile-opening]').forEach(inp=>inp.onchange=()=>{
+        const id=inp.dataset.reconcileOpening, v=String(inp.value).trim();
+        if(v==='') manual.delete(id); else { const n=Number(v); if(!Number.isFinite(n)) return; manual.set(id,n); }
+        saveManual(manual); render();
+      });
       body.querySelectorAll('[data-reconcile-fix]').forEach(b=>b.onclick=()=>applyFix(rows.filter(r=>r.id===b.dataset.reconcileFix)));
       const all=$('reconcileFixAll'); if(all){ all.hidden=!bad.length; all.textContent=`全部修正（${bad.length} 個帳戶）`; all.onclick=()=>applyFix(bad); }
     };
