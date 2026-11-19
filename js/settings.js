@@ -30,6 +30,19 @@ function applyPrefs() {
 // Overview sections that can be hidden (settings → 偏好). The old showQuick switch maps to 'quick'.
 function overviewPanels() { return [['cards', '信用卡帳單'], ['pending', '待完成交易'], ['loans', '借還款追蹤'], ['budgets', '本月預算'], ['upcoming', '即將到來'], ['recent', '最近交易'], ['quick', '快速記帳']]; }
 function overviewHidden(p = prefs()) { const h = Array.isArray(p.hiddenPanels) ? [...p.hiddenPanels] : []; if (p.showQuick === false && !h.includes('quick')) h.push('quick'); return h; }
+// ---------- manual exchange rates ----------
+// prefs().fx = { USD: 31.5 } means 1 USD = 31.5 TWD and overrides the fetched rate on this device.
+function fxOverride(cur) { const v = Number(prefs().fx?.[String(cur || '').toUpperCase()]); return v > 0 ? v : null; }
+function fxCurrencies() { return [...new Set((state?.accounts || []).map(a => acctCur(a)).filter(c => c !== 'TWD'))].sort(); }
+function renderFxPrefs() {
+  const box = document.getElementById('prefFx'); if (!box) return;
+  const curs = fxCurrencies();
+  if (!curs.length) { box.innerHTML = '<p class="hint">目前沒有外幣帳戶。</p>'; return; }
+  box.innerHTML = curs.map(c => { const o = fxOverride(c), auto = fxCache?.rates?.[c] > 0 ? 1 / fxCache.rates[c] : null;
+    return `<label class="fx-row"><span>1 ${esc(c)} =</span><input type="number" min="0" step="any" inputmode="decimal" data-fx-cur="${esc(c)}" value="${o ?? ''}" placeholder="${auto ? auto.toFixed(4) : '尚無匯率'}"><span>TWD</span><small>${o ? '手動' : auto ? `自動（${fxDateLabel()}）` : '尚無自動匯率'}</small></label>`; }).join('');
+  box.querySelectorAll('[data-fx-cur]').forEach(inp => inp.onchange = () => { const fx = { ...(prefs().fx || {}) }, v = Number(inp.value); if (v > 0) fx[inp.dataset.fxCur] = v; else delete fx[inp.dataset.fxCur]; setPref('fx', fx); renderFxPrefs(); try { render(); } catch {} });
+}
+
 // Leading blank cells before day 1 for the configured first weekday (0 = Sunday, 1 = Monday).
 function calendarLead(y, m) { return (new Date(y, m, 1).getDay() - (prefs().weekStart || 0) + 7) % 7; }
 function settingsInit() {
@@ -44,6 +57,7 @@ function settingsInit() {
   const jd = document.getElementById('prefJumpToTxDate'); if (jd) { jd.checked = !!p.jumpToTxDate; jd.onchange = () => setPref('jumpToTxDate', jd.checked); }
   const th = document.getElementById('prefTheme'); if (th) { th.value = p.theme || 'dark'; th.onchange = () => setPref('theme', th.value); }
   if (typeof matchMedia === 'function') { const mq = matchMedia('(prefers-color-scheme: light)'); mq.addEventListener?.('change', () => { if (prefs().theme === 'system') applyTheme(); }); }
+  renderFxPrefs();
   const ex = document.getElementById('exportMozeCsv'); if (ex) ex.onclick = () => downloadMozeCsv();
   applyPrefs();
 }

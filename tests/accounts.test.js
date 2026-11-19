@@ -79,3 +79,12 @@ test('管理表單：已有交易時幣別唯讀，並提供調整餘額與刪�
   assert.doesNotMatch(run(`acctEditFormHTML(state.accounts[1])`), /name="acur"[^>]*readonly/);
   assert.match(run(`acctEditFormHTML(state.accounts[2])`), /name="astatement"/);
 });
+
+test('acctOrdered()／acctMove()：同類型（一般帳戶或信用卡）內上下移動', () => {
+  const { J } = bundle(base());
+  assert.deepEqual(J('acctOrdered(state.accounts).map(a=>a.id)'), ['a', 'b', 'c', 'z']);
+  assert.equal(J(`acctMove(state.accounts.find(a=>a.id==='b'),-1)`), true);
+  assert.deepEqual(J('acctOrdered(state.accounts).map(a=>a.id)'), ['b', 'a', 'c', 'z']);
+  assert.equal(J(`acctMove(state.accounts.find(a=>a.id==='c'),-1)`), false, 'the only card cannot move among cards');
+  assert.equal(J(`acctMove(state.accounts.find(a=>a.id==='b'),-1)`), false, 'already first');
+});

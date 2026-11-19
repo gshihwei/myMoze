@@ -360,6 +360,7 @@ html[data-theme="light"],:root[data-theme="light"] body{background:#f7f8fa !impo
 :root[data-theme="light"] #bulkBar select,:root[data-theme="light"] #bulkBar input{background:#f4f6f8;border:1px solid #eaeff3;color:#141b22}
 :root[data-theme="light"] .backup-row{border-top:1px solid rgba(15,23,32,0.06)}
 :root[data-theme="light"] .health-row{border-top:1px solid rgba(15,23,32,0.06)}
+:root[data-theme="light"] .fx-row input{background:#f4f6f8;border:1px solid #eaeff3;color:#141b22}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}

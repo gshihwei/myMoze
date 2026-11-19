@@ -98,3 +98,16 @@ test('偏好：概覽區塊可隱藏；舊的「不顯示快速記帳」設定�
   assert.deepEqual(JSON.parse(store.get('moze-prefs-v1')).hiddenPanels, ['loans', 'recent']);
   assert.equal(J('overviewPanels().length'), 7);
 });
+
+test('手動匯率：覆寫自動匯率並影響淨資產換算，清空後恢復自動', () => {
+  const store = new Map();
+  const { run, J } = bundle({ accounts: [{ id: 'u', name: '美元', currency: 'USD', balance: 100 }], categories: [], projects: [], transactions: [], budgets: [], recurring: [], loans: [] }, store);
+  run('fxCache={rates:{USD:0.032},fetchedAt:Date.now()}');
+  assert.equal(J('netWorth(state.accounts).total'), 3125);
+  run('setPref("fx",{USD:30})');
+  assert.equal(J('fxOverride("usd")'), 30);
+  assert.equal(J('netWorth(state.accounts).total'), 3000);
+  run('setPref("fx",{})');
+  assert.equal(J('netWorth(state.accounts).total'), 3125);
+  assert.deepEqual(J('fxCurrencies()'), ['USD']);
+});

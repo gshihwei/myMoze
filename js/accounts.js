@@ -8,6 +8,14 @@
 function acctCurrencies() { return ['TWD', 'USD', 'JPY', 'EUR', 'CNY', 'HKD', 'KRW', 'GBP', 'AUD', 'SGD', 'CAD', 'THB']; }
 function acctTypeLabel(a) { return a?.type === 'card' ? '信用卡' : a?.type === 'cash' ? '現金' : '銀行'; }
 function acctHasTx(aid) { const k = String(aid); return (state.transactions || []).some(t => String(t.account) === k || String(t.toAccount ?? '') === k); }
+// User-defined order (account.order); accounts without one keep their stored order after the ordered ones.
+function acctOrdered(list) { const arr = [...(list || [])]; return arr.map((a, i) => [a, Number.isFinite(Number(a.order)) ? Number(a.order) : 1e6 + i]).sort((x, y) => x[1] - y[1]).map(x => x[0]); }
+function acctMove(a, dir) {
+  const group = acctOrdered(state.accounts).filter(x => (x.type === 'card') === (a.type === 'card'));
+  const all = acctOrdered(state.accounts); all.forEach((x, i) => { x.order = i; });
+  const i = group.indexOf(a), j = i + dir; if (i < 0 || j < 0 || j >= group.length) return false;
+  const b = group[j]; [a.order, b.order] = [b.order, a.order]; return true;
+}
 function acctActive(list, keepId) { return (list || []).filter(a => !a.archived || String(a.id) === String(keepId ?? '')); }
 
 function acctCurrencyField(cur, locked) {
@@ -27,6 +35,7 @@ function acctEditFormHTML(a) {
   ${locked ? '<p class="hint">這個帳戶已有交易，幣別不能修改。</p>' : ''}
   <div class="acct-manage-actions">
     <span class="hint">目前餘額 ${acctMoney(a.balance, a)}</span>
+    <button type="button" class="secondary" data-acct-move="-1" data-acct-id="${esc(a.id)}" aria-label="往前移">↑</button><button type="button" class="secondary" data-acct-move="1" data-acct-id="${esc(a.id)}" aria-label="往後移">↓</button>
     <button type="button" class="secondary" data-acct-adjust="${esc(a.id)}">調整餘額</button>
     <button type="button" class="secondary danger-btn" data-acct-delete="${esc(a.id)}">刪除帳戶</button>
   </div>`;
@@ -90,6 +99,7 @@ document.addEventListener('change', e => { if (e.target?.closest?.('#txForm') &&
 document.addEventListener('click', async e => {
   const find = v => (state.accounts || []).find(a => String(a.id) === String(v));
   const mg = e.target.closest?.('[data-acct-manage]'); if (mg) { e.preventDefault(); e.stopPropagation(); const a = find(mg.dataset.acctManage); if (a) openEntity('accountEdit', a); return; }
+  const mv = e.target.closest?.('[data-acct-move]'); if (mv) { const a = find(mv.dataset.acctId); if (a && acctMove(a, Number(mv.dataset.acctMove))) { await save(); render(); } return; }
   const adj = e.target.closest?.('[data-acct-adjust]'); if (adj) { const a = find(adj.dataset.acctAdjust); if (a) openEntity('accountAdjust', a); return; }
   const del = e.target.closest?.('[data-acct-delete]'); if (del) { closeModals(); await deleteAccount(del.dataset.acctDelete); }
 });
