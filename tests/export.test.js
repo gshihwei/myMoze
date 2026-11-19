@@ -111,3 +111,22 @@ test('手動匯率：覆寫自動匯率並影響淨資產換算，清空後恢�
   assert.equal(J('netWorth(state.accounts).total'), 3125);
   assert.deepEqual(J('fxCurrencies()'), ['USD']);
 });
+
+test('每月起始日 25：期間、上一期、月統計與預算都依 25 號切分', () => {
+  const store = new Map([['moze-prefs-v1', JSON.stringify({ monthStart: 25 })]]);
+  const { run, J } = bundle({ accounts: [{ id: 'a', balance: 0 }], categories: [], projects: [], budgets: [{ id: 't', scope: 'total', limit: 1000 }], recurring: [], loans: [], transactions: [
+    { id: 1, kind: 'expense', amount: 100, account: 'a', date: '2026-05-24' },
+    { id: 2, kind: 'expense', amount: 200, account: 'a', date: '2026-05-25' },
+    { id: 3, kind: 'expense', amount: 300, account: 'a', date: '2026-06-24' },
+    { id: 4, kind: 'expense', amount: 400, account: 'a', date: '2026-06-25' },
+  ] }, store);
+  assert.deepEqual(J(`periodBounds('2026-05')`), { start: '2026-05-25', end: '2026-06-24' });
+  assert.equal(J(`periodKeyOf('2026-06-10')`), '2026-05');
+  assert.equal(J(`periodKeyOf('2026-06-25')`), '2026-06');
+  assert.equal(J(`monthStats('2026-05').out`), 500);
+  const R = J(`anRange('thisMonth','','',new Date(2026,5,10))`);
+  assert.deepEqual([R.start, R.end, R.prevStart, R.prevEnd], ['2026-05-25', '2026-06-24', '2026-04-25', '2026-05-24']);
+  assert.equal(J(`budgetRows('2026-05',new Date(2026,5,10))[0].spent`), 500);
+  run('setPref("monthStart",1)');
+  assert.equal(J(`monthStats('2026-05').out`), 300);
+});

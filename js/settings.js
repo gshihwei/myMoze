@@ -43,10 +43,22 @@ function renderFxPrefs() {
   box.querySelectorAll('[data-fx-cur]').forEach(inp => inp.onchange = () => { const fx = { ...(prefs().fx || {}) }, v = Number(inp.value); if (v > 0) fx[inp.dataset.fxCur] = v; else delete fx[inp.dataset.fxCur]; setPref('fx', fx); renderFxPrefs(); try { render(); } catch {} });
 }
 
+// ---------- custom month start day (e.g. payday) ----------
+// Period 'YYYY-MM' runs from day D of that month to day D-1 of the next month (D = 1 → calendar month).
+function monthStartDay() { const d = Math.floor(Number(prefs().monthStart) || 1); return Math.min(28, Math.max(1, d)); }
+function periodBounds(key, d = monthStartDay()) {
+  const [y, m] = String(key).split('-').map(Number);
+  if (d === 1) return { start: `${key}-01`, end: isoDate(new Date(y, m, 0)) };
+  return { start: isoDate(new Date(y, m - 1, d)), end: isoDate(new Date(y, m, d - 1)) };
+}
+// The period key a date belongs to (a date before day D belongs to the previous month's period).
+function periodKeyOf(date, d = monthStartDay()) { const dt = typeof date === 'string' ? new Date(date + 'T00:00:00') : date; const k = monthKey(new Date(dt.getFullYear(), dt.getMonth(), 1)); return dt.getDate() >= d ? k : addMonths(k, -1); }
+
 // Leading blank cells before day 1 for the configured first weekday (0 = Sunday, 1 = Monday).
 function calendarLead(y, m) { return (new Date(y, m, 1).getDay() - (prefs().weekStart || 0) + 7) % 7; }
 function settingsInit() {
   const p = prefs();
+  const ms = document.getElementById('prefMonthStart'); if (ms) { ms.innerHTML = Array.from({ length: 28 }, (_, i) => `<option value="${i + 1}">${i + 1} 日</option>`).join(''); ms.value = String(monthStartDay()); ms.onchange = () => { setPref('monthStart', Number(ms.value) || 1); try { render(); } catch {} }; }
   const ws = document.getElementById('prefWeekStart'); if (ws) { ws.value = String(p.weekStart); ws.onchange = () => { setPref('weekStart', Number(ws.value) || 0); renderCalendar(); }; }
   const box = document.getElementById('prefOverviewPanels');
   if (box) {

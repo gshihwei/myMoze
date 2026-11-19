@@ -22,18 +22,19 @@ function anDays(a, b) { return Math.round((anDate(b) - anDate(a)) / 864e5) + 1; 
 
 // Returns the selected period and the comparison period of the same length right before it.
 function anRange(preset, from, to, today = new Date()) {
-  const y = today.getFullYear(), m = today.getMonth();
+  // month-based presets follow the custom month start day (settings → 每月起始日)
+  const cur = periodKeyOf(today), span = (a, b) => [anDate(periodBounds(a).start), anDate(periodBounds(b).end)];
   let s, e, months = 0;
-  if (preset === 'lastMonth') { s = new Date(y, m - 1, 1); e = new Date(y, m, 0); months = 1; }
-  else if (preset === '3m') { s = new Date(y, m - 2, 1); e = new Date(y, m + 1, 0); months = 3; }
-  else if (preset === 'ytd') { s = new Date(y, 0, 1); e = new Date(y, 11, 31); months = 12; }
-  else if (preset === '12m') { s = new Date(y, m - 11, 1); e = new Date(y, m + 1, 0); months = 12; }
+  if (preset === 'lastMonth') { [s, e] = span(addMonths(cur, -1), addMonths(cur, -1)); months = 1; }
+  else if (preset === '3m') { [s, e] = span(addMonths(cur, -2), cur); months = 3; }
+  else if (preset === 'ytd') { const y = cur.slice(0, 4); [s, e] = span(`${y}-01`, `${y}-12`); months = 12; }
+  else if (preset === '12m') { [s, e] = span(addMonths(cur, -11), cur); months = 12; }
   else if (preset === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(from || '') && /^\d{4}-\d{2}-\d{2}$/.test(to || '')) {
     s = anDate(from); e = anDate(to); if (s > e) [s, e] = [e, s];
-  } else { s = new Date(y, m, 1); e = new Date(y, m + 1, 0); months = 1; preset = preset === 'custom' ? 'custom' : 'thisMonth'; }
+  } else { [s, e] = span(cur, cur); months = 1; preset = preset === 'custom' ? 'custom' : 'thisMonth'; }
   const start = isoDate(s), end = isoDate(e), days = anDays(start, end);
   let prevStart, prevEnd;
-  if (months) { prevStart = isoDate(new Date(s.getFullYear(), s.getMonth() - months, 1)); prevEnd = isoDate(new Date(s.getFullYear(), s.getMonth(), 0)); }
+  if (months) { const k0 = periodKeyOf(s); prevStart = periodBounds(addMonths(k0, -months)).start; prevEnd = periodBounds(addMonths(k0, -1)).end; }
   else { const pe = new Date(s.getFullYear(), s.getMonth(), s.getDate() - 1); prevEnd = isoDate(pe); prevStart = isoDate(new Date(pe.getFullYear(), pe.getMonth(), pe.getDate() - days + 1)); }
   const todayIso = isoDate(today);
   // days elapsed in the period (for "per day" averages of a period that is still running)

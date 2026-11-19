@@ -23,8 +23,8 @@ function budgetIcon(b) { return b.scope === 'total' ? 'Σ' : b.scope === 'projec
 
 // Month boundaries and pace for the month being viewed (calendarMonth).
 function budgetMonth(key = monthKey(), today = new Date()) {
-  const [y, m] = key.split('-').map(Number), start = `${key}-01`, end = isoDate(new Date(y, m, 0)), days = new Date(y, m, 0).getDate();
-  const t = isoDate(today), elapsed = t < start ? 0 : t > end ? days : Number(t.slice(8, 10));
+  const { start, end } = periodBounds(key), days = anDays(start, end);
+  const t = isoDate(today), elapsed = t < start ? 0 : t > end ? days : anDays(start, t);
   return { key, start, end, days, elapsed, current: t >= start && t <= end };
 }
 
