@@ -206,3 +206,6 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 
 /* V25.10: forgot / change password */
 .sync-forgot{background:none;border:0;color:#9ec5ff;font-size:12px;padding:6px 0;cursor:pointer;text-decoration:underline;justify-self:start}.sync-password-card{display:grid;gap:8px;padding:14px 16px;background:#112333;border:1px solid #2a4257;border-radius:14px}.sync-password-card small{color:#98aabc;font-size:12px}.sync-password-email{color:#eef4fa;font-size:13px}
+
+/* V25.10.1: password show/hide toggle */
+.pw-field{position:relative;display:block}.pw-field input{width:100%;box-sizing:border-box;padding-right:42px}.pw-toggle{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;background:none;border:0;border-radius:8px;color:#98aabc;cursor:pointer;padding:0}.pw-toggle:hover,.pw-toggle[aria-pressed="true"]{color:#eef4fa;background:#1b3045}
