@@ -70,3 +70,22 @@ test('entryCopyOf()：保留內容，清除 id、匯入／待完成／週期等�
   assert.deepEqual([c.date, c.amount, c.toAmount, c.fee, c.name, c.tags[0]], ['2026-07-01', 3200, 100, 15, '換匯', 'a']);
   assert.match(c.time, /^\d\d:\d\d$/);
 });
+
+test('記帳範本：存成範本不含日期／時間／id，最多 12 個，可刪除', () => {
+  const store = new Map();
+  const any = () => new Proxy(function () {}, { get: (t, k) => (k === Symbol.toPrimitive ? () => '' : k === 'length' ? 0 : any()), apply: () => any(), construct: () => any(), set: () => true });
+  const document = new Proxy({}, { get: (t, k) => (k === 'getElementById' ? () => null : k === 'querySelectorAll' ? () => [] : k === 'querySelector' ? () => null : any()) });
+  const ctx = vm.createContext({ document, window: { MozeApp: {} }, navigator: {}, localStorage: { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)) }, indexedDB: any(), alert() {}, confirm: () => true,
+    console: { ...console, warn() {}, error() {} }, setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0, requestAnimationFrame() {}, Intl, Date, Math, JSON, Number, String, Array, Map, Set, Promise, Object, crypto: { randomUUID: () => 'id' + Math.random() } });
+  try { vm.runInContext(fs.readFileSync(path.join(root, 'js', 'app.bundle.js'), 'utf8'), ctx); } catch {}
+  const run = c => vm.runInContext(c, ctx);
+  run(`state=${JSON.stringify(base())}`);
+  const tp = JSON.parse(run(`JSON.stringify(tplSave(state.transactions[1],'早上咖啡'))`));
+  assert.equal(tp.name, '早上咖啡'); assert.equal(tp.data.id, undefined); assert.equal(tp.data.date, undefined); assert.equal(tp.data.time, undefined);
+  assert.equal(tp.data.merchant, '星巴克');
+  for (let i = 0; i < 15; i++) run(`tplSave(state.transactions[0],'t${i}')`);
+  assert.equal(run('tplList().length'), 12);
+  run(`tplRemove(tplList()[0].id)`);
+  assert.equal(run('tplList().length'), 11);
+  assert.equal(JSON.parse(store.get('moze-prefs-v1')).templates.length, 11);
+});

@@ -66,3 +66,28 @@ document.addEventListener('click', e => {
   const t = (state.transactions || []).find(x => String(x.id) === String(window.detailId)); if (!t || blockLoanTx(t)) return;
   detailBg.classList.remove('open'); openTx(t.kind, entryCopyOf(t));
 });
+
+// ---- V26.23 記帳範本 (per device, prefs().templates) ----
+function tplList() { return Array.isArray(prefs().templates) ? prefs().templates : []; }
+function tplFromTx(t, name) {
+  const data = entryCopyOf(t); delete data.date; delete data.time; delete data.installment;
+  return { id: id(), name: String(name || t.name || '範本').trim().slice(0, 20) || '範本', data };
+}
+function tplSave(t, name) { const list = [tplFromTx(t, name), ...tplList()].slice(0, 12); setPref('templates', list); return list[0]; }
+function tplRemove(tid) { setPref('templates', tplList().filter(x => String(x.id) !== String(tid))); }
+function tplOpen(tid) {
+  const tp = tplList().find(x => String(x.id) === String(tid)); if (!tp) return false;
+  openTx(tp.data.kind || 'expense', { ...tp.data, date: selectedDate || isoDate(new Date()), time: nowTime() }); return true;
+}
+function renderTemplates() {
+  const box = document.getElementById('quickTemplates'); if (!box) return;
+  const list = tplList();
+  box.innerHTML = list.length ? list.map(x => `<span class="tpl-chip"><button type="button" data-tpl-open="${esc(x.id)}">${esc(cat(x.data.category).icon)} ${esc(x.name)}${x.data.amount ? ` <small>${money(x.data.amount)}</small>` : ''}</button><button type="button" class="tpl-del" data-tpl-del="${esc(x.id)}" aria-label="刪除範本 ${esc(x.name)}">×</button></span>`).join('')
+    : '<p class="hint">在交易明細按「存成範本」，常用的記帳就能一鍵開啟。</p>';
+}
+document.addEventListener('click', e => {
+  const sv = e.target.closest?.('#detailTemplate');
+  if (sv) { const t = (state.transactions || []).find(x => String(x.id) === String(window.detailId)); if (!t || blockLoanTx(t)) return; const n = prompt('範本名稱', t.name || ''); if (n === null) return; tplSave(t, n); renderTemplates(); alert('已存成範本，可在概覽的「快速記帳」使用。'); return; }
+  const op = e.target.closest?.('[data-tpl-open]'); if (op) { tplOpen(op.dataset.tplOpen); return; }
+  const dl = e.target.closest?.('[data-tpl-del]'); if (dl) { if (confirm('刪除這個範本？')) { tplRemove(dl.dataset.tplDel); renderTemplates(); } }
+});
