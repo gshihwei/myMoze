@@ -1,6 +1,23 @@
-// 帳小簿 V26.12 — 偏好設定與 MOZE 格式 CSV 匯出.
+// 帳小簿 V26.12 — 偏好設定與 MOZE 格式 CSV 匯出（V26.26：關於／版本資訊）.
 // Bundled after js/accounts.js; uses app.js / import-compatible globals (state, cat, acct, acctCur,
 // ledgerEffects, isUnappliedPending, render, renderCalendar). Function declarations / var only.
+
+// ---------- app version (keep in step with sw.js CACHE, index.html and manifest.json) ----------
+function appVersion() { return 'V26.26'; }
+function appReleaseDate() { return '2026-11-20'; }
+function appVersionLabel() { const [y, m, d] = appReleaseDate().split('-').map(Number); return { version: appVersion(), date: `${y} 年 ${m} 月 ${d} 日` }; }
+// newest app shell cache ('moze-v26.26-shell-v1' → 'V26.26'), compared numerically so V26.26 beats V26.9
+function appCacheLatest(keys) {
+  const vs = (keys || []).map(k => /^moze-v(\d+(?:\.\d+)*)-/.exec(k)?.[1]).filter(Boolean);
+  const cmp = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); return 0; };
+  return vs.length ? 'V' + vs.sort(cmp).pop() : '';
+}
+function renderAppVersion() {
+  const v = document.getElementById('appVersion'), d = document.getElementById('appVersionDate'), c = document.getElementById('appCacheVersion');
+  const l = appVersionLabel(); if (v) v.textContent = l.version; if (d) d.textContent = l.date;
+  if (c && typeof caches !== 'undefined' && caches.keys) caches.keys().then(ks => { c.textContent = appCacheLatest(ks) || '未安裝'; }).catch(() => { c.textContent = '—'; });
+  else if (c) c.textContent = '—';
+}
 
 // ---------- preferences (per device, not synced) ----------
 var prefsCache;
@@ -58,6 +75,7 @@ function periodKeyOf(date, d = monthStartDay()) { const dt = typeof date === 'st
 function calendarLead(y, m) { return (new Date(y, m, 1).getDay() - (prefs().weekStart || 0) + 7) % 7; }
 function settingsInit() {
   const p = prefs();
+  renderAppVersion();
   const ms = document.getElementById('prefMonthStart'); if (ms) { ms.innerHTML = Array.from({ length: 28 }, (_, i) => `<option value="${i + 1}">${i + 1} 日</option>`).join(''); ms.value = String(monthStartDay()); ms.onchange = () => { setPref('monthStart', Number(ms.value) || 1); try { render(); } catch {} }; }
   const ws = document.getElementById('prefWeekStart'); if (ws) { ws.value = String(p.weekStart); ws.onchange = () => { setPref('weekStart', Number(ws.value) || 0); renderCalendar(); }; }
   const box = document.getElementById('prefOverviewPanels');
