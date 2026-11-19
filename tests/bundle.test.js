@@ -39,7 +39,7 @@ function loadBundle() {
   });
   try { vm.runInContext(src, ctx, { filename: 'app.bundle.js' }); } catch { /* UI bootstrap */ }
   const run = code => vm.runInContext(code, ctx);
-  return { run, alerts };
+  return { run, alerts, ctx };
 }
 
 function setup(accounts) {
@@ -120,4 +120,34 @@ test('bundle seed：新裝置只有預設分類與兩個 0 元帳戶', () => {
   for (const k of ['transactions', 'projects', 'budgets', 'recurring', 'loans']) assert.equal(seed[k].length, 0, k);
   assert.deepEqual(seed.accounts.map(a => [a.id, a.balance]), [['cash', 0], ['bank', 0]]);
   assert.ok(seed.categories.length >= 6);
+});
+
+// V25.20: exchange rates for net worth.
+test('bundle parseFx()：兩種匯率來源格式', () => {
+  const b = loadBundle();
+  const a = JSON.parse(b.run(`JSON.stringify(parseFx({result:'success',rates:{TWD:1,USD:0.032},time_last_update_utc:'x'}))`));
+  assert.equal(a.rates.USD, 0.032);
+  const c = JSON.parse(b.run(`JSON.stringify(parseFx({date:'2026-11-18',twd:{usd:0.032,jpy:4.8,btc:'x'}}))`));
+  assert.deepEqual(c.rates, { USD: 0.032, JPY: 4.8 });
+  assert.equal(b.run('parseFx({error:1})'), null);
+});
+
+test('bundle netWorth()：有匯率的外幣換算成 TWD，沒有匯率的另列', () => {
+  const b = loadBundle();
+  b.run(`fxCache={rates:{USD:0.032},fetchedAt:Date.now()}`);
+  const nw = JSON.parse(b.run(`JSON.stringify(netWorth([{balance:1000},{currency:'USD',balance:100},{currency:'JPY',balance:500}]))`));
+  assert.equal(nw.total, 1000 + 3125);
+  assert.deepEqual(nw.missing, { JPY: 500 });
+});
+
+test('bundle refreshFx()：主來源失敗時用備用來源、成功後 12 小時內不再抓取', async () => {
+  const b = loadBundle();
+  const calls = [];
+  b.run('fxCache=null;fxLastTry=0');
+  b.ctx.fetch = async url => { calls.push(url); if (url.includes('er-api')) return { ok: false }; return { ok: true, json: async () => ({ date: 'd', twd: { usd: 0.031 } }) }; };
+  assert.equal(await b.run('refreshFx()'), true);
+  assert.equal(calls.length, 2);
+  assert.equal(b.run(`fxRate('usd')`), 0.031);
+  await b.run('refreshFx()');
+  assert.equal(calls.length, 2, 'cached');
 });
