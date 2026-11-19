@@ -1,4 +1,4 @@
-MOZE PWA V25.10.1
+MOZE PWA V25.11
 
 本版本新增完整「借還款」頁面：
 - 應收／應付／已完成分頁
@@ -18,3 +18,5 @@ V25.9：CSV 借還款配對修正（方向、停止追蹤、幣別）、同名�
 V25.10：雲端同步新增「忘記密碼」與「變更密碼」；修正雲端已無資料時同步衝突按鈕沒有反應。
 
 V25.10.1：密碼欄位加上眼睛圖示，可切換顯示／隱藏密碼。
+
+V25.11：app.bundle.js 改由 tools/build-bundle.js 從 app.js 產生（修改 js/app.js、js/icons.js、js/entry-ui.js 後必須執行 node tools/build-bundle.js）；補回 V25.6 起遺漏的餘額修正；借還款交易不可從交易明細編輯／刪除。

@@ -1,0 +1,9 @@
+V25.11
+- 重要修正：瀏覽器實際執行的 js/app.bundle.js 自 V25.6 起沒有同步 js/app.js 的修正，現已補回：
+  - 編輯／刪除匯入的交易時，以 balanceEffect 還原帳戶餘額（含手續費／折扣、應收應付原始正負號）。
+  - 刪除／編輯跨幣別轉帳時，目的帳戶以 toBalanceEffect／toAmount 還原，不再用來源金額。
+  - CSV 大量匯入使用 skipSyncSignature，降低記憶體用量。
+- 修正：大量匯入（skipSyncSignature）後，第一次手動編輯不會進入同步佇列的問題；匯入完成後會重建同步比對基準。
+- 借還款交易（借出／借入／收款／還款）不能從交易明細或信用卡頁面直接編輯或刪除，避免借還款金額與帳戶餘額不一致；請到「借還款」頁面處理。
+- 新增 tools/build-bundle.js：由 js/icons.js + js/app.js + js/entry-ui.js 產生 js/app.bundle.js；`--check` 檢查是否過期。
+- 新增 tests/bundle.test.js：檢查 bundle 與來源同步，並直接以實際 bundle 驗證餘額還原與借還款保護。
