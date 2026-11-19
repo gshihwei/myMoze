@@ -453,13 +453,7 @@
     try{
       const text=await readText(file), rows=parseCSV(text);
       if(!rows.length)throw new Error('CSV 沒有資料。');
-      const header=rows[0].map(norm);
-      const headerKey = v => String(v ?? '').replace(/\uFEFF/g,'').replace(/＊/g,'*').replace(/\s+/g,'').replace(/\*$/,'');
-      const expectedKeys = HEADERS.map(headerKey);
-      const actualKeys = header.map(headerKey);
-      if(header.length!==HEADERS.length || actualKeys.some((v,i)=>v!==expectedKeys[i])) {
-        throw new Error(`CSV 欄位格式不符合 MOZE 匯入格式。\n可接受必要欄位標題：${HEADERS.join(',')}\n（必要欄位的 *／＊ 可省略）`);
-      }
+      checkHeader(rows);
       const current=window.MozeApp.getState();
       const draft=JSON.parse(JSON.stringify(current));
       const result=buildImport(draft,rows);
@@ -474,13 +468,124 @@
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='MOZE.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   }
 
+  function checkHeader(rows){
+    const header=rows[0].map(norm);
+    const headerKey = v => String(v ?? '').replace(/﻿/g,'').replace(/＊/g,'*').replace(/\s+/g,'').replace(/\*$/,'');
+    const expectedKeys = HEADERS.map(headerKey);
+    const actualKeys = header.map(headerKey);
+    if(header.length!==HEADERS.length || actualKeys.some((v,i)=>v!==expectedKeys[i])) {
+      throw new Error(`CSV 欄位格式不符合 MOZE 匯入格式。\n可接受必要欄位標題：${HEADERS.join(',')}\n（必要欄位的 *／＊ 可省略）`);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // V25.13 account reconciliation.
+  // A correct account satisfies: balance = opening balance + Σ(effect of its transactions).
+  // Effects follow exactly the rules app.js adjust() and the loan pages use, so an account
+  // whose balance was corrupted by an old edit/delete bug shows up as a difference.
+  // Opening balances come from the original MOZE CSV「初始金額」rows, matched by (name, currency).
+  const accKey=(name,cur)=>`${norm(name)}\u001f${norm(cur)||'TWD'}`;
+  const round2=n=>Math.round(Number(n||0)*100)/100;
+  function txAccountEffects(t){
+    const out=[]; if(!t||t.account===undefined||t.account===null||t.account==='') return out;
+    const n=v=>Number(v||0), abs=v=>Math.abs(n(v));
+    if(t.kind==='transfer'){
+      out.push([t.account, Number(t.balanceEffect??(-n(t.amount)))]);
+      if(t.toAccount!==undefined&&t.toAccount!==null&&t.toAccount!=='') out.push([t.toAccount, Number(t.toBalanceEffect??(t.toAmount??n(t.amount)))]);
+      return out;
+    }
+    if(t.imported&&t.balanceEffect!==undefined){ out.push([t.account, n(t.balanceEffect)]); return out; }
+    if(t.kind==='expense') out.push([t.account, -n(t.amount)]);
+    else if(t.kind==='income'||t.kind==='balance_adjustment') out.push([t.account, n(t.amount)]);
+    else if(t.kind==='loan') out.push([t.account, t.loanAction==='lend'?-abs(t.amount):abs(t.amount)]);
+    else if(t.kind==='loanPayment') out.push([t.account, t.loanDirection==='receivable'?abs(t.amount):-abs(t.amount)]);
+    return out;
+  }
+  function ledgerByAccount(state){
+    const sum=new Map(), count=new Map();
+    for(const t of state?.transactions||[]) for(const [id,e] of txAccountEffects(t)){
+      if(!Number.isFinite(e)) continue; const k=String(id);
+      sum.set(k,(sum.get(k)||0)+e); count.set(k,(count.get(k)||0)+1);
+    }
+    return {sum,count};
+  }
+  function csvOpenings(rows){
+    const map=new Map();
+    for(let i=1;i<rows.length;i++){
+      const r=rows[i]; if(norm(r[2]).replace(/＊/g,'')!=='初始金額') continue;
+      const amt=parseAmount(r[5]); if(amt===null||!Number.isFinite(amt)) continue;
+      const k=accKey(r[0],r[1]); map.set(k,(map.get(k)||0)+amt);
+    }
+    return map;
+  }
+  function reconcile(state, openings){
+    const {sum,count}=ledgerByAccount(state);
+    return (state?.accounts||[]).map(a=>{
+      const id=String(a.id), balance=round2(a.balance), ledger=round2(sum.get(id)||0);
+      const opening=openings?.has(accKey(a.name,a.currency))?round2(openings.get(accKey(a.name,a.currency))):null;
+      const expected=opening===null?null:round2(opening+ledger);
+      const diff=expected===null?null:round2(balance-expected);
+      return {id,name:a.name,currency:a.currency||'TWD',type:a.type,balance,ledger,txCount:count.get(id)||0,implied:round2(balance-ledger),opening,expected,diff,mismatch:diff!==null&&Math.abs(diff)>=0.01};
+    });
+  }
+
+  function openReconcile(){
+    const bg=$('reconcileBg'), body=$('reconcileBody'); if(!bg||!body) return;
+    let openings=null, fileName='';
+    const fmt=n=>n===null||n===undefined?'—':Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
+    const signed=n=>n===null?'—':`${n>0?'+':''}${fmt(n)}`;
+    const render=()=>{
+      const rows=reconcile(window.MozeApp.getState(),openings);
+      const bad=rows.filter(r=>r.mismatch), missing=openings?rows.filter(r=>r.opening===null&&r.txCount):[];
+      const summary=!openings
+        ?`<div class="import-append-note"><b>尚未選擇 CSV</b><p>下表的「推算初始金額」＝目前餘額 − 交易合計。若和你在 MOZE 設定的初始金額不同，代表餘額曾被改錯。選擇原始 MOZE CSV 可自動比對。</p></div>`
+        :bad.length?`<div class="import-errors"><b>${bad.length} 個帳戶餘額和「CSV 初始金額 + 交易合計」不一致</b><div>差額＝目前餘額 − 應有餘額。修正會把餘額改成應有餘額，並同步到雲端；修正前會自動下載 JSON 備份。</div></div>`
+        :`<div class="import-append-note"><b>✓ 有初始金額的帳戶全部一致</b><p>比對 ${rows.filter(r=>r.opening!==null).length} 個帳戶，沒有差額。</p></div>`;
+      const miss=missing.length?`<div class="import-warnings"><b>${missing.length} 個帳戶在 CSV 中找不到初始金額，無法比對</b><div>${missing.map(r=>escapeHtml(`${r.name} · ${r.currency}`)).join('、')}（可能是在本 App 手動建立的帳戶）</div></div>`:'';
+      body.innerHTML=`
+        <div class="reconcile-file"><button type="button" class="secondary" id="reconcilePick">${openings?'改選其他 CSV':'選擇原始 MOZE CSV'}</button><span class="hint">${fileName?escapeHtml(fileName):'只讀取「初始金額」列，不會匯入任何資料'}</span></div>
+        ${summary}${miss}
+        <div class="reconcile-table">
+          <div class="reconcile-row reconcile-head"><span>帳戶</span><span>目前餘額</span><span>交易合計</span><span>${openings?'CSV 初始金額':'推算初始金額'}</span><span>${openings?'差額':''}</span></div>
+          ${rows.map(r=>`<div class="reconcile-row ${r.mismatch?'mismatch':''}"><span><b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.currency)} · ${r.txCount} 筆</small></span><span>${fmt(r.balance)}</span><span>${signed(r.ledger)}</span><span>${openings?fmt(r.opening):fmt(r.implied)}</span><span>${openings?(r.mismatch?`<b class="expense-text">${signed(r.diff)}</b><button type="button" class="secondary" data-reconcile-fix="${escapeHtml(r.id)}">改為 ${fmt(r.expected)}</button>`:r.opening===null?'—':'✓'):''}</span></div>`).join('')||'<div class="empty">沒有帳戶</div>'}
+        </div>
+        <p class="hint">交易合計包含支出、收入、轉帳（含跨幣別與手續費）、餘額調整與借還款。帳戶建立後若曾在 App 直接修改過餘額，也會顯示為差額。</p>`;
+      body.querySelector('#reconcilePick').onclick=()=>$('reconcileCsvFile')?.click();
+      body.querySelectorAll('[data-reconcile-fix]').forEach(b=>b.onclick=()=>applyFix(rows.filter(r=>r.id===b.dataset.reconcileFix)));
+      const all=$('reconcileFixAll'); if(all){ all.hidden=!bad.length; all.textContent=`全部修正（${bad.length} 個帳戶）`; all.onclick=()=>applyFix(bad); }
+    };
+    const applyFix=async(list)=>{
+      list=list.filter(r=>r.mismatch); if(!list.length) return;
+      const lines=list.map(r=>`${r.name}（${r.currency}）：${fmt(r.balance)} → ${fmt(r.expected)}`).join('\n');
+      if(!confirm(`將修正 ${list.length} 個帳戶餘額：\n\n${lines}\n\n修正前會先下載目前資料的 JSON 備份。確定修正？`)) return;
+      try{
+        const current=window.MozeApp.getState();
+        downloadBackup(current,`moze-before-reconcile-${new Date().toISOString().slice(0,10)}.json`);
+        const next=JSON.parse(JSON.stringify(current));
+        for(const r of list){ const a=next.accounts.find(x=>String(x.id)===r.id); if(a) a.balance=r.expected; }
+        await window.MozeApp.setState(next,{persist:true,markDirty:true});
+        render();
+      }catch(err){ alert('修正失敗：'+(err.message||err)); }
+    };
+    const file=$('reconcileCsvFile');
+    if(file) file.onchange=async e=>{
+      const f=e.target.files?.[0]; e.target.value=''; if(!f) return;
+      try{ const rows=parseCSV(await readText(f)); if(!rows.length) throw new Error('CSV 沒有資料。'); checkHeader(rows); openings=csvOpenings(rows); fileName=`${f.name}（${openings.size} 個帳戶有初始金額）`; render(); }
+      catch(err){ alert('CSV 讀取失敗：'+(err.message||err)); }
+    };
+    const close=()=>bg.classList.remove('open');
+    $('reconcileClose').onclick=close; $('reconcileClose2').onclick=close; bg.onclick=e=>{if(e.target===bg)close()};
+    render(); bg.classList.add('open');
+  }
+
   function init(){
     const btn=$('importCsv'), file=$('importCsvFile'), tpl=$('downloadImportTemplate');
     btn?.addEventListener('click',()=>file?.click());
     file?.addEventListener('change',e=>{const f=e.target.files?.[0];e.target.value='';handleFile(f)});
     tpl?.addEventListener('click',downloadTemplate);
+    $('reconcileAccounts')?.addEventListener('click',openReconcile);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   // Pure helpers exposed for Node regression tests (tests/import.test.js). Not used by the UI.
-  window.MozeImportInternals = {parseCSV, buildImport, findLoanCandidates, ensureAccount};
+  window.MozeImportInternals = {parseCSV, buildImport, findLoanCandidates, ensureAccount, txAccountEffects, ledgerByAccount, csvOpenings, reconcile};
 })();
