@@ -93,7 +93,7 @@ test('bundle txRow()：交易名稱、商家、帳戶、分類圖示不會變成
 });
 
 test('app.js：使用者文字欄位放進 HTML 前都經過 esc()', () => {
-  const src = ['app.js', 'analysis.js', 'budgets.js', 'categories.js', 'search.js', 'projects.js', 'accounts.js'].map(f => fs.readFileSync(path.join(root, 'js', f), 'utf8')).join('\n')
+  const src = ['app.js', 'analysis.js', 'budgets.js', 'categories.js', 'search.js', 'projects.js', 'accounts.js', 'settings.js'].map(f => fs.readFileSync(path.join(root, 'js', f), 'utf8')).join('\n')
     .replace(/(?:alert|confirm)\(`[^`]*`|name:`[^`]*`/g, ''); // plain-text contexts, not HTML
   const raw = [...src.matchAll(/\$\{([^{}]*(?:\.name|\.note|\.person|\.merchant|\.icon|\.tags|\.time)\b[^{}]*)\}/g)]
     .map(m => m[1]).filter(e => !/^esc\(/.test(e));
