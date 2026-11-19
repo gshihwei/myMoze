@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#172638"><meta name="description" content="帳小簿 個人記帳 PWA V26.18：桌面、手機、逐筆雲端同步與借還款追蹤">
+<meta name="theme-color" content="#172638"><meta name="description" content="帳小簿 個人記帳 PWA V26.19：桌面、手機、逐筆雲端同步與借還款追蹤">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#101820">
@@ -57,21 +57,21 @@
           <div class="panel chart-panel"><div class="panel-head"><div><h2>收支與淨資產</h2><p>每月支出、收入長條與月底淨資產折線</p></div><select id="chartRange"><option value="6">近 6 個月</option><option value="12" selected>近 12 個月</option></select></div><div id="cashflowChart" class="chart"></div></div>
           <div class="overview-cols">
             <div class="col">
-              <div class="panel"><div class="panel-head"><div><h2>信用卡帳單</h2><p id="creditTotal"></p></div><button class="ghost" data-view="accounts">查看帳戶</button></div><div id="creditCards"></div></div>
-              <div class="panel"><div class="panel-head"><div><h2>待完成交易</h2><p id="pendingTotal"></p></div><button class="ghost" data-view="transactions">全部交易</button></div><div id="pending"></div></div>
-              <div class="panel"><div class="panel-head"><div><h2>借還款追蹤</h2><p id="loanTrackTotal"></p></div><button class="ghost" data-view="loans">查看更多</button></div><div id="loanSummary"></div></div>
+              <div class="panel" data-ov-panel="cards"><div class="panel-head"><div><h2>信用卡帳單</h2><p id="creditTotal"></p></div><button class="ghost" data-view="accounts">查看帳戶</button></div><div id="creditCards"></div></div>
+              <div class="panel" data-ov-panel="pending"><div class="panel-head"><div><h2>待完成交易</h2><p id="pendingTotal"></p></div><button class="ghost" data-view="transactions">全部交易</button></div><div id="pending"></div></div>
+              <div class="panel" data-ov-panel="loans"><div class="panel-head"><div><h2>借還款追蹤</h2><p id="loanTrackTotal"></p></div><button class="ghost" data-view="loans">查看更多</button></div><div id="loanSummary"></div></div>
             </div>
             <div class="col">
-              <div class="panel"><div class="panel-head"><div><h2>本月預算</h2><p id="budgetOverviewTotal"></p></div><button class="ghost" data-view="budgets">管理預算</button></div><div id="budgetOverview"></div></div>
-              <div class="panel"><div class="panel-head"><div><h2>即將到來</h2><p id="upcomingTotal"></p></div><button class="ghost" data-view="recurring">管理週期</button></div><div id="upcoming"></div></div>
+              <div class="panel" data-ov-panel="budgets"><div class="panel-head"><div><h2>本月預算</h2><p id="budgetOverviewTotal"></p></div><button class="ghost" data-view="budgets">管理預算</button></div><div id="budgetOverview"></div></div>
+              <div class="panel" data-ov-panel="upcoming"><div class="panel-head"><div><h2>即將到來</h2><p id="upcomingTotal"></p></div><button class="ghost" data-view="recurring">管理週期</button></div><div id="upcoming"></div></div>
             </div>
           </div>
-          <div class="panel"><div class="panel-head"><h2>最近交易</h2><button class="ghost" data-view="transactions">全部交易</button></div><div id="recent"></div></div>
+          <div class="panel" data-ov-panel="recent"><div class="panel-head"><h2>最近交易</h2><button class="ghost" data-view="transactions">全部交易</button></div><div id="recent"></div></div>
         </div>
         <aside class="rail">
           <div class="panel calendar"><div class="panel-head"><div><h2 id="monthTitle">2026 年 8 月</h2><p>點日期查看當日交易</p></div><div class="calendar-controls"><button type="button" class="icon" id="calendarPrev" aria-label="上個月">‹</button><button type="button" class="icon" id="todayBtn" aria-label="回到本月">●</button><button type="button" class="icon" id="calendarNext" aria-label="下個月">›</button></div></div><div class="dow"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div id="calendarGrid" class="cal-grid"></div></div>
           <div class="panel"><div class="month-stats" id="monthStats"></div><div class="panel-head"><div><h2>當日明細</h2><p id="dailyCaption"></p></div><button class="ghost" data-view="transactions">全部交易</button></div><div id="dailyList"></div></div>
-          <div class="panel"><div class="panel-head"><h2>快速記帳</h2></div><div class="quick-grid"><button data-quick="expense">− 支出</button><button data-quick="income">＋ 收入</button><button data-quick="transfer">⇄ 轉帳</button><button data-quick="loan">👤 借還款</button></div></div>
+          <div class="panel" data-ov-panel="quick"><div class="panel-head"><h2>快速記帳</h2></div><div class="quick-grid"><button data-quick="expense">− 支出</button><button data-quick="income">＋ 收入</button><button data-quick="transfer">⇄ 轉帳</button><button data-quick="loan">👤 借還款</button></div></div>
         </aside>
       </div>
     </section>
@@ -118,9 +118,9 @@
   <div class="panel-head"><div><h2>雲端同步</h2><p>同一個帳號可在手機與桌面共用資料；每筆資料獨立同步，離線時仍可使用本機資料。</p></div><span class="sync-badge" id="syncBadge">未設定</span></div>
   <div class="sync-actions"><button type="button" class="primary" id="syncNowBtn">立即同步</button></div>
   <div class="sync-account" id="syncAccountArea"></div>
-  <div class="sync-note" id="syncNote">V26.18 的 Supabase 連線資訊由 App 內建，使用者不需要輸入 URL 或 Publishable Key。每個使用者使用自己的帳號登入，資料由 Supabase Auth + RLS 隔離。</div>
+  <div class="sync-note" id="syncNote">V26.19 的 Supabase 連線資訊由 App 內建，使用者不需要輸入 URL 或 Publishable Key。每個使用者使用自己的帳號登入，資料由 Supabase Auth + RLS 隔離。</div>
 </div>
-<div class="settings-grid"><div class="panel"><h2>資料</h2><div class="setting-actions"><button class="secondary" id="exportJson">匯出 JSON</button><button class="secondary" id="importJson">匯入 JSON</button><button class="secondary" id="importCsv">匯入 MOZE CSV</button><button class="secondary" id="downloadImportTemplate">下載 CSV 範本</button><button class="secondary" id="reconcileAccounts">帳戶對帳</button><button class="secondary" id="exportMozeCsv">匯出 MOZE 格式 CSV</button><input hidden id="importFile" type="file" accept="application/json"><input hidden id="importCsvFile" type="file" accept=".csv,text/csv"><input hidden id="reconcileCsvFile" type="file" accept=".csv,text/csv"></div><p class="hint">MOZE CSV 匯入依照官方欄位順序；可選擇「追加紀錄」或「完整覆蓋」。帳戶、主／子類別與專案不存在時會自動建立；重複匯入會自動略過相同資料。</p></div><div class="panel"><h2>偏好</h2><p class="hint">偏好設定只存在這台裝置。</p><label class="setting"><span>外觀</span><select id="prefTheme"><option value="dark">深色</option><option value="light">淺色</option><option value="system">跟隨系統</option></select></label><label class="setting"><span>每週第一天</span><select id="prefWeekStart"><option value="0">星期日</option><option value="1">星期一</option></select></label><label class="setting"><span>概覽顯示「快速記帳」</span><input type="checkbox" id="prefShowQuick" checked></label><label class="setting"><span>新增交易後，日曆跳到該交易的日期</span><input type="checkbox" id="prefJumpToTxDate"></label></div><div class="panel"><h2>資料健檢</h2><p class="hint">檢查交易、預算、週期交易與借還款是否有指向已刪除項目的參照，或疑似重複的交易。修正只調整參照，不會改變金額或帳戶餘額。</p><button type="button" class="secondary" id="healthRun">開始檢查</button><div id="healthResult"></div></div><div class="panel"><h2>自動備份</h2><p class="hint">每天第一次存檔時自動保存一份完整資料在這台裝置（保留最近 7 天，不會同步到雲端）。</p><div id="backupList"></div></div><div class="panel danger"><h2>危險區域</h2><button class="secondary danger-btn" id="resetAll">清除所有資料</button></div></div></section>
+<div class="settings-grid"><div class="panel"><h2>資料</h2><div class="setting-actions"><button class="secondary" id="exportJson">匯出 JSON</button><button class="secondary" id="importJson">匯入 JSON</button><button class="secondary" id="importCsv">匯入 MOZE CSV</button><button class="secondary" id="downloadImportTemplate">下載 CSV 範本</button><button class="secondary" id="reconcileAccounts">帳戶對帳</button><button class="secondary" id="exportMozeCsv">匯出 MOZE 格式 CSV</button><input hidden id="importFile" type="file" accept="application/json"><input hidden id="importCsvFile" type="file" accept=".csv,text/csv"><input hidden id="reconcileCsvFile" type="file" accept=".csv,text/csv"></div><p class="hint">MOZE CSV 匯入依照官方欄位順序；可選擇「追加紀錄」或「完整覆蓋」。帳戶、主／子類別與專案不存在時會自動建立；重複匯入會自動略過相同資料。</p></div><div class="panel"><h2>偏好</h2><p class="hint">偏好設定只存在這台裝置。</p><label class="setting"><span>外觀</span><select id="prefTheme"><option value="dark">深色</option><option value="light">淺色</option><option value="system">跟隨系統</option></select></label><label class="setting"><span>每週第一天</span><select id="prefWeekStart"><option value="0">星期日</option><option value="1">星期一</option></select></label><div class="setting setting-stack"><span>概覽顯示的區塊</span><div class="ov-panel-prefs" id="prefOverviewPanels"></div></div><label class="setting"><span>新增交易後，日曆跳到該交易的日期</span><input type="checkbox" id="prefJumpToTxDate"></label></div><div class="panel"><h2>資料健檢</h2><p class="hint">檢查交易、預算、週期交易與借還款是否有指向已刪除項目的參照，或疑似重複的交易。修正只調整參照，不會改變金額或帳戶餘額。</p><button type="button" class="secondary" id="healthRun">開始檢查</button><div id="healthResult"></div></div><div class="panel"><h2>自動備份</h2><p class="hint">每天第一次存檔時自動保存一份完整資料在這台裝置（保留最近 7 天，不會同步到雲端）。</p><div id="backupList"></div></div><div class="panel danger"><h2>危險區域</h2><button class="secondary danger-btn" id="resetAll">清除所有資料</button></div></div></section>
   </main>
 </div>
 

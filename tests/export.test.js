@@ -88,3 +88,13 @@ test('偏好：每週第一天影響日曆開頭空格，設定存在本機', ()
   assert.equal(JSON.parse(store.get('moze-prefs-v1')).weekStart, 1);
   assert.equal(J('prefs().jumpToTxDate'), false);
 });
+
+test('偏好：概覽區塊可隱藏；舊的「不顯示快速記帳」設定沿用', () => {
+  const store = new Map([['moze-prefs-v1', JSON.stringify({ showQuick: false })]]);
+  const { run, J } = bundle({ accounts: [], categories: [], projects: [], transactions: [], budgets: [], recurring: [], loans: [] }, store);
+  assert.deepEqual(J('overviewHidden()'), ['quick']);
+  run('setPref("hiddenPanels",["loans","recent"])');
+  assert.deepEqual(J('overviewHidden().sort()'), ['loans', 'quick', 'recent']);
+  assert.deepEqual(JSON.parse(store.get('moze-prefs-v1')).hiddenPanels, ['loans', 'recent']);
+  assert.equal(J('overviewPanels().length'), 7);
+});

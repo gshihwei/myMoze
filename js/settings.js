@@ -5,7 +5,7 @@
 // ---------- preferences (per device, not synced) ----------
 var prefsCache;
 function prefsKey() { return 'moze-prefs-v1'; }
-function prefsDefaults() { return { weekStart: 0, showQuick: true, jumpToTxDate: false, theme: 'dark' }; }
+function prefsDefaults() { return { weekStart: 0, showQuick: true, jumpToTxDate: false, theme: 'dark', hiddenPanels: [] }; }
 function prefs() {
   if (!prefsCache) { let p = {}; try { p = JSON.parse(localStorage.getItem(prefsKey()) || '{}') || {}; } catch { p = {}; } prefsCache = { ...prefsDefaults(), ...p }; }
   return prefsCache;
@@ -21,16 +21,26 @@ function applyTheme() {
 function applyPrefs() {
   const p = prefs();
   applyTheme();
-  const quick = document.querySelector('[data-quick]')?.closest?.('.panel'); if (quick) quick.hidden = !p.showQuick;
+  const hidden = new Set(overviewHidden(p));
+  document.querySelectorAll('[data-ov-panel]').forEach(el => { el.hidden = hidden.has(el.dataset.ovPanel); });
+  document.querySelectorAll('[data-ov-pref]').forEach(cb => { cb.checked = !hidden.has(cb.dataset.ovPref); });
   const dow = document.querySelector('.calendar .dow');
   if (dow) { const names = ['日', '一', '二', '三', '四', '五', '六']; dow.innerHTML = names.map((_, i) => `<span>${names[(i + p.weekStart) % 7]}</span>`).join(''); }
 }
+// Overview sections that can be hidden (settings → 偏好). The old showQuick switch maps to 'quick'.
+function overviewPanels() { return [['cards', '信用卡帳單'], ['pending', '待完成交易'], ['loans', '借還款追蹤'], ['budgets', '本月預算'], ['upcoming', '即將到來'], ['recent', '最近交易'], ['quick', '快速記帳']]; }
+function overviewHidden(p = prefs()) { const h = Array.isArray(p.hiddenPanels) ? [...p.hiddenPanels] : []; if (p.showQuick === false && !h.includes('quick')) h.push('quick'); return h; }
 // Leading blank cells before day 1 for the configured first weekday (0 = Sunday, 1 = Monday).
 function calendarLead(y, m) { return (new Date(y, m, 1).getDay() - (prefs().weekStart || 0) + 7) % 7; }
 function settingsInit() {
   const p = prefs();
   const ws = document.getElementById('prefWeekStart'); if (ws) { ws.value = String(p.weekStart); ws.onchange = () => { setPref('weekStart', Number(ws.value) || 0); renderCalendar(); }; }
-  const sq = document.getElementById('prefShowQuick'); if (sq) { sq.checked = !!p.showQuick; sq.onchange = () => setPref('showQuick', sq.checked); }
+  const box = document.getElementById('prefOverviewPanels');
+  if (box) {
+    const hidden = new Set(overviewHidden(p));
+    box.innerHTML = overviewPanels().map(([k, l]) => `<label><input type="checkbox" data-ov-pref="${k}" ${hidden.has(k) ? '' : 'checked'}> ${l}</label>`).join('');
+    box.querySelectorAll('[data-ov-pref]').forEach(cb => cb.onchange = () => { const set = new Set(overviewHidden()); if (cb.checked) set.delete(cb.dataset.ovPref); else set.add(cb.dataset.ovPref); setPref('hiddenPanels', [...set]); });
+  }
   const jd = document.getElementById('prefJumpToTxDate'); if (jd) { jd.checked = !!p.jumpToTxDate; jd.onchange = () => setPref('jumpToTxDate', jd.checked); }
   const th = document.getElementById('prefTheme'); if (th) { th.value = p.theme || 'dark'; th.onchange = () => setPref('theme', th.value); }
   if (typeof matchMedia === 'function') { const mq = matchMedia('(prefers-color-scheme: light)'); mq.addEventListener?.('change', () => { if (prefs().theme === 'system') applyTheme(); }); }
