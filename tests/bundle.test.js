@@ -99,3 +99,16 @@ test('app.js：使用者文字欄位放進 HTML 前都經過 esc()', () => {
     .map(m => m[1]).filter(e => !/^esc\(/.test(e));
   assert.deepEqual(raw, []);
 });
+
+// V25.16: same-name accounts in different currencies must be distinguishable.
+test('bundle acctName()／acctMoney()：非 TWD 帳戶顯示幣別並用自己的幣別格式化', () => {
+  const b = loadBundle();
+  assert.equal(b.run(`acctName({name:'玉山'})`), '玉山');
+  assert.equal(b.run(`acctName({name:'玉山',currency:'TWD'})`), '玉山');
+  assert.equal(b.run(`acctName({name:'玉山',currency:'usd'})`), '玉山（USD）');
+  assert.equal(b.run(`acctName({name:'<b>',currency:'USD'})`), '&lt;b&gt;（USD）');
+  assert.equal(b.run(`acctMoney(1234,{currency:'TWD'})`), b.run('money(1234)'));
+  const usd = b.run(`acctMoney(12.5,{currency:'USD'})`);
+  assert.match(usd, /12\.5/); assert.notEqual(usd, b.run('money(12.5)'));
+  assert.match(b.run(`acctMoney(5,{currency:'XX1'})`), /^XX1 5$/); // invalid code falls back
+});

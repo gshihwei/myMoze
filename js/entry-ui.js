@@ -17,7 +17,7 @@ import { svg, accountIcon } from './icons.js';
     cs.innerHTML=categories.map(c=>`<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
     if(!categories.some(c=>String(c.id)===String(cs.value)))cs.value=categories[0]?.id||'';
     cc.innerHTML=categories.map(c=>`<button type="button" class="choice-chip" data-select="formCategory" data-value="${c.id}"><span class="chip-icon">${svg(c.id)}</span><span class="choice-label">${escHtml(c.name)}</span><span class="checkmark">✓</span></button>`).join('');
-    ac.innerHTML=Array.from(as.options).map(o=>{const a=st.accounts.find(x=>String(x.id)===String(o.value));return `<button type="button" class="choice-chip" data-select="formAccount" data-value="${o.value}"><span class="chip-icon">${svg(accountIcon(a))}</span><span class="choice-label">${escHtml(a?.name||o.text)}</span><span class="checkmark">✓</span></button>`}).join('');
+    ac.innerHTML=Array.from(as.options).map(o=>{const a=st.accounts.find(x=>String(x.id)===String(o.value));return `<button type="button" class="choice-chip" data-select="formAccount" data-value="${o.value}"><span class="chip-icon">${svg(accountIcon(a))}</span><span class="choice-label">${escHtml(o.text||a?.name)}</span><span class="checkmark">✓</span></button>`}).join('');
     sync();
   }
   function sync(){document.querySelectorAll('.choice-chip').forEach(b=>{const s=$(b.dataset.select);b.classList.toggle('active',!!s&&String(s.value)===String(b.dataset.value));});}
