@@ -4,7 +4,10 @@
   const LS_QUEUE_ITEM='moze-sync-q-item-v26', LS_META_ITEM='moze-sync-meta-item-v26', LS_META_STATE='moze-sync-meta-state-v26', LS_DIRTY='moze-sync-dirty-v26';
   const CDN='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
   const ENTITIES=['accounts','categories','projects','transactions','budgets','recurring','loans'];
-  const state={client:null,user:null,ready:false,loading:false,timer:null,authSub:null,clientKey:'',conflicts:[],metaCache:null,metaKey:'',progress:{done:0,total:0}};
+  const state={client:null,user:null,ready:false,loading:false,timer:null,authSub:null,clientKey:'',conflicts:[],metaCache:null,metaKey:'',progress:{done:0,total:0},passwordMode:''};
+  // V25.10: a password-reset email link lands here with #...type=recovery (implicit flow).
+  // Capture it before supabase-js consumes and clears the URL hash.
+  if(/(^|[#&?])type=recovery(&|$)/.test(location.hash+'&'+location.search.slice(1)))state.passwordMode='recovery';
   const $=id=>document.getElementById(id);
   const baseCfg=()=>window.MOZE_SUPABASE_CONFIG||{};
 
@@ -41,6 +44,7 @@
   function markBootstrapped(){const m=getMeta();m.bootstrapped=true;flushMeta()}
   function metaStorageKey(entity,recordId){return `${LS_META_ITEM}|${userScope()}|${entity}|${String(recordId)}`}
   function metaSet(entity,recordId,version,updatedAt){localStorage.setItem(metaStorageKey(entity,recordId),JSON.stringify({version:Number(version)||0,updatedAt:updatedAt||''}))}
+  function metaClear(entity,recordId){localStorage.removeItem(metaStorageKey(entity,recordId))}
   function metaSetMany(rows){for(const row of rows||[]){if(row?.entity&&row?.record_id!==undefined)metaSet(row.entity,row.record_id,row.version,row.updated_at)}}
   function metaGetVersion(entity,recordId){try{const v=JSON.parse(localStorage.getItem(metaStorageKey(entity,recordId))||'null');return Number(v?.version||0)}catch{return 0}}
   function isDirty(){return localStorage.getItem(scopedKey(LS_DIRTY))==='1'||localStorage.getItem('moze-sync-unauth-dirty-v25')==='1'}
@@ -58,7 +62,7 @@
       state.authSub=null;
       state.client=window.supabase.createClient(cfg.url,cfg.publishableKey,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true,storageKey:'moze-auth-v25'}});
       state.clientKey=key;
-      const {data}=state.client.auth.onAuthStateChange((event,session)=>{const nextUser=session?.user||null;if(nextUser)switchLocalUser(nextUser);state.user=nextUser;renderAuth();if(event==='SIGNED_IN')setTimeout(()=>syncNow('auto'),0);if(event==='SIGNED_OUT'){state.conflicts=[];setStatus('已登出','idle','尚未登入')}});
+      const {data}=state.client.auth.onAuthStateChange((event,session)=>{const nextUser=session?.user||null;if(nextUser)switchLocalUser(nextUser);state.user=nextUser;renderAuth();if(event==='PASSWORD_RECOVERY'){state.passwordMode='recovery';renderAuth();showPasswordPanel()}if(event==='SIGNED_IN')setTimeout(()=>syncNow('auto'),0);if(event==='SIGNED_OUT'){state.conflicts=[];setStatus('已登出','idle','尚未登入')}});
       state.authSub=data.subscription;
     }
     const {data,error}=await state.client.auth.getSession();if(error)throw error;
@@ -66,6 +70,10 @@
   }
   async function signIn(email,password){const c=await ensureClient();setStatus('登入中…','syncing');const {data,error}=await c.auth.signInWithPassword({email,password});if(error)throw error;state.user=data.user;renderAuth();await syncNow('auto')}
   async function signUp(email,password){const c=await ensureClient();setStatus('建立帳號…','syncing');const {data,error}=await c.auth.signUp({email,password});if(error)throw error;if(data.session){state.user=data.user;renderAuth();await syncNow('auto');return '帳號已建立並登入。'}return '帳號已建立；若專案要求 Email 驗證，請先完成驗證再登入。'}
+  function authRedirectUrl(){return location.origin+location.pathname}
+  async function requestPasswordReset(email){const c=await ensureClient();const {error}=await c.auth.resetPasswordForEmail(email,{redirectTo:authRedirectUrl()});if(error)throw error}
+  async function updatePassword(password){const c=await ensureClient();const {error}=await c.auth.updateUser({password});if(error)throw error;state.passwordMode='';try{history.replaceState(null,'',authRedirectUrl())}catch{}renderAuth()}
+  function showPasswordPanel(){window.MozeApp?.nav?.('settings');setTimeout(()=>{document.getElementById('syncPanel')?.scrollIntoView({behavior:'smooth',block:'start'});$('syncNewPassword')?.focus()},60)}
   async function signOut(){if(state.client)await state.client.auth.signOut();state.user=null;state.conflicts=[];renderAuth();setStatus('已登出','idle','尚未登入')}
   function localState(){return window.MozeApp?.getState?window.MozeApp.getState():window.state}
   function freshState(){return {accounts:[{id:'cash',name:'現金',type:'cash',balance:0},{id:'bank',name:'銀行帳戶',type:'bank',balance:0}],categories:[{id:'food',name:'飲食',icon:'🍜',kind:'expense'},{id:'transport',name:'交通',icon:'🚗',kind:'expense'},{id:'shopping',name:'購物',icon:'🛍️',kind:'expense'},{id:'home',name:'居家',icon:'⌂',kind:'expense'},{id:'ent',name:'娛樂',icon:'◉',kind:'expense'},{id:'salary',name:'薪資',icon:'＄',kind:'income'}],projects:[],transactions:[],budgets:[],recurring:[],loans:[]}}
@@ -143,7 +151,15 @@
       for(const sk of batch){
         const op=readQueueOpByStorageKey(sk);if(!op)continue;
         try{
-          const result=await writeRecordRaw(op,{localRow:localMap.get(queueKey(op.entity,op.recordId))||null});
+          const localRow=localMap.get(queueKey(op.entity,op.recordId))||null;
+          let result=await writeRecordRaw(op,{localRow});
+          // V25.10: conflict with row:null means the cloud has no such record (stale local
+          // version metadata). Nothing in the cloud can be lost, so resolve automatically:
+          // a delete is already satisfied; an upsert is re-sent as a fresh insert.
+          if(result.conflict&&!result.row){
+            if(op.op==='delete'||!localRow){metaClear(op.entity,op.recordId);result={ok:true}}
+            else result=await writeRecordRaw(op,{localRow,forceBaseVersion:0});
+          }
           if(result.conflict)conflicts.push(result);else localStorage.removeItem(sk);
         }catch(err){console.warn('MOZE Sync record upload',op?.entity,op?.recordId,err);throw err}
         done++;if(done%10===0)updateProgress(done,total);
@@ -202,19 +218,35 @@
     markBootstrapped();
   }
   async function pullAllFromCloud(){const remote=await fetchRows('');if(!remote.length)throw new Error('雲端目前沒有逐筆資料。');if(isDirty()&&!confirm('本機有尚未同步的變更。\n\n按「確定」會直接以雲端資料覆蓋本機。'))return;await applyRemoteRows(remote,{replace:true});clearQueue();clearLegacySyncData();markBootstrapped();setStatus('已同步','ok',state.user?.email);renderAuth()}
-  async function resolveCloud(index){const c=state.conflicts[index];if(!c?.row)return;const st=JSON.parse(JSON.stringify(localState()||{}));applyRowToState(st,c.row);await window.MozeApp.setState(st,{persist:true,markDirty:false});removeQueuedKey(c.key);metaSet(c.row.entity,c.row.record_id,c.row.version,c.row.updated_at);flushMeta();state.conflicts.splice(index,1);renderAuth();setStatus(isDirty()?'待同步':'已同步','ok',state.user?.email)}
-  async function resolveLocal(index){const c=state.conflicts[index];if(!c?.row)return;const op=readQueueOpByStorageKey(queueStorageKey(c.key))||c.op;const res=await writeRecord(op,{forceBaseVersion:Number(c.row.version)||0});if(res.conflict)throw new Error('雲端資料又被其他裝置修改，請重新同步。');state.conflicts.splice(index,1);renderAuth();setStatus(isDirty()?'待同步':'已同步','ok',state.user?.email)}
+  async function resolveCloud(index){const c=state.conflicts[index];if(!c)return;const row=c.row||{entity:c.op.entity,record_id:String(c.op.recordId),deleted:true,version:0,updated_at:''};const st=JSON.parse(JSON.stringify(localState()||{}));applyRowToState(st,row);await window.MozeApp.setState(st,{persist:true,markDirty:false});removeQueuedKey(c.key);if(c.row)metaSet(row.entity,row.record_id,row.version,row.updated_at);else metaClear(row.entity,row.record_id);flushMeta();state.conflicts.splice(index,1);renderAuth();setStatus(isDirty()?'待同步':'已同步','ok',state.user?.email)}
+  async function resolveLocal(index){const c=state.conflicts[index];if(!c)return;const op=readQueueOpByStorageKey(queueStorageKey(c.key))||c.op;if(!c.row&&(op.op==='delete'||!localRecord(op.entity,op.recordId))){removeQueuedKey(c.key);metaClear(op.entity,op.recordId);flushMeta();if(!listQueueStorageKeys().length)localStorage.removeItem(scopedKey(LS_DIRTY));state.conflicts.splice(index,1);renderAuth();setStatus(isDirty()?'待同步':'已同步','ok',state.user?.email);return}const res=await writeRecord(op,{forceBaseVersion:c.row?(Number(c.row.version)||0):0});if(res.conflict)throw new Error('雲端資料又被其他裝置修改，請重新同步。');state.conflicts.splice(index,1);renderAuth();setStatus(isDirty()?'待同步':'已同步','ok',state.user?.email)}
   async function syncNow(mode='auto'){if(state.loading)return;state.loading=true;try{if(!state.client||!state.user)await ensureClient();if(!state.user){setStatus('已連線，尚未登入','idle');return}setStatus('同步中…','syncing',state.user.email);if(!getMeta().bootstrapped){await bootstrap();state.conflicts=[];setStatus('已同步','ok',state.user.email);renderAuth();return}state.conflicts=await pushQueued();const m=getMeta(),rows=await fetchRows(m.lastPull||'');if(rows.length){const safe=rows.filter(r=>!hasQueuedKey(queueKey(r.entity,r.record_id)));await applyRemoteRows(safe,{replace:false});const latest=rows.map(r=>r.updated_at).filter(Boolean).reduce((max,v)=>v>max?v:max,'');if(latest){const mm=getMeta();mm.lastPull=latest;flushMeta()}}if(state.conflicts.length){renderAuth();setStatus('有同步衝突','error',state.user.email);return}setStatus(isDirty()?'待同步':'已同步','ok',state.user.email);renderAuth()}catch(err){console.error('MOZE Sync V25.5',err);setStatus('同步失敗','error',err.message||'請檢查設定');if(mode!=='silent')alert('同步失敗：'+(err.message||err))}finally{state.loading=false}}
   function conflictLabel(c){const local=localRecord(c.op.entity,c.op.recordId);return `${c.op.entity} · ${local?.name||local?.person||c.op.recordId}`}
   function renderAuth(){
     const box=$('syncAccountArea');
     if(!box)return;
-    if(state.user){
+    if(state.user&&state.passwordMode){
+      const recovery=state.passwordMode==='recovery';
+      box.innerHTML=`<div class="sync-password-card">
+        <b>${recovery?'重設密碼':'變更密碼'}</b>
+        <small>${recovery?'已透過重設信驗證帳號，請設定新密碼。':'為目前登入的帳號設定新密碼。'}</small>
+        <span class="sync-password-email">${String(state.user.email||'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}</span>
+        <div class="sync-login-grid">
+          <label>新密碼<input id="syncNewPassword" type="password" autocomplete="new-password" placeholder="至少 6 碼"></label>
+          <label>再輸入一次<input id="syncNewPassword2" type="password" autocomplete="new-password" placeholder="再輸入一次新密碼"></label>
+          <div class="sync-login-actions">
+            ${recovery?'':'<button type="button" class="secondary" id="syncPasswordCancel">取消</button>'}
+            <button type="button" class="primary" id="syncPasswordSave">儲存新密碼</button>
+          </div>
+        </div>
+      </div><div id="syncConflictArea"></div>`;
+    }else if(state.user){
       box.innerHTML=`<div class="sync-user-card">
         <div><b>已登入雲端帳號</b><span>${String(state.user.email||'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}</span><small>${isDirty()?'有待同步變更':'資料已同步或尚未有變更'}</small></div>
         <div class="sync-user-actions">
           <button type="button" class="secondary" id="syncForcePull">從雲端載入</button>
           <button type="button" class="secondary" id="syncForcePush">上傳本機</button>
+          <button type="button" class="secondary" id="syncChangePassword">變更密碼</button>
           <button type="button" class="secondary" id="syncLogout">登出</button>
         </div>
       </div><div id="syncConflictArea"></div>`;
@@ -226,6 +258,7 @@
           <button type="button" class="secondary" id="syncSignup">建立帳號</button>
           <button type="button" class="primary" id="syncLogin">登入</button>
         </div>
+        <button type="button" class="link-button sync-forgot" id="syncForgot">忘記密碼？</button>
       </div><div id="syncConflictArea"></div>`;
     }
     bindAuthButtons();
@@ -235,7 +268,7 @@
 
   function renderConflicts(){const box=$('syncConflictArea');if(!box)return;if(!state.conflicts.length){box.innerHTML='';return}box.innerHTML=`<div class="sync-conflict-box"><div><b>同步衝突 ${state.conflicts.length} 筆</b><p>只有同一筆資料被兩台裝置同時修改時才需要處理；其他資料已自動合併。</p></div>${state.conflicts.map((c,i)=>`<div class="sync-conflict-row"><span>${conflictLabel(c)}</span><div><button type="button" class="secondary" data-conflict-cloud="${i}">保留雲端</button><button type="button" class="primary" data-conflict-local="${i}">保留本機</button></div></div>`).join('')}</div>`}
   function renderConflictButtons(){document.querySelectorAll('[data-conflict-cloud]').forEach(b=>b.onclick=async()=>{try{await resolveCloud(Number(b.dataset.conflictCloud))}catch(e){alert('保留雲端失敗：'+e.message)}});document.querySelectorAll('[data-conflict-local]').forEach(b=>b.onclick=async()=>{try{await resolveLocal(Number(b.dataset.conflictLocal))}catch(e){alert('保留本機失敗：'+e.message)}})}
-  function bindAuthButtons(){$('syncLogin')?.addEventListener('click',async()=>{const e=$('syncEmail')?.value.trim(),p=$('syncPassword')?.value||'';if(!e||!p)return alert('請輸入 Email 與密碼。');try{await signIn(e,p)}catch(err){alert('登入失敗：'+err.message)}});$('syncSignup')?.addEventListener('click',async()=>{const e=$('syncEmail')?.value.trim(),p=$('syncPassword')?.value||'';if(!e||p.length<6)return alert('請輸入 Email，密碼至少 6 碼。');try{const msg=await signUp(e,p);alert(msg)}catch(err){alert('建立帳號失敗：'+err.message)}});$('syncLogout')?.addEventListener('click',()=>signOut());$('syncForcePull')?.addEventListener('click',async()=>{try{await pullAllFromCloud()}catch(err){alert('從雲端載入失敗：'+err.message)}});$('syncForcePush')?.addEventListener('click',async()=>{try{const rows=await fetchRows('');await pushFullLocal(rows);await syncNow('auto')}catch(err){alert('上傳本機失敗：'+err.message)}})}
+  function bindAuthButtons(){$('syncLogin')?.addEventListener('click',async()=>{const e=$('syncEmail')?.value.trim(),p=$('syncPassword')?.value||'';if(!e||!p)return alert('請輸入 Email 與密碼。');try{await signIn(e,p)}catch(err){alert('登入失敗：'+err.message)}});$('syncSignup')?.addEventListener('click',async()=>{const e=$('syncEmail')?.value.trim(),p=$('syncPassword')?.value||'';if(!e||p.length<6)return alert('請輸入 Email，密碼至少 6 碼。');try{const msg=await signUp(e,p);alert(msg)}catch(err){alert('建立帳號失敗：'+err.message)}});$('syncLogout')?.addEventListener('click',()=>signOut());$('syncForgot')?.addEventListener('click',async()=>{const e=$('syncEmail')?.value.trim();if(!e)return alert('請先在 Email 欄位輸入註冊時使用的 Email，再按「忘記密碼？」。');if(!confirm(`要寄送密碼重設信到 ${e} 嗎？`))return;try{await requestPasswordReset(e);alert('若此 Email 有註冊帳號，重設密碼信已寄出。\n請在這台裝置上開啟信中的連結，回到 MOZE 後設定新密碼。\n（沒收到請檢查垃圾郵件；短時間內重複寄送可能會被限制。）')}catch(err){alert('寄送重設信失敗：'+err.message)}});$('syncChangePassword')?.addEventListener('click',()=>{state.passwordMode='change';renderAuth();showPasswordPanel()});$('syncPasswordCancel')?.addEventListener('click',()=>{state.passwordMode='';renderAuth()});$('syncPasswordSave')?.addEventListener('click',async()=>{const p=$('syncNewPassword')?.value||'',p2=$('syncNewPassword2')?.value||'';if(p.length<6)return alert('新密碼至少 6 碼。');if(p!==p2)return alert('兩次輸入的新密碼不一致。');try{await updatePassword(p);alert('新密碼已設定完成，下次登入請使用新密碼。')}catch(err){alert('設定新密碼失敗：'+err.message)}});$('syncForcePull')?.addEventListener('click',async()=>{try{await pullAllFromCloud()}catch(err){alert('從雲端載入失敗：'+err.message)}});$('syncForcePush')?.addEventListener('click',async()=>{try{const rows=await fetchRows('');await pushFullLocal(rows);await syncNow('auto')}catch(err){alert('上傳本機失敗：'+err.message)}})}
   function bindUI(){$('syncNowBtn')?.addEventListener('click',()=>syncNow('auto'));$('syncTopAction')?.addEventListener('click',()=>{window.MozeApp?.nav('settings');setTimeout(()=>document.getElementById('syncPanel')?.scrollIntoView({behavior:'smooth',block:'start'}),30)});renderAuth();window.addEventListener('online',()=>{if(state.user)syncNow('auto')});window.addEventListener('offline',()=>setStatus('離線','offline',state.user?.email||'本機仍可使用'));document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&state.user)syncNow('silent')});setInterval(()=>{if(state.user&&navigator.onLine&&!state.loading)syncNow('silent')},20000)}
   async function getAllCloudRows(){return fetchRows('')}
   async function replaceCloudWithLocal(remoteRows){await pushFullLocal(remoteRows||[]);setStatus('已同步','ok',state.user?.email);renderAuth()}
@@ -257,6 +290,6 @@
         }
       },0);
     },
-    markDirty,queueStateDiff,queueAllLocal,syncNow,signIn,signUp,signOut,getCfg
+    markDirty,queueStateDiff,queueAllLocal,syncNow,signIn,signUp,signOut,getCfg,requestPasswordReset,updatePassword
   };
 })();

@@ -1,4 +1,4 @@
-/* MOZE PWA V25.9 low-memory bundle — file:// compatible runtime */
+/* MOZE PWA V25.10 low-memory bundle — file:// compatible runtime */
 const iconPaths={
 food:'<path d="M7 3v7M4.5 3v4a2.5 2.5 0 0 0 5 0V3M7 10v11M17 3v18M14 3v5a3 3 0 0 0 6 0V3"/>',
 transport:'<path d="M5 16h14l-1-7a2 2 0 0 0-2-1H8a2 2 0 0 0-2 1l-1 7Z"/><path d="M7 16v3M17 16v3M4 13h16"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/>',

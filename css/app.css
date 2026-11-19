@@ -203,3 +203,6 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 
 /* V25.9: append import — apply to existing account balances */
 .import-apply-existing{display:flex;gap:8px;align-items:center;margin-top:10px;cursor:pointer}.import-append-note small{display:block;color:var(--muted);font-size:12px;line-height:1.6;margin-top:4px}.import-delta-list{margin-top:8px;border:1px solid var(--line);border-radius:10px;max-height:180px;overflow:auto}.import-delta-list>div{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;font-size:12px}.import-delta-list>div+div{border-top:1px solid var(--line)}
+
+/* V25.10: forgot / change password */
+.sync-forgot{background:none;border:0;color:#9ec5ff;font-size:12px;padding:6px 0;cursor:pointer;text-decoration:underline;justify-self:start}.sync-password-card{display:grid;gap:8px;padding:14px 16px;background:#112333;border:1px solid #2a4257;border-radius:14px}.sync-password-card small{color:#98aabc;font-size:12px}.sync-password-email{color:#eef4fa;font-size:13px}
