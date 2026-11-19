@@ -1,5 +1,5 @@
-const CACHE='moze-v26.17-shell-v1';
-const ASSETS=['./','./index.html','./css/app.css','./js/sync-config.js','./js/sync.js','./js/app.bundle.js','./js/import.js','./manifest.json','./icons/icon-192.png','./icons/icon-512.png'];
+const CACHE='moze-v26.18-shell-v1';
+const ASSETS=['./','./index.html','./css/app.css','./css/light.css','./js/sync-config.js','./js/sync.js','./js/app.bundle.js','./js/import.js','./manifest.json','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS.map(u=>new Request(u,{cache:'reload'})))).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE&&k!==FONT_CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()).then(()=>self.clients.matchAll({type:'window'})).then(list=>list.forEach(c=>c.postMessage({type:'moze-updated',version:CACHE.replace(/^moze-v|-shell.*$/g,'')})))));
 const FONT_CACHE='moze-fonts-v1',FONT_HOSTS=['fonts.googleapis.com','fonts.gstatic.com'];

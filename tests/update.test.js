@@ -8,7 +8,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const inlinePath = path.join(require('node:os').tmpdir(), `moze-inline-${process.pid}.js`);
-fs.writeFileSync(inlinePath, html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/)[1]);
+fs.writeFileSync(inlinePath, html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>')));
 const swPath = path.join(root, 'sw.js');
 const VERSION = fs.readFileSync(swPath, 'utf8').match(/moze-v([\d.]+)-shell/)[1];
 

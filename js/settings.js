@@ -5,14 +5,22 @@
 // ---------- preferences (per device, not synced) ----------
 var prefsCache;
 function prefsKey() { return 'moze-prefs-v1'; }
-function prefsDefaults() { return { weekStart: 0, showQuick: true, jumpToTxDate: false }; }
+function prefsDefaults() { return { weekStart: 0, showQuick: true, jumpToTxDate: false, theme: 'dark' }; }
 function prefs() {
   if (!prefsCache) { let p = {}; try { p = JSON.parse(localStorage.getItem(prefsKey()) || '{}') || {}; } catch { p = {}; } prefsCache = { ...prefsDefaults(), ...p }; }
   return prefsCache;
 }
 function setPref(k, v) { prefs()[k] = v; try { localStorage.setItem(prefsKey(), JSON.stringify(prefsCache)); } catch {} applyPrefs(); }
+// 'system' follows the OS; the inline script in index.html applies the same rule before first paint.
+function themeResolved(p = prefs()) { return p.theme === 'light' ? 'light' : p.theme === 'system' ? (typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : 'dark'; }
+function applyTheme() {
+  const t = themeResolved(), html = document.documentElement; if (html?.dataset) html.dataset.theme = t;
+  const meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.setAttribute('content', t === 'light' ? '#f3f5f8' : '#101820');
+  try { renderChart(); } catch {}
+}
 function applyPrefs() {
   const p = prefs();
+  applyTheme();
   const quick = document.querySelector('[data-quick]')?.closest?.('.panel'); if (quick) quick.hidden = !p.showQuick;
   const dow = document.querySelector('.calendar .dow');
   if (dow) { const names = ['日', '一', '二', '三', '四', '五', '六']; dow.innerHTML = names.map((_, i) => `<span>${names[(i + p.weekStart) % 7]}</span>`).join(''); }
@@ -24,6 +32,8 @@ function settingsInit() {
   const ws = document.getElementById('prefWeekStart'); if (ws) { ws.value = String(p.weekStart); ws.onchange = () => { setPref('weekStart', Number(ws.value) || 0); renderCalendar(); }; }
   const sq = document.getElementById('prefShowQuick'); if (sq) { sq.checked = !!p.showQuick; sq.onchange = () => setPref('showQuick', sq.checked); }
   const jd = document.getElementById('prefJumpToTxDate'); if (jd) { jd.checked = !!p.jumpToTxDate; jd.onchange = () => setPref('jumpToTxDate', jd.checked); }
+  const th = document.getElementById('prefTheme'); if (th) { th.value = p.theme || 'dark'; th.onchange = () => setPref('theme', th.value); }
+  if (typeof matchMedia === 'function') { const mq = matchMedia('(prefers-color-scheme: light)'); mq.addEventListener?.('change', () => { if (prefs().theme === 'system') applyTheme(); }); }
   const ex = document.getElementById('exportMozeCsv'); if (ex) ex.onclick = () => downloadMozeCsv();
   applyPrefs();
 }
