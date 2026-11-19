@@ -13,10 +13,11 @@ import { svg, accountIcon } from './icons.js';
     const st=currentState(),cc=$('categoryChoices'),ac=$('accountChoices'),cs=$('formCategory'),as=$('formAccount');
     if(!st||!cc||!ac||!cs||!as)return;
     const kind=document.querySelector('input[name="kind"]:checked')?.value||'expense';
-    const categories=st.categories.filter(c=>c.kind===kind || (kind==='transfer' && c.kind==='expense'));
+    const ordered=typeof catOrdered==='function'?catOrdered():st.categories; // V26.7: user-defined order, subcategories under their main
+    const categories=ordered.filter(c=>(c.kind||'expense')===kind || (kind==='transfer' && (c.kind||'expense')==='expense'));
     cs.innerHTML=categories.map(c=>`<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
     if(!categories.some(c=>String(c.id)===String(cs.value)))cs.value=categories[0]?.id||'';
-    cc.innerHTML=categories.map(c=>`<button type="button" class="choice-chip" data-select="formCategory" data-value="${c.id}"><span class="chip-icon">${svg(c.id)}</span><span class="choice-label">${escHtml(c.name)}</span><span class="checkmark">✓</span></button>`).join('');
+    cc.innerHTML=categories.map(c=>`<button type="button" class="choice-chip" data-select="formCategory" data-value="${c.id}"><span class="chip-icon">${svg(c.id)}</span><span class="choice-label">${c.parentId?'<small>└</small> ':''}${escHtml(c.name)}</span><span class="checkmark">✓</span></button>`).join('');
     ac.innerHTML=Array.from(as.options).map(o=>{const a=st.accounts.find(x=>String(x.id)===String(o.value));return `<button type="button" class="choice-chip" data-select="formAccount" data-value="${o.value}"><span class="chip-icon">${svg(accountIcon(a))}</span><span class="choice-label">${escHtml(o.text||a?.name)}</span><span class="checkmark">✓</span></button>`}).join('');
     sync();
   }
