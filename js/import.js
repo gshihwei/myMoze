@@ -222,7 +222,7 @@
       txs.push({
         id:makeId('tx',`${date}|${time}|${baseKey}|${index}|loan-payment|${loan.id}|${loan.payments.length}`),date,time,
         name:cleanName(row[8],30)|| (direction==='receivable'?'收款':'還款'), merchant:cleanName(row[9],30), amount:apply,
-        kind:'loanPayment', loanId:loan.id, loanDirection:direction, recordType:type, category:'', mainCategory:'', subcategory:subcategory,
+        kind:'loanPayment', loanId:loan.id, paymentId:payment.id, loanDirection:direction, recordType:type, category:'', mainCategory:'', subcategory:subcategory,
         account:account.id, project:'', note:norm(row[13]).slice(0,300), tags:norm(row[14])?norm(row[14]).split(';').map(x=>x.trim()).filter(Boolean):[],
         person, currency:loanCurrency, fee:fd.fee, discount:fd.discount, _importKey:baseKey, imported:true, balanceEffect:(direction==='receivable'?1:-1)*apply+fd.effect
       });
@@ -240,7 +240,7 @@
       const fd=takeFee();
       txs.push({
         id:makeId('tx',`${date}|${time}|${baseKey}|${index}|loan-payment|history`),date,time,
-        name:loan.name, merchant:cleanName(row[9],30), amount:remaining, kind:'loanPayment', loanId:loan.id, loanDirection:direction,
+        name:loan.name, merchant:cleanName(row[9],30), amount:remaining, kind:'loanPayment', loanId:loan.id, paymentId:loan.payments[0].id, loanDirection:direction,
         recordType:type, category:'', mainCategory:'', subcategory:subcategory, account:account.id, project:'', note:loan.note,
         tags:norm(row[14])?norm(row[14]).split(';').map(x=>x.trim()).filter(Boolean):[], person, currency:loan.currency, fee:fd.fee, discount:fd.discount,
         _importKey:baseKey, imported:true, balanceEffect:(direction==='receivable'?1:-1)*remaining+fd.effect
