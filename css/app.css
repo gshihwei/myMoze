@@ -234,3 +234,4 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 /* V26.10 accounts */.account-manage-btn{border:1px solid #30485d!important;background:#14222f!important;color:#dce6ed!important;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;margin-left:auto}.credit-card-row-main{display:flex;align-items:center;gap:10px}.account-tile.archived,.credit-card-row:has(.account-manage-btn) .archived{opacity:.6}.acct-manage-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)}.acct-manage-actions .hint{margin:0 auto 0 0}
 .form-grid.form-grid-1{grid-template-columns:1fr;margin-top:10px}
 /* generic modal fields share the form-grid label style */.entity-field{margin-top:10px}.entity-field label{font-size:12px;color:#aab8c5;display:grid;gap:6px;font-weight:400}
+/* V26.11 */#txForm .transfer-only{display:none;gap:6px;font-size:12px;color:#aab8c5}

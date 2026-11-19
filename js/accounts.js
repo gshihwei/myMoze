@@ -65,6 +65,28 @@ function acctAdjustTo(a, target, date, note) {
   return t;
 }
 
+// ---- V26.11 transfers between accounts (incl. different currencies) ----
+function transferNeedsFx(fromId, toId) { const a = acct(fromId), b = acct(toId); return !!(a?.id && b?.id && acctCur(a) !== acctCur(b)); }
+// Balance effects of a manual transfer: source pays amount + fee; destination receives toAmount
+// (its own currency) when the currencies differ, otherwise the same amount.
+function transferFields(amount, fromId, toId, toAmountRaw, feeRaw) {
+  const fee = Math.max(0, Number(feeRaw) || 0), fx = transferNeedsFx(fromId, toId), toAmount = Number(toAmountRaw);
+  if (String(fromId) === String(toId)) return { error: '轉出與轉入帳戶不能相同' };
+  if (fx && !(toAmount > 0)) return { error: `兩個帳戶幣別不同，請輸入轉入金額（${acctCur(acct(toId))}）` };
+  const out = { fee: fee || undefined, balanceEffect: fee ? -(Math.abs(amount) + fee) : undefined };
+  if (fx) { out.toAmount = toAmount; out.toBalanceEffect = toAmount; out.toCurrency = acctCur(acct(toId)); }
+  else { out.toAmount = undefined; out.toBalanceEffect = undefined; out.toCurrency = undefined; }
+  return out;
+}
+function updateTransferFx() {
+  const f = document.getElementById('txForm'); if (!f?.elements) return;
+  const isT = f.elements.kind?.value === 'transfer' || document.querySelector('input[name=kind]:checked')?.value === 'transfer';
+  const fx = isT && transferNeedsFx(f.elements.account?.value, f.elements.toAccount?.value);
+  const field = document.getElementById('transferFxField'); if (field) field.style.display = fx ? 'grid' : 'none';
+  const cur = document.getElementById('transferFxCur'); if (cur) cur.textContent = fx ? acctCur(acct(f.elements.toAccount.value)) : '';
+}
+document.addEventListener('change', e => { if (e.target?.closest?.('#txForm') && ['account', 'toAccount', 'kind'].includes(e.target.name)) updateTransferFx(); });
+
 document.addEventListener('click', async e => {
   const find = v => (state.accounts || []).find(a => String(a.id) === String(v));
   const mg = e.target.closest?.('[data-acct-manage]'); if (mg) { e.preventDefault(); e.stopPropagation(); const a = find(mg.dataset.acctManage); if (a) openEntity('accountEdit', a); return; }
