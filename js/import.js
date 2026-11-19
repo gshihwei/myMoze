@@ -378,13 +378,24 @@
     return next;
   }
 
+  // V25.21: rows that failed to import, as an importable MOZE CSV (fix them and append-import again;
+  // rows already imported are skipped as duplicates).
+  function errorRowsCsv(rows, errors){
+    const lines=[...new Set(errors.map(e=>e.row))].sort((a,b)=>a-b).map(n=>rows[n-1]).filter(Boolean);
+    const cell=v=>{const t=String(v??'');return /[",\r\n]/.test(t)?`"${t.replace(/"/g,'""')}"`:t};
+    return '﻿'+[HEADERS,...lines].map(r=>r.map(cell).join(',')).join('\r\n');
+  }
+  function errorAccounts(rows, errors){return [...new Set(errors.map(e=>norm(rows[e.row-1]?.[0])).filter(Boolean))]}
+
   function showModal(result, currentState, rows) {
     const bg=$('csvImportBg'), body=$('csvImportBody'); if(!bg||!body)return;
-    let mode='append', applyExisting=false;
+    let mode='append', applyExisting=false, ackErrors=false;
     const renderBody=()=>{
       const previewState=mode==='overwrite'?makeOverwriteState(currentState):JSON.parse(JSON.stringify(currentState));
       const previewResult=mode==='overwrite'?buildImport(previewState,rows):result;
       const warn=previewResult.warnings?.length ? `<div class="import-warnings"><b>有 ${previewResult.warnings.length} 筆格式提醒</b>${previewResult.warnings.slice(0,20).map(e=>`<div>第 ${e.row} 列：${escapeHtml(e.message)}</div>`).join('')}${previewResult.warnings.length>20?`<div>…另有 ${previewResult.warnings.length-20} 筆</div>`:''}</div>` : '';
+      const errAccts=errorAccounts(rows,previewResult.errors);
+      const errAck=previewResult.errors.length ? `<div class="import-partial"><b>⚠️ 這是部分匯入：${previewResult.errors.length} 列不會匯入</b><p>${errAccts.length?`受影響的帳戶：${errAccts.map(escapeHtml).join('、')}。`:''}這些帳戶的餘額會少算這幾列的金額。建議先下載錯誤列、修正後用「追加紀錄」再匯入一次（已匯入的資料會自動略過）。</p><div class="import-partial-actions"><button type="button" class="secondary" id="csvDownloadErrors">下載錯誤列 CSV</button><label><input type="checkbox" id="csvAckErrors" ${ackErrors?'checked':''}> 我了解這 ${previewResult.errors.length} 列不會匯入</label></div></div>` : '';
       const errs=previewResult.errors.length ? `<div class="import-errors"><b>需要修正 ${previewResult.errors.length} 筆</b>${previewResult.errors.slice(0,20).map(e=>`<div>第 ${e.row} 列：${escapeHtml(e.message)}</div>`).join('')}${previewResult.errors.length>20?`<div>…另有 ${previewResult.errors.length-20} 筆</div>`:''}</div>` : '';
       const overwriteNotice=mode==='overwrite'?`<div class="import-overwrite-warning"><b>⚠️ 完整覆蓋</b><p>會清除目前的交易、帳戶、分類、專案、預算、週期交易與借還款，再用這份 CSV 重建可匯入的資料。</p><p>確認前會自動下載目前資料的 JSON 備份。</p></div>`:'';
       const deltaRows=[...(result.existingDeltas||new Map())].map(([id,d])=>{const a=(result.state.accounts||[]).find(x=>String(x.id)===id);return a?{a,d}:null}).filter(Boolean);
@@ -398,17 +409,20 @@
         </div>
         ${mode==='overwrite'?overwriteNotice:appendNotice}
         <div class="import-summary"><div><b>${previewResult.transactions.length}</b><span>筆可匯入交易</span></div><div><b>${previewResult.loanCount||0}</b><span>筆借還款變更</span></div><div><b>${previewResult.accountOnly||0}</b><span>筆帳戶建立</span></div><div><b>${previewResult.skipped}</b><span>筆重複略過</span></div><div><b>${previewResult.errors.length}</b><span>筆錯誤</span></div></div>
-        ${errs}${warn}
+        ${errAck}${errs}${warn}
         <div class="import-created"><b>本次自動建立</b><span>帳戶 ${previewResult.created.accounts.length} · 分類 ${previewResult.created.categories.length} · 專案 ${previewResult.created.projects.length} · 借還款 ${previewResult.created.loans?.length||0}</span></div>
         <p class="hint">帳戶與分類不存在時會自動建立；新建立帳戶會依匯入資料計算餘額。轉帳需符合「轉出＋下一列轉入」且日期、時間一致的格式。</p>
         <div class="import-preview"><b>預覽前 10 筆</b>${previewResult.transactions.slice(0,10).map(t=>`<div><span>${escapeHtml(t.date)} ${escapeHtml(t.time)} · ${escapeHtml(t.name)}</span><b>${t.kind==='expense'?'−':'+'}${Number(t.amount).toLocaleString()}</b></div>`).join('')||'<div class="empty">沒有可匯入的交易</div>'}</div>`;
       body.querySelectorAll('input[name=csvImportMode]').forEach(r=>r.addEventListener('change',()=>{mode=r.value;renderBody()}));
       body.querySelector('#csvApplyExisting')?.addEventListener('change',e=>{applyExisting=!!e.target.checked;renderBody()});
+      body.querySelector('#csvAckErrors')?.addEventListener('change',e=>{ackErrors=!!e.target.checked;renderBody()});
+      body.querySelector('#csvDownloadErrors')?.addEventListener('click',()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([errorRowsCsv(rows,previewResult.errors)],{type:'text/csv;charset=utf-8'}));a.download=`${String(result.fileName||'MOZE').replace(/\.csv$/i,'')}-錯誤列.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)});
       const active=mode==='overwrite'?previewResult:result;
-      $('csvImportConfirm').disabled = (active.transactions.length===0 && (active.accountOnly||0)===0);
+      $('csvImportConfirm').disabled = (active.transactions.length===0 && (active.accountOnly||0)===0) || (active.errors.length>0 && !ackErrors);
       $('csvImportConfirm').textContent = mode==='overwrite'?'完整覆蓋並匯入':'追加匯入';
       $('csvImportConfirm').onclick = async()=>{
         if(!active.transactions.length && !(active.accountOnly||0)){bg.classList.remove('open');return;}
+        if(active.errors.length && !ackErrors) return;
         try {
           if(mode==='overwrite') {
             downloadBackup(currentState);
@@ -610,5 +624,5 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   // Pure helpers exposed for Node regression tests (tests/import.test.js). Not used by the UI.
-  window.MozeImportInternals = {parseCSV, buildImport, findLoanCandidates, ensureAccount, txAccountEffects, ledgerByAccount, csvOpenings, reconcile};
+  window.MozeImportInternals = {parseCSV, buildImport, findLoanCandidates, ensureAccount, errorRowsCsv, errorAccounts, txAccountEffects, ledgerByAccount, csvOpenings, reconcile};
 })();

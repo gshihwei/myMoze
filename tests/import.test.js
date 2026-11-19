@@ -203,3 +203,26 @@ test('轉帳：來源為既有帳戶、目的為新帳戶時，新帳戶仍計�
   assert.equal(bal(st, '悠遊卡'), 300);
   assert.equal(res.existingDeltas.get('a1'), -300);
 });
+
+test('部分匯入：錯誤列可下載成可再匯入的 CSV，修正後追加匯入不會重複', () => {
+  const st = emptyState();
+  const rows = M.parseCSV([HEADER,
+    r('錢包', 'TWD', '初始金額', '', '', '1000', '', '', ''),
+    r('錢包', 'TWD', '支出', '飲食', '午餐', '-100'),
+    r('銀行', 'TWD', '支出', '飲食', '晚餐', '-50', '', '', '2024/13/40'),     // bad date
+    r('錢包', 'TWD', '支出', '飲食', '"宵夜, ""大"""', 'abc'),                    // bad amount, quoted text
+  ].join('\n'));
+  const res = M.buildImport(st, rows);
+  assert.equal(res.errors.length, 2);
+  assert.deepEqual([...M.errorAccounts(rows, res.errors)].sort(), ['銀行', '錢包'].sort());
+  const csv = M.errorRowsCsv(rows, res.errors);
+  const back = M.parseCSV(csv.replace(/^\uFEFF/, ''));
+  assert.equal(back.length, 3);
+  assert.deepEqual([...back[2]], [...rows[4]]);
+  // fix the two rows and append: only they are added, nothing duplicated
+  back[1][10] = '2024/1/2'; back[2][5] = '-30';
+  const res2 = M.buildImport(st, back);
+  assert.equal(res2.errors.length, 0);
+  assert.equal(res2.transactions.length, 2);
+  const again = M.buildImport(st, rows); assert.equal(again.transactions.length, 0, JSON.stringify(again.transactions.map(t => [t.name, t.amount, t.date])) + JSON.stringify(res.errors));
+});
