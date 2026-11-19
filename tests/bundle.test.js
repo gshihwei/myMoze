@@ -112,3 +112,12 @@ test('bundle acctName()／acctMoney()：非 TWD 帳戶顯示幣別並用自己�
   assert.match(usd, /12\.5/); assert.notEqual(usd, b.run('money(12.5)'));
   assert.match(b.run(`acctMoney(5,{currency:'XX1'})`), /^XX1 5$/); // invalid code falls back
 });
+
+// V25.17: new devices start blank — no demo transactions or balances.
+test('bundle seed：新裝置只有預設分類與兩個 0 元帳戶', () => {
+  const b = loadBundle();
+  const seed = JSON.parse(b.run('JSON.stringify(seed)'));
+  for (const k of ['transactions', 'projects', 'budgets', 'recurring', 'loans']) assert.equal(seed[k].length, 0, k);
+  assert.deepEqual(seed.accounts.map(a => [a.id, a.balance]), [['cash', 0], ['bank', 0]]);
+  assert.ok(seed.categories.length >= 6);
+});
