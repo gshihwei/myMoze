@@ -99,3 +99,27 @@ test('對帳會跳過尚未入帳的待完成交易', () => {
   const { J } = bundle(st);
   assert.deepEqual(J(`ledgerEffects(state.transactions[1])`), []);
 });
+
+test('自動入帳：補記所有已到期的期數、到結束條件為止；未開啟的不動', () => {
+  const { run, J } = bundle(base({ recurring: [
+    { id: 'auto', name: '訂閱', amount: 100, kind: 'expense', category: 'c', account: 'a', freq: 'month', interval: 1, start: '2026-01-15', next: '2026-01-15', end: { type: 'count', value: 4 }, auto: true },
+    { id: 'manual', name: '房租', amount: 300, kind: 'expense', category: 'c', account: 'a', freq: 'month', interval: 1, start: '2026-01-01', next: '2026-01-01', end: { type: 'never' } },
+  ] }));
+  assert.equal(J(`autoPostRecurring('2026-06-20')`), 4);
+  assert.deepEqual(J(`state.transactions.map(t=>[t.id,t.date])`), [['rec-auto-1', '2026-01-15'], ['rec-auto-2', '2026-02-15'], ['rec-auto-3', '2026-03-15'], ['rec-auto-4', '2026-04-15']]);
+  assert.equal(J('state.recurring[0].ended'), true);
+  assert.equal(J('state.accounts[0].balance'), 1000 - 400);
+  assert.equal(J(`autoPostRecurring('2026-06-20')`), 0);
+  run('0');
+});
+
+test('自動入帳不重複：另一台裝置已同步來同一期的交易時，只往後推不再建立', () => {
+  const { J } = bundle(base({
+    recurring: [{ id: 'r', name: '訂閱', amount: 100, kind: 'expense', category: 'c', account: 'a', freq: 'month', interval: 1, start: '2026-01-15', next: '2026-01-15', end: { type: 'never' }, auto: true }],
+    transactions: [{ id: 'rec-r-1', kind: 'expense', amount: 100, account: 'a', date: '2026-01-15', recurringId: 'r', recurringSeq: 1 }],
+  }));
+  assert.equal(J(`autoPostRecurring('2026-02-20')`), 2);
+  assert.deepEqual(J('state.transactions.map(t=>t.id)'), ['rec-r-1', 'rec-r-2']);
+  assert.equal(J('state.recurring[0].next'), '2026-03-15');
+  assert.equal(J('state.accounts[0].balance'), 1000 - 100, 'only the new period changed the balance');
+});
