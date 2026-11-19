@@ -108,6 +108,7 @@ function anByKey(start, end, kind, account, keyOf, limit = 8) {
 function anMerchants(s, e, k, a) { return anByKey(s, e, k, a, t => [t.merchant || '']); }
 function anTags(s, e, k, a) { return anByKey(s, e, k, a, t => (Array.isArray(t.tags) ? t.tags : []).map(x => '#' + x)); }
 function anAccounts(s, e, k, a) { return anByKey(s, e, k, a, t => [acct(t.account).name || '未知帳戶']); }
+function anPersons(s, e, k, a) { return anByKey(s, e, k, a, t => [t.person && t.person !== '不限定對象' ? t.person : '']); }
 function anProjects(s, e, k, a) { return anByKey(s, e, k, a, t => [t.project ? (state.projects.find(p => String(p.id) === String(t.project))?.name || '') : '']); }
 
 // Buckets for the columns chart: daily for periods up to 62 days, monthly otherwise.
@@ -281,6 +282,7 @@ function renderAnalysis() {
       ${side('標籤排行', anTags(R.start, R.end, st.kind, st.account))}
       ${side('帳戶排行', anAccounts(R.start, R.end, st.kind, st.account))}
       ${side('專案排行', anProjects(R.start, R.end, st.kind, st.account))}
+      ${side('對象排行', anPersons(R.start, R.end, st.kind, st.account))}
     </div>`;
 
   anBindTip(document.getElementById('anColumns'), i => { const r = buckets.rows[i]; return r && { title: anBucketTitle(r.key, buckets.daily), rows: series.map(s => ({ color: s.color, value: money(r[s.key]), label: s.label })) }; });

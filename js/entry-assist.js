@@ -26,6 +26,7 @@ function entryFillDatalists() {
   const fill = (id, values) => { const dl = document.getElementById(id); if (dl) dl.innerHTML = values.map(v => `<option value="${esc(v)}"></option>`).join(''); };
   fill('nameSuggest', entryRanked('name', kind));
   fill('merchantSuggest', entryRanked('merchant', ''));
+  fill('personSuggest', entryRanked('person', '').filter(p => p !== '不限定對象'));
 }
 
 // When a known name is typed or picked on a NEW transaction, prefill category / account / merchant

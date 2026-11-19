@@ -119,3 +119,13 @@ test('renderAnalysis()：輸出篩選、KPI、排行與表格，並跳脫名稱'
   run(`anState.drill='food';renderAnalysis()`);
   assert.match(root.innerHTML, /飲食 · 子分類/);
 });
+
+test('對象排行：忽略空白與「不限定對象」', () => {
+  const { J } = bundle(base({ transactions: [
+    { id: 1, kind: 'expense', amount: 100, account: 'a', date: '2026-06-02', person: '家人' },
+    { id: 2, kind: 'expense', amount: 50, account: 'a', date: '2026-06-03', person: '家人' },
+    { id: 3, kind: 'expense', amount: 30, account: 'a', date: '2026-06-04', person: '不限定對象' },
+    { id: 4, kind: 'expense', amount: 20, account: 'a', date: '2026-06-05' },
+  ] }));
+  assert.deepEqual(J(`anPersons('2026-06-01','2026-06-30','expense','all').rows.map(r=>[r.name,r.amount,r.count])`), [['家人', 150, 2]]);
+});

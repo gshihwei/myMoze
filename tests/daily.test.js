@@ -77,3 +77,12 @@ test('編輯交易會保留原有欄位（時間、幣別、匯入 key 等），
   assert.equal(t.time, '12:45'); assert.deepEqual(t.tags, ['公司', '便當']);
   assert.equal(b.run('state.accounts[0].balance'), -170);
 });
+
+test('記帳表單的「對象」會寫入交易', () => {
+  const txForm = { elements: {}, reset() {} }, splitRows = { querySelectorAll: () => [] };
+  const b = bundle(base(), { txForm, splitRows });
+  b.run('editId=null');
+  b.setForm({ kind: 'expense', amount: '80', date: '2026-06-02', name: '晚餐', category: 'food', account: 'a', person: ' 同事 ' });
+  b.run(`submitTx({preventDefault(){}})`);
+  assert.equal(b.run('state.transactions[0].person'), '同事');
+});
