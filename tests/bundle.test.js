@@ -76,3 +76,26 @@ test('bundle：借還款交易不能從交易明細刪除', { timeout: 5000 }, a
   assert.equal(balances(b).a, 500);
   assert.match(b.alerts.at(-1), /借還款/);
 });
+
+// V25.14: imported / synced text must never become markup.
+const EVIL = '<img src=x onerror="alert(1)">';
+test('bundle esc()：特殊字元全部跳脫', () => {
+  const b = loadBundle();
+  assert.equal(b.run(`esc(${JSON.stringify(EVIL + "&'")})`), '&lt;img src=x onerror=&quot;alert(1)&quot;&gt;&amp;&#39;');
+});
+
+test('bundle txRow()：交易名稱、商家、帳戶、分類圖示不會變成 HTML', () => {
+  const b = setup([{ id: 'a', name: EVIL, balance: 0 }]);
+  b.run(`state.categories.push({id:'c',name:${JSON.stringify(EVIL)},icon:${JSON.stringify(EVIL)}})`);
+  const html = b.run(`txRow({id:'t',kind:'expense',amount:1,account:'a',category:'c',name:${JSON.stringify(EVIL)},merchant:${JSON.stringify(EVIL)}})`);
+  assert.ok(!html.includes('<img'), html);
+  assert.match(html, /&lt;img/);
+});
+
+test('app.js：使用者文字欄位放進 HTML 前都經過 esc()', () => {
+  const src = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8')
+    .replace(/(?:alert|confirm)\(`[^`]*`|name:`[^`]*`/g, ''); // plain-text contexts, not HTML
+  const raw = [...src.matchAll(/\$\{([^{}]*(?:\.name|\.note|\.person|\.merchant|\.icon)\b[^{}]*)\}/g)]
+    .map(m => m[1]).filter(e => !/^esc\(/.test(e));
+  assert.deepEqual(raw, []);
+});
