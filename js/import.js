@@ -502,6 +502,7 @@
   const round2=n=>Math.round(Number(n||0)*100)/100;
   function txAccountEffects(t){
     const out=[]; if(!t||t.account===undefined||t.account===null||t.account==='') return out;
+    if(t.pending&&t.pendingApplied===false) return out; // V26.2: not yet applied to the balance
     const n=v=>Number(v||0), abs=v=>Math.abs(n(v));
     if(t.kind==='transfer'){
       out.push([t.account, Number(t.balanceEffect??(-n(t.amount)))]);
