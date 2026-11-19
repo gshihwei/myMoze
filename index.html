@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#172638"><meta name="description" content="帳小簿 個人記帳 PWA V26.5：桌面、手機、逐筆雲端同步與借還款追蹤">
+<meta name="theme-color" content="#172638"><meta name="description" content="帳小簿 個人記帳 PWA V26.6：桌面、手機、逐筆雲端同步與借還款追蹤">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#101820">
@@ -62,6 +62,7 @@
               <div class="panel"><div class="panel-head"><div><h2>借還款追蹤</h2><p id="loanTrackTotal"></p></div><button class="ghost" data-view="loans">查看更多</button></div><div id="loanSummary"></div></div>
             </div>
             <div class="col">
+              <div class="panel"><div class="panel-head"><div><h2>本月預算</h2><p id="budgetOverviewTotal"></p></div><button class="ghost" data-view="budgets">管理預算</button></div><div id="budgetOverview"></div></div>
               <div class="panel"><div class="panel-head"><div><h2>即將到來</h2><p id="upcomingTotal"></p></div><button class="ghost" data-view="recurring">管理週期</button></div><div id="upcoming"></div></div>
             </div>
           </div>
@@ -89,7 +90,7 @@
 
     <section class="view" id="view-analysis"><div class="page-head"><div><h2>報表分析</h2><p>依期間、收支與帳戶查看分類、趨勢與排行</p></div></div><div id="analysisRoot"></div><div hidden><div id="categoryBars"></div><div id="assetBars"></div><div id="trendChart"></div></div></section>
 
-    <section class="view" id="view-budgets"><div class="page-head"><div><h2>預算</h2><p>追蹤每月分類與專案花費上限</p></div><button class="primary" id="newBudget">＋ 新增預算</button></div><div id="budgetGrid" class="card-grid"></div></section>
+    <section class="view" id="view-budgets"><div class="page-head"><div><h2>預算</h2><p id="budgetSummary">追蹤每月總支出、分類與專案的花費上限</p></div><button class="primary" id="newBudget">＋ 新增預算</button></div><div id="budgetGrid" class="card-grid"></div></section>
 
     <section class="view" id="view-recurring"><div class="page-head"><div><h2>週期交易</h2><p>訂閱、薪資、帳單與固定付款</p></div><button class="primary" id="newRecurring">＋ 新增週期</button></div><div id="recurringGrid" class="card-grid"></div></section>
 
@@ -117,7 +118,7 @@
   <div class="panel-head"><div><h2>雲端同步</h2><p>同一個帳號可在手機與桌面共用資料；每筆資料獨立同步，離線時仍可使用本機資料。</p></div><span class="sync-badge" id="syncBadge">未設定</span></div>
   <div class="sync-actions"><button type="button" class="primary" id="syncNowBtn">立即同步</button></div>
   <div class="sync-account" id="syncAccountArea"></div>
-  <div class="sync-note" id="syncNote">V26.5 的 Supabase 連線資訊由 App 內建，使用者不需要輸入 URL 或 Publishable Key。每個使用者使用自己的帳號登入，資料由 Supabase Auth + RLS 隔離。</div>
+  <div class="sync-note" id="syncNote">V26.6 的 Supabase 連線資訊由 App 內建，使用者不需要輸入 URL 或 Publishable Key。每個使用者使用自己的帳號登入，資料由 Supabase Auth + RLS 隔離。</div>
 </div>
 <div class="settings-grid"><div class="panel"><h2>資料</h2><div class="setting-actions"><button class="secondary" id="exportJson">匯出 JSON</button><button class="secondary" id="importJson">匯入 JSON</button><button class="secondary" id="importCsv">匯入 MOZE CSV</button><button class="secondary" id="downloadImportTemplate">下載 CSV 範本</button><button class="secondary" id="reconcileAccounts">帳戶對帳</button><input hidden id="importFile" type="file" accept="application/json"><input hidden id="importCsvFile" type="file" accept=".csv,text/csv"><input hidden id="reconcileCsvFile" type="file" accept=".csv,text/csv"></div><p class="hint">MOZE CSV 匯入依照官方欄位順序；可選擇「追加紀錄」或「完整覆蓋」。帳戶、主／子類別與專案不存在時會自動建立；重複匯入會自動略過相同資料。</p></div><div class="panel"><h2>偏好</h2><label class="setting"><span>深色主題</span><input type="checkbox" id="darkMode" checked></label><label class="setting"><span>新增交易後停留在當日</span><input type="checkbox" checked></label><label class="setting"><span>顯示快速記帳</span><input type="checkbox" id="showQuick" checked></label></div><div class="panel danger"><h2>危險區域</h2><button class="secondary danger-btn" id="resetAll">清除所有資料</button></div></div></section>
   </main>
