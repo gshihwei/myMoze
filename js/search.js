@@ -93,7 +93,7 @@ function txFillAdvanced() {
 
 function txSummaryHTML(s, shown, f) {
   const n = txActiveFilterCount(f);
-  return `<div class="tx-toolbar"><div class="tx-summary"><span>共 <b>${s.count.toLocaleString()}</b> 筆${shown < s.count ? `（顯示 ${shown.toLocaleString()}）` : ''}</span><span>支出 <b class="expense-text">${money(s.out)}</b></span><span>收入 <b class="income-text">${money(s.inc)}</b></span><span>淨額 <b>${s.net < 0 ? '−' : '+'}${money(Math.abs(s.net))}</b></span>${s.pending ? `<span>${s.pending} 筆待完成未計入</span>` : ''}</div>${n ? `<button type="button" class="ghost" id="txClearFilters">清除 ${n} 個進階條件</button>` : ''}</div>`;
+  return `<div class="tx-toolbar"><div class="tx-summary"><span>共 <b>${s.count.toLocaleString()}</b> 筆${shown < s.count ? `（顯示 ${shown.toLocaleString()}）` : ''}</span><span>支出 <b class="expense-text">${money(s.out)}</b></span><span>收入 <b class="income-text">${money(s.inc)}</b></span><span>淨額 <b>${s.net < 0 ? '−' : '+'}${money(Math.abs(s.net))}</b></span>${s.pending ? `<span>${s.pending} 筆待完成未計入</span>` : ''}</div><span class="tx-toolbar-actions">${n ? `<button type="button" class="ghost" id="txClearFilters">清除 ${n} 個進階條件</button>` : ''}<button type="button" class="ghost" id="txBulkToggle" aria-pressed="${bulkMode ? 'true' : 'false'}">${bulkMode ? '結束批次編輯' : '批次編輯'}</button></span></div>`;
 }
 
 function txClearAdvanced() {
