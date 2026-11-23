@@ -86,3 +86,13 @@ test('進階篩選選單：標籤去重排序、專案含「無專案」，名�
   assert.match(txProject.innerHTML, /value="none">無專案/);
   assert.equal(txCustomRange.hidden, false);
 });
+
+test('搜尋結果匯出 CSV（V26.27）：標題、跳脫、篩選後筆數', () => {
+  const { run } = bundle(base());
+  const csv = run(`txExportCsv(txSearchRun({q:'',type:'expense',category:'all',account:'all',range:'all',from:'',to:'',min:'100',max:'5000',tag:'all',project:'all',status:'done',sort:'dateAsc'}))`);
+  const lines = csv.replace(/^﻿/, '').split('\r\n');
+  assert.equal(lines[0].split(',')[0], '日期');
+  assert.equal(lines.length, 3, '標題 + 2 筆支出');
+  assert.ok(lines[1].includes('房租') && lines[2].includes('麥當勞') && lines[2].includes('公司'));
+  assert.equal(run(`txExportCsv([{id:9,kind:'expense',amount:5,account:'a',date:'2026-01-01',name:'a,"b"'}])`).split('\r\n')[1].includes('"a,""b"""'), true);
+});

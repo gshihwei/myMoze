@@ -1,10 +1,10 @@
-// 帳小簿 V26.12 — 偏好設定與 MOZE 格式 CSV 匯出（V26.26：關於／版本資訊）.
+// 帳小簿 V26.12 — 偏好設定與 MOZE 格式 CSV 匯出（V26.27：關於／版本資訊）.
 // Bundled after js/accounts.js; uses app.js / import-compatible globals (state, cat, acct, acctCur,
 // ledgerEffects, isUnappliedPending, render, renderCalendar). Function declarations / var only.
 
 // ---------- app version (keep in step with sw.js CACHE, index.html and manifest.json) ----------
-function appVersion() { return 'V26.26'; }
-function appReleaseDate() { return '2026-11-20'; }
+function appVersion() { return 'V26.27'; }
+function appReleaseDate() { return '2026-11-23'; }
 function appVersionLabel() { const [y, m, d] = appReleaseDate().split('-').map(Number); return { version: appVersion(), date: `${y} 年 ${m} 月 ${d} 日` }; }
 // newest app shell cache ('moze-v26.26-shell-v1' → 'V26.26'), compared numerically so V26.26 beats V26.9
 function appCacheLatest(keys) {
