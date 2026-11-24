@@ -68,3 +68,17 @@ test('匯入：新建的主／子分類依名稱帶預設圖示；未知名稱�
   const ic = n => st.categories.find(c => c.name === n)?.icon;
   assert.equal(ic('飲食'), '🍜'); assert.equal(ic('午餐'), '🍱'); assert.equal(ic('神秘料理'), '🍜'); assert.equal(ic('薪水'), '💵'); assert.equal(ic('收入'), '💰');
 });
+
+test('快選圖示分群（V26.29）：每個都放得進 4 字元、無零寬連接符、無重複、表單有分群標題', () => {
+  const { J, ctx } = bundle({ accounts: [], projects: [], transactions: [], budgets: [], recurring: [], loans: [], categories: [] });
+  const groups = J('catIconGroups()');
+  assert.ok(groups.length >= 8);
+  const all = groups.flatMap(g => g[1]);
+  for (const i of all) { assert.ok(i.length <= 4, i); assert.ok(!i.includes('\u200d'), i); }
+  assert.equal(new Set(all).size, all.length, '圖示不重複');
+  assert.ok(all.includes('•') && all.includes('🍜') && all.includes('🐶'));
+  assert.deepEqual(J('catIcons()'), all);
+  const html = vm.runInContext(`catFormHTML({kind:'expense',icon:'•',__new:true})`, ctx);
+  for (const [label] of groups) assert.ok(html.includes(`<small>${label}</small>`), label);
+  assert.equal((html.match(/data-cat-icon=/g) || []).length, all.length);
+});

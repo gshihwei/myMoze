@@ -6,7 +6,23 @@
 // Two levels only: a main category and its subcategories. `order` sorts siblings; missing → array order.
 
 var catPageKind;
-function catIcons() { return ['🍜', '☕', '🍱', '🛒', '🚗', '🚌', '⛽', '🏠', '💡', '📱', '👕', '💊', '🎬', '🎮', '✈️', '🎁', '📚', '🐾', '💼', '💰', '📈', '🏦', '🧾', '•']; }
+// Quick-pick icons grouped for the category form. Single code points (+ optional U+FE0F), no ZWJ sequences,
+// so each fits the 4-character icon field. Anything else can still be typed or pasted into the field.
+function catIconGroups() {
+  return [
+    ['餐飲', ['🍜', '🍱', '🍽️', '🍳', '🍞', '🍔', '🍕', '🍣', '🍙', '🍛', '🍲', '🥗', '🍰', '🍩', '🍎', '🍌', '🍇', '🥤', '☕', '🍵', '🍺', '🍷', '🥩']],
+    ['交通', ['🚗', '🚕', '🚌', '🚇', '🚆', '🚄', '✈️', '🚲', '🛵', '🏍️', '⛽', '🅿️', '🚢', '🚁', '🛴']],
+    ['居家', ['🏠', '🏡', '🛋️', '🛏️', '🚿', '🧻', '🧺', '🧹', '🧴', '🔧', '🔨', '💡', '🔥', '💧', '📺', '🔌']],
+    ['購物', ['🛒', '🛍️', '👕', '👖', '👗', '👟', '👜', '💄', '💍', '💎', '🎁', '🧸', '🎧', '💻', '⌚', '📷', '🕶️']],
+    ['醫療健康', ['💊', '💉', '🩺', '🩹', '🏥', '🦷', '👓', '💪', '🏃', '🏋️', '🧘']],
+    ['娛樂運動', ['🎬', '🎥', '🎮', '🎲', '🎵', '🎤', '🎸', '🎨', '🎡', '🎢', '🎟️', '🎳', '⚽', '🏀', '🎾', '🏊', '🎰']],
+    ['學習工作', ['📚', '📖', '✏️', '📝', '🎓', '🏫', '💼', '🖥️', '📎']],
+    ['金融收入', ['💰', '💵', '💳', '🏦', '📈', '📉', '💹', '🧾', '💸', '🏆', '🛡️', '＄']],
+    ['生活家庭', ['🧳', '🏨', '🏖️', '⛺', '💇', '💆', '👶', '🧓', '👵', '👪', '🐾', '🐶', '🐱', '🧧', '💝', '🤝', '🎂', '🎗️']],
+    ['通訊其他', ['📱', '📞', '🌐', '📦', '✉️', '🔋', '👤', '🏷️', '•']],
+  ];
+}
+function catIcons() { return [...new Set(catIconGroups().flatMap(g => g[1]))]; }
 
 function catSiblings(c) { return (state.categories || []).filter(x => x.kind === c.kind && String(x.parentId || '') === String(c.parentId || '')); }
 function catSortKey(c) { const i = (state.categories || []).indexOf(c); return Number.isFinite(Number(c.order)) ? Number(c.order) : 1e6 + i; }
@@ -69,7 +85,8 @@ function catFormHTML(c) {
     <label>上層分類<select name="cparent" ${isMainWithKids ? 'disabled' : ''}><option value="">（主分類）</option>${parents.map(m => `<option value="${esc(m.id)}" ${String(m.id) === String(r.parentId) ? 'selected' : ''}>${esc(m.icon)} ${esc(m.name)}</option>`).join('')}</select></label>
     <label>圖示<input name="cicon" maxlength="4" value="${esc(r.icon || '•')}"></label>
   </div>
-  <div class="cat-icons" role="group" aria-label="常用圖示">${catIcons().map(i => `<button type="button" data-cat-icon="${esc(i)}">${esc(i)}</button>`).join('')}</div>
+  <div class="cat-icon-groups" role="group" aria-label="常用圖示">${catIconGroups().map(([label, list]) => `<div class="cat-icon-group"><small>${esc(label)}</small><div class="cat-icons">${list.map(i => `<button type="button" data-cat-icon="${esc(i)}" aria-label="${esc(i)}">${esc(i)}</button>`).join('')}</div></div>`).join('')}</div>
+  <p class="hint">找不到想要的？直接在上方「圖示」欄輸入或貼上任何 emoji（建議單一圖示）。</p>
   ${r.id && !r.__new ? `<p class="cat-form-del"><button type="button" class="secondary danger-btn" data-cat-del="${esc(r.id)}">刪除這個分類</button></p>` : ''}
   ${isMainWithKids ? '<p class="hint">這個主分類底下有子分類，不能改成子分類；改變收支類型時，子分類會一起改。</p>' : ''}`;
 }
