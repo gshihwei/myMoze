@@ -114,14 +114,21 @@
     return {account:a, created:true};
   }
 
+  // 預設圖示由主程式 bundle 的 catDefaultIcon 決定；單獨載入（測試）時退回舊行為。
+  function defaultCatIcon(name, parentName, kind, fallback) {
+    const f = typeof window !== 'undefined' && window.catDefaultIcon;
+    const i = typeof f === 'function' ? f(name, parentName, kind) : '';
+    return i && i !== '•' && i !== '＄' ? i : (fallback || (kind === 'income' ? '＄' : '•'));
+  }
+
   function ensureCategory(st, mainName, subName, type, created) {
     const kind=categoryKind(type);
     let main=st.categories.find(x => x.name===mainName && !x.parentId);
-    if(!main){ main={id:makeId('cat',`${kind}:${mainName}`),name:mainName,icon:kind==='income'?'＄':'•',kind,imported:true};st.categories.push(main);created.categories.push(main); }
+    if(!main){ main={id:makeId('cat',`${kind}:${mainName}`),name:mainName,icon:defaultCatIcon(mainName,'',kind),kind,imported:true};st.categories.push(main);created.categories.push(main); }
     const sub=cleanName(subName,30) || mainName;
     if(!sub || sub===mainName) return {category:main, main};
     let child=st.categories.find(x=>x.parentId===main.id && x.name===sub);
-    if(!child){child={id:makeId('subcat',`${main.id}:${sub}`),name:sub,icon:main.icon,kind,parentId:main.id,imported:true};st.categories.push(child);created.categories.push(child);}
+    if(!child){child={id:makeId('subcat',`${main.id}:${sub}`),name:sub,icon:defaultCatIcon(sub,mainName,kind,main.icon),kind,parentId:main.id,imported:true};st.categories.push(child);created.categories.push(child);}
     return {category:child,main};
   }
 

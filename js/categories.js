@@ -117,6 +117,7 @@ function renderCategoryPage() {
     </div>`;
   };
   grid.innerHTML = `<div class="seg cat-kind"><label><input type="radio" name="catPageKind" value="expense" ${kind === 'expense' ? 'checked' : ''}>支出分類</label><label><input type="radio" name="catPageKind" value="income" ${kind === 'income' ? 'checked' : ''}>收入分類</label></div>
+    <p class="cat-icon-tools"><button type="button" class="secondary" id="catApplyIcons">依名稱補上預設圖示</button></p>
     ${mains.length ? mains.map(card).join('') : '<div class="empty">還沒有分類</div>'}`;
   grid.querySelectorAll('input[name=catPageKind]').forEach(r => r.onchange = () => { catPageKind = r.value; renderCategoryPage(); });
 }
