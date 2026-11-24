@@ -256,3 +256,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .credit-use-text,.credit-due-text{display:block;margin-top:3px;font-size:11px;opacity:.8}
 .credit-use-text.high,.credit-due-text.soon{color:#f5b942;opacity:1}
 .credit-use-text.over,.credit-due-text.overdue{color:#ef5350;opacity:1}
+
+/* V26.32 in-app reminders */
+.reminder-bar{margin:0 0 12px;padding:12px 14px;border:1px solid rgba(245,185,66,.45);border-radius:14px;background:rgba(245,185,66,.08)}
+.reminder-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.reminder-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)}
+.reminder-row small{opacity:.75}.reminder-row.soon small{color:#f5b942;opacity:1}.reminder-row.overdue small{color:#ef5350;opacity:1}

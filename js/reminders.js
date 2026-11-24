@@ -39,3 +39,41 @@ function creditRowExtraHTML(card) {
   const due = info ? `<small class="credit-due-text ${info.overdue ? 'overdue' : info.days <= 3 ? 'soon' : ''}">${esc(creditDueText(info))}</small>` : '';
   return bar + due;
 }
+
+// ---------- V26.32 in-app reminders ----------
+// Shown on the overview whenever the app is open (a PWA cannot notify while closed without a push server).
+// Sources: unpaid credit-card statements and recurring items, within `lead` days (overdue always shown).
+function remindDaysBetween(iso, today) {
+  const mid = new Date(today.getFullYear(), today.getMonth(), today.getDate()), d = new Date(String(iso) + 'T00:00:00');
+  return Math.round((d - mid) / 864e5);
+}
+function reminderList(today, lead) {
+  const base = today ? new Date(today) : new Date(), n = Number.isFinite(Number(lead)) ? Number(lead) : 3, out = [];
+  for (const card of (state.accounts || [])) {
+    if (card.type !== 'card' || card.archived) continue;
+    const info = creditDueInfo(card, base);
+    if (info && info.days <= n) out.push({ type: 'card', id: String(card.id), title: `${card.name} 信用卡繳款`, date: info.dueDate, days: info.days, amount: info.owed });
+  }
+  for (const r0 of (state.recurring || [])) {
+    const r = normRecurring(r0);
+    if (recurringEnded(r) || r.paused || !r.next) continue;
+    const days = remindDaysBetween(r.next, base);
+    if (days <= n) out.push({ type: 'recurring', id: String(r.id), title: r.name || '週期交易', date: r.next, days, amount: Math.abs(Number(r.amount) || 0), kind: r.kind });
+  }
+  return out.sort((a, b) => a.days - b.days || a.title.localeCompare(b.title));
+}
+function reminderDayText(days) { return days < 0 ? `逾期 ${-days} 天` : days === 0 ? '今天' : days === 1 ? '明天' : `${days} 天後`; }
+function reminderBarHTML(list) {
+  const shown = list.slice(0, 6), more = list.length - shown.length;
+  return `<div class="reminder-head"><b>🔔 提醒 ${list.length} 項</b><button type="button" class="ghost" id="reminderSnooze">今天不再提醒</button></div>` +
+    shown.map(x => `<div class="reminder-row ${x.days < 0 ? 'overdue' : x.days <= 1 ? 'soon' : ''}"><span>${esc(x.title)}</span><small>${esc(x.date)} · ${reminderDayText(x.days)}</small><b>${x.kind === 'income' ? '+' : ''}${money(x.amount)}</b></div>`).join('') +
+    (more > 0 ? `<div class="hint">還有 ${more} 項…</div>` : '');
+}
+function renderReminders() {
+  const p = prefs(), host = document.querySelector('#view-overview .metrics'); if (!host?.parentNode) return;
+  let bar = document.getElementById('reminderBar');
+  if (!bar) { bar = document.createElement('section'); bar.id = 'reminderBar'; bar.className = 'reminder-bar'; host.parentNode.insertBefore(bar, host); }
+  const today = isoDate(new Date()), list = p.remindOn === false || p.remindSnooze === today ? [] : reminderList(new Date(), p.remindDays);
+  bar.hidden = !list.length; bar.innerHTML = list.length ? reminderBarHTML(list) : '';
+}
+document.addEventListener('click', e => { if (e.target.closest?.('#reminderSnooze')) { setPref('remindSnooze', isoDate(new Date())); renderReminders(); } });

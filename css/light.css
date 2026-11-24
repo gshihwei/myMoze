@@ -378,6 +378,10 @@ html[data-theme="light"],:root[data-theme="light"] body{background:#f7f8fa !impo
 :root[data-theme="light"] .credit-bar-over i{background:#ef5350}
 :root[data-theme="light"] .credit-use-text.high,:root[data-theme="light"] .credit-due-text.soon{color:#c2840a}
 :root[data-theme="light"] .credit-use-text.over,:root[data-theme="light"] .credit-due-text.overdue{color:#bb1411}
+:root[data-theme="light"] .reminder-bar{border:1px solid rgba(243,174,37,0.45);background:rgba(243,174,37,0.08)}
+:root[data-theme="light"] .reminder-row{border-top:1px solid rgba(15,23,32,0.072)}
+:root[data-theme="light"] .reminder-row.soon small{color:#c2840a}
+:root[data-theme="light"] .reminder-row.overdue small{color:#bb1411}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}

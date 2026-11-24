@@ -3,7 +3,7 @@
 // ledgerEffects, isUnappliedPending, render, renderCalendar). Function declarations / var only.
 
 // ---------- app version (keep in step with sw.js CACHE, index.html and manifest.json) ----------
-function appVersion() { return 'V26.31'; }
+function appVersion() { return 'V26.32'; }
 function appReleaseDate() { return '2026-11-24'; }
 function appVersionLabel() { const [y, m, d] = appReleaseDate().split('-').map(Number); return { version: appVersion(), date: `${y} 年 ${m} 月 ${d} 日` }; }
 // newest app shell cache ('moze-v26.26-shell-v1' → 'V26.26'), compared numerically so V26.26 beats V26.9
@@ -22,7 +22,7 @@ function renderAppVersion() {
 // ---------- preferences (per device, not synced) ----------
 var prefsCache;
 function prefsKey() { return 'moze-prefs-v1'; }
-function prefsDefaults() { return { weekStart: 0, showQuick: true, jumpToTxDate: false, theme: 'dark', hiddenPanels: [] }; }
+function prefsDefaults() { return { weekStart: 0, showQuick: true, jumpToTxDate: false, theme: 'dark', hiddenPanels: [], remindOn: true, remindDays: 3, remindSnooze: '' }; }
 function prefs() {
   if (!prefsCache) { let p = {}; try { p = JSON.parse(localStorage.getItem(prefsKey()) || '{}') || {}; } catch { p = {}; } prefsCache = { ...prefsDefaults(), ...p }; }
   return prefsCache;
@@ -85,6 +85,8 @@ function settingsInit() {
     box.querySelectorAll('[data-ov-pref]').forEach(cb => cb.onchange = () => { const set = new Set(overviewHidden()); if (cb.checked) set.delete(cb.dataset.ovPref); else set.add(cb.dataset.ovPref); setPref('hiddenPanels', [...set]); });
   }
   const jd = document.getElementById('prefJumpToTxDate'); if (jd) { jd.checked = !!p.jumpToTxDate; jd.onchange = () => setPref('jumpToTxDate', jd.checked); }
+  const ro = document.getElementById('prefRemindOn'); if (ro) { ro.checked = p.remindOn !== false; ro.onchange = () => { setPref('remindOn', ro.checked); renderReminders(); }; }
+  const rd = document.getElementById('prefRemindDays'); if (rd) { rd.value = String(p.remindDays); rd.onchange = () => { setPref('remindDays', Number(rd.value)); renderReminders(); }; }
   const th = document.getElementById('prefTheme'); if (th) { th.value = p.theme || 'dark'; th.onchange = () => setPref('theme', th.value); }
   if (typeof matchMedia === 'function') { const mq = matchMedia('(prefers-color-scheme: light)'); mq.addEventListener?.('change', () => { if (prefs().theme === 'system') applyTheme(); }); }
   renderFxPrefs();
