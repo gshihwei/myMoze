@@ -4,7 +4,7 @@
 // healthCheck(state) lists problems; each fixable one has a fixer that only touches the references
 // involved (never amounts or balances), so running a fix cannot change any account balance.
 
-function healthCheck(st = state) {
+function healthCheck(st = state, today = isoDate(new Date())) {
   const ids = list => new Set((list || []).map(x => String(x.id)));
   const acc = ids(st.accounts), cats = ids(st.categories), projs = ids(st.projects);
   const issues = [];
@@ -23,12 +23,25 @@ function healthCheck(st = state) {
   if (badLoan.length) issues.push({ key: 'loanPaid', level: 'minor', count: badLoan.length, text: `${badLoan.length} 筆借還款的已收／已還金額與紀錄合計不符`, hint: '修正後以收還款紀錄重新計算已收／已還與狀態（不影響帳戶餘額）。', fix: true });
   const seen = new Map(), dups = [];
   for (const t of txs) {
-    if (t.installment || t.kind === 'loan' || t.kind === 'loanPayment') continue;
+    if (t.installment || t.kind === 'loan' || t.kind === 'loanPayment' || t.dupOk) continue;
     const k = [t.date, t.time || '', t.kind, t.account, Math.abs(Number(t.amount || 0)), t.name || ''].join('\u001f');
     if (seen.has(k)) dups.push([seen.get(k), t.id]); else seen.set(k, t.id);
   }
-  if (dups.length) issues.push({ key: 'duplicate', level: 'info', count: dups.length, text: `${dups.length} 組疑似重複的交易`, hint: '日期、時間、類型、帳戶、金額與名稱都相同。請確認後再刪除，這裡不會自動處理。', pairs: dups });
+  if (dups.length) issues.push({ key: 'duplicate', level: 'info', count: dups.length, text: `${dups.length} 組疑似重複的交易`, hint: '日期、時間、類型、帳戶、金額與名稱都相同。請確認後再刪除，這裡不會自動處理。真的是重複購買的請按「不是重複」。', pairs: dups });
+  // V26.33: checks that only report (amounts are never changed automatically).
+  const badTransfer = txs.filter(t => t.kind === 'transfer' && (!t.toAccount || String(t.toAccount) === String(t.account)));
+  if (badTransfer.length) issues.push({ key: 'transfer', level: 'minor', count: badTransfer.length, text: `${badTransfer.length} 筆轉帳缺少轉入帳戶，或轉出轉入是同一帳戶`, hint: '請到交易頁找出這些轉帳後修正帳戶。', ids: badTransfer.map(t => t.id) });
+  const future = txs.filter(t => t.date > today && !t.pending && !t.installment);
+  if (future.length) issues.push({ key: 'future', level: 'info', count: future.length, text: `${future.length} 筆交易的日期在今天之後`, hint: '可能是日期輸入錯誤；若是預先記帳可忽略。', ids: future.map(t => t.id) });
+  const zero = txs.filter(t => ['expense', 'income', 'transfer'].includes(t.kind) && !(Math.abs(Number(t.amount || 0)) > 0));
+  if (zero.length) issues.push({ key: 'zero', level: 'info', count: zero.length, text: `${zero.length} 筆交易金額為 0`, hint: '通常是沒有意義的紀錄，確認後可刪除。', ids: zero.map(t => t.id) });
   return issues;
+}
+
+// Marks the later transaction of a suspected pair as intentionally identical (e.g. two servings).
+function healthIgnoreDup(txId, st = state) {
+  const t = (st.transactions || []).find(x => String(x.id) === String(txId)); if (!t) return false;
+  t.dupOk = true; return true;
 }
 
 function healthFix(key, st = state) {
@@ -53,12 +66,17 @@ function renderHealth(issues) {
   const box = document.getElementById('healthResult'); if (!box) return;
   if (!issues) { box.innerHTML = ''; return; }
   const mark = { serious: '!', minor: '▲', info: 'i' };
-  box.innerHTML = issues.length ? issues.map(i => `<div class="health-row ${i.level}"><span class="bc-status ${i.level === 'serious' ? 'over' : i.level === 'minor' ? 'near' : 'none'}"><i aria-hidden="true">${mark[i.level]}</i></span><div><b>${esc(i.text)}</b><small>${esc(i.hint)}</small></div>${i.fix ? `<button type="button" class="secondary" data-health-fix="${i.key}">修正</button>` : ''}</div>`).join('')
-    : '<div class="health-row ok"><span class="bc-status ok"><i aria-hidden="true">✓</i></span><div><b>沒有發現問題</b><small>所有交易、預算、週期與借還款的參照都正確。</small></div></div>';
+  const byId = new Map((state.transactions || []).map(t => [String(t.id), t]));
+  const dupList = i => i.key !== 'duplicate' ? '' : '<div class="health-dups">' + i.pairs.slice(0, 20).map(([, b]) => { const t = byId.get(String(b)); return t ? `<div class="health-dup"><span>${esc(t.date)} · ${esc(t.name || '')} · ${money(Math.abs(Number(t.amount || 0)))}</span><button type="button" class="secondary" data-dup-ignore="${esc(t.id)}">不是重複</button></div>` : ''; }).join('') + (i.pairs.length > 20 ? `<div class="hint">只列出前 20 組，共 ${i.pairs.length} 組。</div>` : '') + '</div>';
+  const recon = `<div class="health-recon"><b>帳戶對帳</b><small>輸入實際餘額（對照銀行 App 或存摺），差額會記成一筆「餘額調整」。</small>${acctOrdered(state.accounts || []).map(a => `<div class="health-dup"><span>${esc(acctName(a))} · ${acctMoney(a.balance, a)}</span><button type="button" class="secondary" data-acct-adjust="${esc(a.id)}">對帳</button></div>`).join('')}</div>`;
+  box.innerHTML = (issues.length ? issues.map(i => `<div class="health-row ${i.level}"><span class="bc-status ${i.level === 'serious' ? 'over' : i.level === 'minor' ? 'near' : 'none'}"><i aria-hidden="true">${mark[i.level]}</i></span><div><b>${esc(i.text)}</b><small>${esc(i.hint)}</small></div>${i.fix ? `<button type="button" class="secondary" data-health-fix="${i.key}">修正</button>` : ''}</div>${dupList(i)}`).join('')
+    : '<div class="health-row ok"><span class="bc-status ok"><i aria-hidden="true">✓</i></span><div><b>沒有發現問題</b><small>所有交易、預算、週期與借還款的參照都正確。</small></div></div>') + recon;
 }
 
 document.addEventListener('click', async e => {
   if (e.target.closest?.('#healthRun')) { renderHealth(healthCheck()); return; }
+  const dp = e.target.closest?.('[data-dup-ignore]');
+  if (dp) { if (healthIgnoreDup(dp.dataset.dupIgnore)) { await save(); } renderHealth(healthCheck()); return; }
   const fx = e.target.closest?.('[data-health-fix]');
   if (fx) { const n = healthFix(fx.dataset.healthFix); if (n) { await save(); render(); } renderHealth(healthCheck()); }
 });

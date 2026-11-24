@@ -262,3 +262,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .reminder-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .reminder-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)}
 .reminder-row small{opacity:.75}.reminder-row.soon small{color:#f5b942;opacity:1}.reminder-row.overdue small{color:#ef5350;opacity:1}
+
+/* V26.33 health: duplicate review + account reconcile */
+.health-dups,.health-recon{margin:4px 0 10px 34px}
+.health-recon{margin-left:0;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)}
+.health-recon small{display:block;opacity:.75;margin:2px 0 6px}
+.health-dup{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0}

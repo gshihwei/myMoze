@@ -53,3 +53,36 @@ test('乾淨的資料沒有任何問題', () => {
   const { J } = bundle({ accounts: [{ id: 'a' }], categories: [{ id: 'c' }], projects: [], transactions: [{ id: 1, kind: 'expense', amount: 1, account: 'a', category: 'c', date: '2026-01-01' }], budgets: [], recurring: [], loans: [] });
   assert.equal(J('healthCheck().length'), 0);
 });
+
+test('V26.33：轉帳缺轉入帳戶、未來日期、金額為 0 只提示不修改', () => {
+  const st = { accounts: [{ id: 'a', name: 'A', balance: 0 }, { id: 'b', name: 'B', balance: 0 }], categories: [], projects: [],
+    transactions: [
+      { id: 't1', kind: 'transfer', amount: 10, account: 'a', toAccount: '', date: '2026-01-01' },
+      { id: 't2', kind: 'transfer', amount: 10, account: 'a', toAccount: 'a', date: '2026-01-01' },
+      { id: 't3', kind: 'transfer', amount: 10, account: 'a', toAccount: 'b', date: '2026-01-01' },
+      { id: 't4', kind: 'expense', amount: 5, account: 'a', date: '2026-12-31' },
+      { id: 't5', kind: 'expense', amount: 0, account: 'a', date: '2026-01-02' }] };
+  const { J } = bundle(st);
+  const keys = Object.fromEntries(J(`healthCheck(state, '2026-06-01')`).map(i => [i.key, i.count]));
+  assert.equal(keys.transfer, 2); assert.equal(keys.future, 1); assert.equal(keys.zero, 1);
+  assert.deepEqual(J(`state.transactions.map(t => t.amount)`), [10, 10, 10, 5, 0]);
+});
+
+test('V26.33：「不是重複」標記後不再列入疑似重複，且不刪除交易', () => {
+  const mk = id => ({ id, kind: 'expense', amount: 50, account: 'a', date: '2026-05-01', time: '12:00', name: '咖哩飯' });
+  const { J, run } = bundle({ accounts: [{ id: 'a', name: 'A', balance: 0 }], categories: [], projects: [], transactions: [mk('x1'), mk('x2')] });
+  assert.equal(J(`healthCheck(state, '2026-06-01').find(i => i.key === 'duplicate').count`), 1);
+  assert.equal(run(`healthIgnoreDup('x2')`), true);
+  assert.equal(J(`healthCheck(state, '2026-06-01').some(i => i.key === 'duplicate')`), false);
+  assert.equal(J(`state.transactions.length`), 2);
+  assert.equal(run(`healthIgnoreDup('nope')`), false);
+});
+
+test('V26.33：renderHealth 含不是重複按鈕與帳戶對帳區', () => {
+  const html = { v: '' };
+  const { J, run } = bundle({ accounts: [{ id: 'a', name: 'A', balance: 100 }], categories: [], projects: [], transactions: [] });
+  run(`document = { getElementById: id => id === 'healthResult' ? { set innerHTML(v) { globalThis.__html = v; } } : null }`);
+  run(`renderHealth([{ key: 'duplicate', level: 'info', count: 1, text: 't', hint: 'h', pairs: [['x1', 'x2']] }])`);
+  const out = run('globalThis.__html'); html.v = out;
+  assert.match(out, /帳戶對帳/); assert.match(out, /data-acct-adjust="a"/);
+});
