@@ -1,0 +1,6 @@
+V26.30
+- 更換 logo：依新設計圖產生 PWA 圖示 icons/icon-192.png、icon-512.png（一般）、icon-maskable-512.png（可遮罩，圖案縮在安全區）與 iOS 主畫面用 icons/apple-touch-icon.png（180×180，不透明）。
+- manifest.json 的圖示拆成 any 與 maskable 兩種用途；index.html 新增瀏覽器分頁圖示；sw.js 離線快取加入新圖示。
+- 側欄左上角的文字方塊「帳」改為 logo 圖片。
+- 新增 tools/logo-source.png（來源圖）與 tools/gen-icons.py（重新產生圖示，需要 Pillow）。
+- 已安裝 App 的主畫面圖示是由系統快取，更新後可能需要移除再重新「加入主畫面」才會換新圖示。
