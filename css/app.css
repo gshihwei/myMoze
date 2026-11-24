@@ -249,3 +249,10 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 /* V26.23 templates */.quick-templates{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.tpl-chip{display:inline-flex;border:1px solid #30485d;border-radius:999px;overflow:hidden}.tpl-chip button{background:#14222f;border:0;color:#dce6ed;font:inherit;font-size:12px;padding:6px 10px;cursor:pointer}.tpl-chip small{color:var(--muted)}.tpl-chip .tpl-del{padding:6px 8px;color:#8fa3b6;border-left:1px solid #30485d}
 /* V26.29 grouped category icon picker */.cat-icon-groups{max-height:210px;overflow-y:auto;margin:10px 0;padding:2px 4px 2px 0}.cat-icon-group small{display:block;margin:8px 0 2px;color:var(--muted,#8fa3b5);font-size:12px}.cat-icon-group .cat-icons{margin:2px 0 4px}
 /* V26.30 logo image in the sidebar brand tile */.brand{flex:none;width:46px;height:46px;min-height:46px;background:none!important;box-shadow:0 6px 16px rgba(0,0,0,.35)!important;border-radius:12px;padding:0}.brand:after{display:none!important}.brand .brand-logo{display:block;flex:none;width:46px;height:46px;object-fit:cover;border-radius:inherit}
+
+/* V26.31 credit usage bar + due countdown in the accounts list */
+.credit-card-row-amount .credit-bar{margin-top:6px;height:5px}
+.credit-bar-high i{background:#f5b942}.credit-bar-over i{background:#ef5350}
+.credit-use-text,.credit-due-text{display:block;margin-top:3px;font-size:11px;opacity:.8}
+.credit-use-text.high,.credit-due-text.soon{color:#f5b942;opacity:1}
+.credit-use-text.over,.credit-due-text.overdue{color:#ef5350;opacity:1}
