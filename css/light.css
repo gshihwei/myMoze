@@ -383,6 +383,8 @@ html[data-theme="light"],:root[data-theme="light"] body{background:#f7f8fa !impo
 :root[data-theme="light"] .reminder-row.soon small{color:#c2840a}
 :root[data-theme="light"] .reminder-row.overdue small{color:#bb1411}
 :root[data-theme="light"] .health-recon{border-top:1px solid rgba(15,23,32,0.096)}
+:root[data-theme="light"] .sub-summary{border:1px solid rgba(15,23,32,0.12)}
+:root[data-theme="light"] .sub-row{border-top:1px solid rgba(15,23,32,0.072)}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}
