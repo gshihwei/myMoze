@@ -15,11 +15,13 @@ function installmentPlan(t, countRaw) {
   if (total < n) return { error: '金額太小，無法分期' };
   const each = Math.floor(total / n), first = total - each * (n - 1), group = id();
   const rule = { freq: 'month', interval: 1, start: t.date };
+  // the fee / discount is already inside the total; the instalments carry only their own net share
+  const base = { ...t }; for (const k of ['fee', 'discount', 'feeIncluded', 'feeName', 'discountName', 'attachments']) delete base[k];
   const out = [];
   let date = t.date;
   for (let i = 1; i <= n; i++) {
     const amount = (i === 1 ? first : each) / 100;
-    out.push({ ...t, id: i === 1 ? t.id : id(), date, amount, name: t.name + '（' + i + '/' + n + '）', installment: { group, n: i, total: n, amount: total / 100 } });
+    out.push({ ...base, id: i === 1 ? t.id : id(), date, amount, name: t.name + '（' + i + '/' + n + '）', installment: { group, n: i, total: n, amount: total / 100 } });
     date = addPeriod(date, rule);
   }
   return { list: out };

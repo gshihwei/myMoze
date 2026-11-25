@@ -269,9 +269,16 @@ function acctGroupsHTML(cards, cardTiles, normal, tiles) {
 }
 // ---- V26.50 account detail sections (帳務統計 / 繳款記錄 / 帳戶資訊 / 子帳戶), modelled on MOZE ----
 var selectedBank;   // { key: 'card' | 'foreign', bank } while a bank's detail sheet is open
+// V26.66: which statement a card line belongs to is decided by its posting date (入帳日), not the purchase date;
+// refunds (income with refundOf) on the card reduce the statement.
+function cardTxDate(t) { return t.postDate || t.date; }
+function cardSpendTxs(card, start, end) {
+  return (state.transactions || []).filter(t => String(t.account) === String(card.id) && !t.cardPayment && (t.kind === 'expense' || (t.kind === 'income' && t.refundOf)) && !isUnappliedPending(t) && cardTxDate(t) >= start && cardTxDate(t) <= end);
+}
+function cardSpendSum(list) { return Math.round(list.reduce((s, t) => s + (t.kind === 'income' ? -1 : 1) * Math.abs(Number(t.amount || 0)), 0) * 100) / 100; }
 function creditStmt(card, base, offset) {
   const period = cardPeriod(card, base, offset);
-  const spend = state.transactions.filter(t => String(t.account) === String(card.id) && t.kind === 'expense' && !t.cardPayment && t.date >= period.start && t.date <= period.end).reduce((s, t) => s + Number(t.amount || 0), 0);
+  const spend = cardSpendSum(cardSpendTxs(card, period.start, period.end));
   const paid = creditStatementPayments(card, period).reduce((s, t) => s + Number(t.amount || 0), 0);
   return { period, spend, paid, owed: Math.max(0, Math.round((spend - paid) * 100) / 100) };
 }

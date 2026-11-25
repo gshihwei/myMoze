@@ -485,3 +485,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .entry-calc-row .entry-rename{background:none;border:0;color:#7f93a6;cursor:pointer;padding:0 2px}
 .entry-calc-row i{font-style:normal}
 #modalBg[data-etab=transfer] .entry-disc-row,#modalBg[data-etab=receivable] .entry-disc-row,#modalBg[data-etab=payable] .entry-disc-row,#modalBg[data-etab=receivable] .entry-fee-row,#modalBg[data-etab=payable] .entry-fee-row{display:none}
+
+/* V26.66 refunds */
+.tx-link{background:none;border:0;color:#6fb8ef;cursor:pointer;padding:0 4px;font:inherit;text-decoration:underline}
+.detail-extra{flex-wrap:wrap}.detail-extra #refundBox{width:100%}.refund-form{margin-top:8px}

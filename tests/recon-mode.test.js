@@ -32,14 +32,17 @@ test('對帳統計：筆數與已確認金額', () => {
   run('reconMark(state.transactions[0], false)'); assert.equal(run('state.transactions[0].recon'), undefined);
   assert.equal(run('reconClear(state.transactions)'), 1);
 });
-test('延後入帳：移到下一期第一天、記住原日期、可改回；一期內不重複記錄', () => {
-  const { run } = bundle({ accounts: [CARD], categories: [], transactions: [tx('a', '2026-11-10', 100, { recon: true })] });
+test('延後入帳：只改入帳日到下一期第一天，消費日不變，可改回', () => {
+  const { run, J } = bundle({ accounts: [CARD], categories: [], transactions: [tx('a', '2026-11-10', 100, { recon: true })] });
   run(`reconPostpone(state.transactions[0], ${JSON.stringify(P)})`);
-  assert.equal(run('state.transactions[0].date'), '2026-11-16'); assert.equal(run('state.transactions[0].origDate'), '2026-11-10'); assert.equal(run('state.transactions[0].recon'), undefined);
-  run(`reconPostpone(state.transactions[0], ${JSON.stringify({ start: '2026-11-16', end: '2026-12-15' })})`);
-  assert.equal(run('state.transactions[0].origDate'), '2026-11-10', '再延後一次仍保留最初日期');
-  run('reconRestore(state.transactions[0])');
-  assert.equal(run('state.transactions[0].date'), '2026-11-10'); assert.equal(run('state.transactions[0].origDate'), undefined);
+  assert.equal(run('state.transactions[0].date'), '2026-11-10'); assert.equal(run('state.transactions[0].postDate'), '2026-11-16'); assert.equal(run('state.transactions[0].recon'), undefined);
+  assert.equal(J(`reconItems(state.accounts[0], ${JSON.stringify(P)}).length`), 0);
+  assert.equal(J("reconItems(state.accounts[0], {start:'2026-11-16',end:'2026-12-15'}).length"), 1);
+  run('reconRestore(state.transactions[0])'); assert.equal(run('state.transactions[0].postDate'), undefined);
+});
+test('舊版 origDate 會轉成 date + postDate', () => {
+  const { run } = bundle({ accounts: [CARD], categories: [], transactions: [tx('a', '2026-11-16', 100, { origDate: '2026-11-10' })] });
+  assert.equal(run('reconMigrate(state)'), 1); assert.equal(run('state.transactions[0].date'), '2026-11-10'); assert.equal(run('state.transactions[0].postDate'), '2026-11-16'); assert.equal(run('reconMigrate(state)'), 0);
 });
 test('延後跨年與月底：下一期第一天', () => {
   const { run } = bundle({ accounts: [], categories: [], transactions: [] });
@@ -51,9 +54,4 @@ test('搜尋：名稱、商家、金額', () => {
   const m = (t, q) => run(`reconMatch(${JSON.stringify(t)}, ${JSON.stringify(q)})`);
   const t = { name: '午餐', merchant: '麥當勞', amount: 1134, date: '2026-11-02' };
   assert.ok(m(t, '')); assert.ok(m(t, '麥當')); assert.ok(m(t, '1134')); assert.ok(!m(t, '咖啡'));
-});
-test('資料健檢不把延後入帳的記錄當成日期錯誤', () => {
-  const { J } = bundle({ accounts: [CARD], categories: [], transactions: [tx('a', '2099-01-01', 10, { origDate: '2026-11-10' }), tx('b', '2099-01-02', 10)] });
-  const issues = J("healthCheck(state,'2026-11-25')").filter(i => i.key === 'future');
-  assert.equal(issues.length, 1); assert.equal(issues[0].count, 1);
 });

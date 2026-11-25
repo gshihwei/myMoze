@@ -1,29 +1,32 @@
 // 帳小簿 V26.63 — 信用卡「對帳模式」: tick off each statement line against the bank's bill.
 // Right swipe (or ✓) = confirmed, left swipe (or ⏭) = 延後入帳 to the first day of the next statement (undoable from the next one).
 // Bundled after js/yearly.js (tools/build-bundle.js). Function declarations / var only (hoisted).
-// Stored on the transaction itself (syncs with it): `recon: true` when confirmed, `origDate` = the date before it was postponed.
+// Stored on the transaction itself (syncs with it): `recon: true` when confirmed, `postDate` = the posting date when it differs from the purchase date.
 
 function reconSt() { return window.__recon || (window.__recon = { card: null, period: null, offset: 0, order: 'asc', q: '', menu: false, note: '' }); }
 function reconNextStart(period) { const d = new Date(period.end + 'T00:00:00'); d.setDate(d.getDate() + 1); return isoDate(d); }
 // Lines of the statement: the card's expenses (not payments) dated inside the period, oldest first by default.
 function reconItems(card, period, order) {
-  const list = (state.transactions || []).filter(t => String(t.account) === String(card.id) && t.kind === 'expense' && !t.cardPayment && t.date >= period.start && t.date <= period.end);
+  const list = cardSpendTxs(card, period.start, period.end);
   const key = t => `${t.date} ${t.time || '00:00'}`;
   list.sort((a, b) => key(a).localeCompare(key(b)));
   return order === 'desc' ? list.reverse() : list;
 }
 function reconStats(items) {
   const done = items.filter(t => t.recon);
-  const sum = l => Math.round(l.reduce((s, t) => s + Number(t.amount || 0), 0) * 100) / 100;
+  const sum = cardSpendSum;
   return { count: items.length, doneCount: done.length, total: sum(items), doneAmount: sum(done), remaining: sum(items) - sum(done) };
 }
 function reconMark(t, on) { if (on) t.recon = true; else delete t.recon; return t; }
-// Moves the line to the first day of the next statement; remembers the original date so it can be undone.
-function reconPostpone(t, period) {
-  if (!t.origDate) t.origDate = t.date;
-  t.date = reconNextStart(period); delete t.recon; return t;
+// Posts the line on the first day of the next statement; the purchase date (and reports / budgets) stay as they are.
+function reconPostpone(t, period) { t.postDate = reconNextStart(period); delete t.recon; return t; }
+function reconRestore(t) { delete t.postDate; delete t.recon; return t; }
+// V26.63-65 moved `date` itself and kept the purchase date in `origDate`; turn those into date + postDate.
+function reconMigrate(st) {
+  let n = 0;
+  for (const t of (st?.transactions || [])) if (t && t.origDate) { t.postDate = t.date; t.date = t.origDate; delete t.origDate; n++; }
+  return n;
 }
-function reconRestore(t) { if (t.origDate) { t.date = t.origDate; delete t.origDate; } delete t.recon; return t; }
 function reconClear(items) { let n = 0; for (const t of items) if (t.recon) { delete t.recon; n++; } return n; }
 function reconMatch(t, q) {
   q = String(q || '').trim().toLowerCase(); if (!q) return true;
@@ -34,14 +37,14 @@ function reconWeekday(date) { return '日一二三四五六'[new Date(date + 'T0
 
 function reconRowHTML(t, period) {
   const c = typeof cat === 'function' ? cat(t.category) : { icon: '🏷️', name: '' }, a = typeof acct === 'function' ? acct(t.account) : { name: '' };
-  const posted = !!t.origDate;
+  const posted = !!t.postDate;
   return `<div class="recon-row${t.recon ? ' done' : ''}" data-recon-id="${esc(t.id)}">
   <div class="recon-swipe-bg"><span class="ok">已確認</span><span class="later">${posted ? '改回原期' : '延後入帳'}</span></div>
   <div class="recon-body">
-    <div class="recon-date">${t.date.replace(/-/g, '/')} 週${reconWeekday(t.date)}${t.time ? ' ' + esc(t.time) : ''}${posted ? ` <em>延後自 ${esc(t.origDate)}</em>` : ''}</div>
+    <div class="recon-date">${t.date.replace(/-/g, '/')} 週${reconWeekday(t.date)}${t.time ? ' ' + esc(t.time) : ''}${posted ? ` <em>延後入帳 ${esc(t.postDate)}</em>` : ''}</div>
     <div class="recon-main"><div class="recon-icon">${esc(c.icon || '🏷️')}</div>
       <div class="recon-text"><b>${esc(t.name)}</b><small>${esc(t.merchant || t.note || '')}</small></div>
-      <div class="recon-amt">${money(t.amount)}</div></div>
+      <div class="recon-amt">${t.kind === 'income' ? '−' : ''}${money(t.amount)}</div></div>
     <div class="recon-foot"><span class="recon-chip">${esc(c.name || '')}</span><span class="recon-chip">${esc(a.name || '')}</span>
       <button type="button" class="recon-btn" data-recon-ok aria-label="確認">✓</button><button type="button" class="recon-btn" data-recon-later aria-label="${posted ? '改回原期' : '延後入帳'}">${posted ? '↺' : '⏭'}</button></div>
   </div></div>`;
@@ -78,8 +81,8 @@ function closeReconMode() { const el = document.getElementById('reconBg'); if (e
 async function reconApply(id, action) {
   const s = reconSt(), t = (state.transactions || []).find(x => String(x.id) === String(id)); if (!t) return;
   if (action === 'ok') reconMark(t, !t.recon);
-  else if (t.origDate) { reconRestore(t); s.note = `已改回原日期 ${t.date}`; }
-  else { reconPostpone(t, s.period); s.note = `已延後入帳到 ${t.date}（可在下一期的對帳模式改回）`; }
+  else if (t.postDate) { reconRestore(t); s.note = `已改回消費日 ${t.date} 入帳`; }
+  else { reconPostpone(t, s.period); s.note = `已延後入帳到 ${t.postDate}（可在下一期的對帳模式改回）`; }
   renderReconMode(); await save();
   if (action !== 'ok' && typeof render === 'function') render();
 }

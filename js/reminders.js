@@ -16,7 +16,7 @@ function creditDueInfo(card, today) {
   const base = today ? new Date(today) : new Date(), mid = new Date(base.getFullYear(), base.getMonth(), base.getDate());
   for (const off of [-1, 0]) {
     const period = cardPeriod(card, mid, off);
-    const spend = state.transactions.filter(t => String(t.account) === String(card.id) && t.kind === 'expense' && !t.cardPayment && t.date >= period.start && t.date <= period.end).reduce((s, t) => s + Number(t.amount || 0), 0);
+    const spend = cardSpendSum(cardSpendTxs(card, period.start, period.end));
     const paid = creditStatementPayments(card, period).reduce((s, t) => s + Number(t.amount || 0), 0);
     const owed = Math.round((spend - paid) * 100) / 100;
     if (owed <= 0) continue;

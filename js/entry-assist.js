@@ -47,7 +47,7 @@ function entryApplyTemplate() {
 // A copy for re-entry: same details, new id, today's selected date, never pending / imported.
 function entryCopyOf(t) {
   const c = JSON.parse(JSON.stringify(t));
-  for (const k of ['id', '_importKey', 'imported', 'recordType', 'balanceEffect', 'toBalanceEffect', 'pending', 'pendingApplied', 'recurringId', 'recurringSeq', 'cardPayment', 'cardStatementKey', 'paymentId']) delete c[k];
+  for (const k of ['id', '_importKey', 'imported', 'recordType', 'balanceEffect', 'toBalanceEffect', 'pending', 'pendingApplied', 'recurringId', 'recurringSeq', 'cardPayment', 'cardStatementKey', 'paymentId', 'refundOf', 'refundSplit', 'postDate', 'recon', 'depositOf', 'balanceTx', 'remindOn', 'installment']) delete c[k];
   c.date = selectedDate || isoDate(new Date()); c.time = nowTime();
   if (t.kind === 'transfer' && t.fee) c.fee = t.fee;
   return c;
