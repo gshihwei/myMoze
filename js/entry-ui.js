@@ -16,14 +16,15 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   function f(n){return form()?.elements?.[n];}
 
   // ---- amount / calculator ----
-  function fee(){return curKind()==='transfer'?Math.max(0,Number($('entryFee')?.value||0)):0;}
+  function feeVal(){return Math.max(0,Number($('entryFee')?.value||0));}
+  function discVal(){return curKind()==='transfer'||isLoanTab()?0:Math.max(0,Number($('entryDiscount')?.value||0));}
   function applyExpr(){
     const v=entryCalcEval(expr),ok=v!==null&&v>0,inp=input();
     if(inp){inp.value=ok?String(v):'';inp.dispatchEvent(new Event('input',{bubbles:true}));}
     const fmt=n=>Number(n).toLocaleString('zh-TW',{maximumFractionDigits:4});
     if($('amountDisplay'))$('amountDisplay').textContent=entryCalcDisplay(expr)||'0';
     const m=$('entryAmountMirror');if(m){m.textContent=ok?fmt(v):'金額';m.classList.toggle('filled',ok);}
-    if($('entryTotal'))$('entryTotal').textContent=fmt((ok?v:0)+fee());
+    if($('entryTotal'))$('entryTotal').textContent=fmt(Math.max(0,(ok?v:0)+(isLoanTab()?0:(curKind()==='income'?-(feeVal()-discVal()):(feeVal()-discVal())))));
   }
   function press(k){
     if(k==='enter'||k==='ok'){const v=entryCalcEval(expr);if(v!==null&&v>0&&entryHasOp(expr))expr=String(v);applyExpr();if(k==='ok')form()?.requestSubmit?.();return;}
@@ -32,6 +33,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   document.addEventListener('click',e=>{
     const b=e.target.closest('#amountKeypad button[data-key]');if(b){press(b.dataset.key);return;}
     if(e.target.closest('#entryReset')){expr='';applyExpr();return;}
+    const rn=e.target.closest('[data-rename-btn]');if(rn){const k=rn.dataset.renameBtn,lab=document.querySelector(`[data-rename=${k}]`),hid=$(k==='fee'?'entryFeeName':'entryDiscountName');const cur=lab?.textContent||'';const nv=prompt('欄位名稱（例如：運費、滿千送百）',cur);if(nv!==null){const dflt=k==='fee'?'手續費':'折扣',t=nv.trim().slice(0,12)||dflt;if(lab)lab.textContent=t;if(hid)hid.value=t===dflt?'':t;}return;}
     if(e.target.closest('#entryAmountRow'))$('entrySide')?.classList.toggle('open');
   });
   document.addEventListener('keydown',e=>{
@@ -40,7 +42,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     let k=null;if(/^[0-9]$/.test(e.key))k=e.key;else if(e.key==='.')k='.';else if('+-*/'.includes(e.key)&&e.key.length===1)k=e.key;else if(e.key==='Backspace')k='back';else if(e.key==='Delete')k='clear';else if(e.key==='Enter'&&entryHasOp(expr))k='enter';
     if(k){e.preventDefault();press(k);}
   });
-  document.addEventListener('input',e=>{if(e.target?.id==='entryFee')applyExpr();if(e.target?.name==='name'&&e.isTrusted)delete e.target.dataset.auto;});
+  document.addEventListener('input',e=>{if(e.target?.id==='entryFee'||e.target?.id==='entryDiscount')applyExpr();if(e.target?.name==='name'&&e.isTrusted)delete e.target.dataset.auto;});
 
   // ---- categories / presets / accounts ----
   function colorFor(c,mains,kind){if(kind==='income')return COLOR.income;const main=c.parentId?mains.find(x=>String(x.id)===String(c.parentId))||c:c;const i=mains.findIndex(x=>String(x.id)===String(main.id));return PALETTE[(i<0?0:i)%PALETTE.length];}
@@ -138,6 +140,9 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const editing=!!t&&!!t.id,k=(t&&t.kind)||kind||'expense';
     const bg=$('modalBg');if(bg)bg.classList.toggle('editing',editing);
     const inp=input();expr=inp&&inp.value?String(Number(inp.value)):'';
+    const lf=document.querySelector('[data-rename=fee]'),ld=document.querySelector('[data-rename=discount]');if(lf)lf.textContent=(t&&t.feeName)||'手續費';if(ld)ld.textContent=(t&&t.discountName)||'折扣';
+    if($('entryFeeName'))$('entryFeeName').value=(t&&t.feeName)||'';if($('entryDiscountName'))$('entryDiscountName').value=(t&&t.discountName)||'';
+    if(t&&t.feeIncluded&&k!=='transfer'){expr=String(entryBaseAmount(t));const fe=f('fee'),de=f('discount');if(fe)fe.value=t.fee||'';if(de)de.value=t.discount||'';}
     const cs=$('formCategory');if(cs&&t&&t.category!==undefined)cs.dataset.keep=String(t.category);
     const nm=f('name');if(nm)delete nm.dataset.auto;
     const hasHistory=!t&&entrySuggest(state,today(),1).length&&(state.transactions||[]).some(x=>x.kind==='expense'||x.kind==='income');

@@ -107,3 +107,25 @@ function entryPostLoan(st, o) {
   st.transactions.push({ id: id(), date, name, amount, kind: 'loan', loanId, direction, loanAction: direction === 'receivable' ? 'lend' : 'borrow', account: account.id, note: loan.note, person, category: '', loanRecord: true, time: o.time || '' });
   return { loan };
 }
+
+// ---- V26.65 手續費 / 折扣 next to the amount (expense / income) ----
+// The stored amount is the net total (expense: amount + fee − discount, income: amount − fee + discount) so balances and every report count it as one expense / income;
+// `fee`, `discount` and `feeIncluded` remember the parts. Transfers keep their own fee (taken from the source account).
+function entryApplyFees(kind, base, feeRaw, discRaw) {
+  base = Number(base || 0);
+  if (kind !== 'expense' && kind !== 'income') return { amount: base, fee: 0, discount: 0 };
+  const fee = Math.max(0, Number(feeRaw || 0)), discount = Math.max(0, Number(discRaw || 0));
+  if (!Number.isFinite(fee) || !Number.isFinite(discount)) return { error: '手續費／折扣請輸入數字' };
+  // expense: you pay the fee and keep the discount; income: the fee is taken off what you receive, the discount adds to it
+  const amount = Math.round((kind === 'income' ? base - fee + discount : base + fee - discount) * 10000) / 10000;
+  if (amount <= 0) return { error: kind === 'income' ? '手續費不能大於或等於金額' : '折扣不能大於或等於金額加手續費' };
+  return { amount, fee, discount };
+}
+// The amount the user typed (before the fee / discount were folded in).
+function entryBaseAmount(t) {
+  if (!t) return 0;
+  const a = Number(t.amount || 0);
+  if (!t.feeIncluded) return a;
+  const d = Number(t.fee || 0) - Number(t.discount || 0);
+  return Math.round((t.kind === 'income' ? a + d : a - d) * 10000) / 10000;
+}

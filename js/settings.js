@@ -3,7 +3,7 @@
 // ledgerEffects, isUnappliedPending, render, renderCalendar). Function declarations / var only.
 
 // ---------- app version (keep in step with sw.js CACHE, index.html and manifest.json) ----------
-function appVersion() { return 'V26.64'; }
+function appVersion() { return 'V26.65'; }
 function appReleaseDate() { return '2026-11-25'; }
 function appVersionLabel() { const [y, m, d] = appReleaseDate().split('-').map(Number); return { version: appVersion(), date: `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')}` }; }
 // newest app shell cache ('moze-v26.26-shell-v1' → 'V26.26'), compared numerically so V26.26 beats V26.9
@@ -122,7 +122,7 @@ function mozeRows(st = state) {
   for (const t of txs) {
     const a = accName(t.account), [main, sub] = mozeCats(t);
     const base = { name: t.name || '', merchant: t.merchant || '', date: mozeDate(t.date), time: t.time || '00:00', project: mozeProject(t), note: t.note || '', tags: Array.isArray(t.tags) ? t.tags.join(';') : '', person: t.person || '' };
-    const amt = Math.abs(Number(t.amount || 0)), fee = Math.abs(Number(t.fee || 0)), disc = Math.abs(Number(t.discount || 0));
+    const fee = Math.abs(Number(t.fee || 0)), disc = Math.abs(Number(t.discount || 0)), amt = t.feeIncluded ? Math.abs(entryBaseAmount(t)) : Math.abs(Number(t.amount || 0));
     if (t.kind === 'transfer') {
       const to = accName(t.toAccount);
       out.push(row(a, '轉出', '轉帳', '轉帳', -amt, { ...base, fee }));
