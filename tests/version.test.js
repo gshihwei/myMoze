@@ -29,8 +29,8 @@ test('版本號與 sw.js、index.html、manifest.json、README 一致，日期�
   const html = read('index.html');
   assert.ok(html.includes(`<b id="appVersion">${v}</b>`), 'settings fallback text');
   const [y, m, d] = date.split('-').map(Number);
-  assert.deepEqual(J('appVersionLabel()'), { version: v, date: `${y} 年 ${m} 月 ${d} 日` });
-  assert.ok(html.includes(`<span id="appVersionDate">${y} 年 ${m} 月 ${d} 日</span>`), 'settings fallback date');
+  assert.deepEqual(J('appVersionLabel()'), { version: v, date: `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')}` });
+  assert.ok(html.includes(`<span id="appVersionDate">${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')}</span>`), 'settings fallback date');
 });
 
 test('appCacheLatest()：依數字比較版本，忽略其他快取', () => {
