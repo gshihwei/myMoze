@@ -48,6 +48,7 @@ function txDetailExtra(t) {
   const rs = refundsOf(t);
   if (rs.length) h += txExtraBox('已退款', `${acctMoney(refundedAmount(t), acct(t.account))} ${rs.map(r => txLink(r, `${esc(r.date)} 查看`)).join(' ')}`, true);
   if (t.refundOf !== undefined) { const o = txById(t.refundOf); h += txExtraBox('原記錄', o ? txLink(o, `${esc(o.name)} ${esc(o.date)}`) : '已刪除', true); }
+  h += attachDetailHTML(t);
   grid.insertAdjacentHTML('beforeend', h);
   let bar = document.getElementById('detailExtraBar');
   if (!bar) { bar = document.createElement('div'); bar.id = 'detailExtraBar'; bar.className = 'form-actions detail-extra'; grid.after(bar); }
