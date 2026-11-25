@@ -18,6 +18,16 @@ function acctMove(a, dir) {
 }
 // True when the account has a low-balance threshold and its balance is below it (cards never trigger).
 function lowBalanceHit(a) { return !!a && a.type !== 'card' && !a.archived && Number.isFinite(Number(a.lowBalance)) && a.lowBalance !== '' && a.lowBalance !== null && Number(a.balance || 0) < Number(a.lowBalance); }
+// Options shared by the "new account" form: exclude from net worth, low-balance reminder (not for cards).
+function acctNewOptionsHTML() {
+  return `<label class="proj-archive"><input type="checkbox" name="aexclude"> 不納入總資產</label><div class="form-grid form-grid-1"><label>餘額不足提醒（低於此金額時提醒；信用卡不適用，留空＝不提醒）<input name="alow" type="number" min="0" step="any" inputmode="decimal" placeholder="例如 3000"></label></div>`;
+}
+function acctOptionsFromForm(f, type) {
+  const o = {}, raw = String(f.get('alow') ?? '').trim(), low = Number(raw);
+  if (f.get('aexclude')) o.excludeNet = true;
+  if (type !== 'card' && raw !== '' && Number.isFinite(low) && low >= 0) o.lowBalance = low;
+  return o;
+}
 function acctActive(list, keepId) { return (list || []).filter(a => !a.archived || String(a.id) === String(keepId ?? '')); }
 
 function acctCurrencyField(cur, locked) {

@@ -55,3 +55,12 @@ test('餘額不足會出現在提醒；設定表單可存取兩個選項', () =>
   assert.equal(g.excludeNet, undefined); assert.equal(g.lowBalance, undefined);
   assert.match(J(`acctEditFormHTML(state.accounts[0])`), /name="aexclude"/);
 });
+
+test('新增帳戶表單：選項 HTML 與表單轉換（信用卡不存餘額不足門檻）', () => {
+  const { J } = bundle(mk([]));
+  assert.match(J('acctNewOptionsHTML()'), /name="aexclude"/);
+  assert.deepEqual(J(`acctOptionsFromForm(new Map([['aexclude','on'],['alow','300']]), 'bank')`), { excludeNet: true, lowBalance: 300 });
+  assert.deepEqual(J(`acctOptionsFromForm(new Map([['alow','300']]), 'card')`), {});
+  assert.deepEqual(J(`acctOptionsFromForm(new Map([['alow','']]), 'bank')`), {});
+  assert.deepEqual(J(`acctOptionsFromForm(new Map([['alow','0']]), 'cash')`), { lowBalance: 0 });
+});
