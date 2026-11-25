@@ -1,0 +1,4 @@
+V26.59
+- 預設圖示換成使用者下載的 logo／卡面，共 30 張、24 家銀行／品牌（128px webp）。
+- 新增卡片圖示：國泰 cube、中信 Line Pay（linepay）、中信 uniopen、星展傳說對決（AOV）；NPC 以「全國加油」比對。
+- Google 的 SVG 轉成 PNG 後再轉檔；舊的自動抓取圖（低解析）已全部被取代。

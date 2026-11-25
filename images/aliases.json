@@ -47,8 +47,7 @@
   "中華郵政"
  ],
  "dbs": [
-  "星展",
-  "傳說對決"
+  "星展"
  ],
  "cathay": [
   "國泰",
@@ -79,5 +78,23 @@
   "玉山",
   "ubear"
  ],
- "npc": []
+ "npc": [
+  "全國加油"
+ ],
+ "AOV": [
+  "傳說對決",
+  "aov"
+ ],
+ "cube": [
+  "cube"
+ ],
+ "linepay": [
+  "line pay",
+  "linepay"
+ ],
+ "uniopen": [
+  "uniopen",
+  "uni open"
+ ],
+ "google": []
 }
