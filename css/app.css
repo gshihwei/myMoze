@@ -348,3 +348,13 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .acct-image-preview svg{width:28px;height:28px;fill:none;stroke:#b9c6d6;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .acct-image-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.acct-image-actions small{width:100%;opacity:.65}
 .file-btn{display:inline-flex;align-items:center;padding:8px 14px;border-radius:10px;cursor:pointer}
+
+/* V26.55 image crop dialog */
+.crop-overlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);display:grid;place-items:center}
+.crop-card{background:#162636;border-radius:18px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:94vw}
+.crop-stage{position:relative;overflow:hidden;background:#000;border-radius:12px;touch-action:none;cursor:grab}
+.crop-stage img{position:absolute;max-width:none;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.crop-ring{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;box-shadow:0 0 0 999px rgba(0,0,0,.55);border:2px solid #fff;pointer-events:none}
+.crop-zoom{width:100%}
+.crop-hint{margin:0;opacity:.65;font-size:13px}
+.crop-actions{display:flex;gap:10px;width:100%}.crop-actions button{flex:1}
