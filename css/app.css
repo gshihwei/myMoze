@@ -610,3 +610,5 @@ html[data-keypad=phone] #amountKeypad [data-key=enter]{order:6}html[data-keypad=
 
 .entry-back{align-self:flex-start;margin:0 0 8px;padding:6px 12px;border-radius:999px;font-size:14px}
 #modalBg.editing[data-etab=receivable] .entry-back{display:none}
+
+.inst-events{margin-top:24px}.inst-bar{height:6px;border-radius:3px;background:#24384b;overflow:hidden;margin:6px 0}.inst-bar i{display:block;height:100%;background:#2094d4}

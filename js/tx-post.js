@@ -41,6 +41,7 @@ function depositText(t) {
   if (t.depositOf) { const d = txById(t.depositOf); return d ? `含訂金 ${money(d.amount)}，交易總計 ${money(Number(d.amount) + Number(t.amount || 0))}` : ''; }
   const b = depositBalance(t); if (!b) return '';
   const total = `交易總計 ${money(Number(t.amount) + Number(b.amount || 0))}`;
+  if (b.installment) { const all = b.installment.amount || b.amount; return `尾款 ${money(all)} 已於 ${b.date} 分期付款，交易總計 ${money(Number(t.amount) + all)}`; }
   if (b.pending) return `尾款 ${b.amountTbd ? '未定' : money(b.amount)}，${b.amountTbd ? '' : total + '，'}${b.dateTbd ? '日期未定' : `預計於 ${b.date} 支付`}`;
   return `尾款 ${money(b.amount)} 已於 ${b.date} 支付，${total}`;
 }

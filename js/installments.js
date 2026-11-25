@@ -12,6 +12,7 @@ function installmentPlan(t, countRaw, o) {
   if (!t || t.kind !== 'expense' || n < 2) return null;
   if (n > 60) return { error: '分期最多 60 期' };
   if (Array.isArray(t.splits) && t.splits.length) return { error: '分期交易不能同時拆帳' };
+  if (Number(o?.rate) > 0) return instRatePlan(t, n, o);
   const total = Math.round(Math.abs(Number(t.amount || 0)) * 100);
   if (total < n) return { error: '金額太小，無法分期' };
   const unit = o?.int ? 100 : 1, no = Math.max(1, Math.floor(Number(o?.startNo) || 1)), all = n + no - 1, remAt = o?.rem === 'last' ? n : 1;
@@ -39,19 +40,21 @@ function installmentDeleteChoice(t) {
   return confirm(`只刪除第 ${t.installment.n} 期「${t.name}」${money(t.amount)}？`) ? [String(t.id)] : null;
 }
 
-function installmentLabel(t) { return t?.installment ? `第 ${t.installment.n} / ${t.installment.total} 期 · 總額 ${money(t.installment.amount)}` : ''; }
+function installmentLabel(t) { return t?.installment ? `${t.installment.prepay ? '提前償還本金' : `第 ${t.installment.n} / ${t.installment.total} 期`} · 總額 ${money(t.installment.amount)}` : ''; }
 
 function updateInstallmentUI() {
   const box = document.getElementById('installmentBox'); if (!box) return;
   const kind = document.querySelector('input[name=kind]:checked')?.value;
-  box.hidden = kind !== 'expense' || !!editId;
+  box.hidden = kind !== 'expense' || (!!editId && !instEditable(txById(editId)));
   const on = document.querySelector('#txForm [name=instOn]')?.checked;
   const cnt = document.getElementById('instCountField'); if (cnt) cnt.hidden = !on;
   const hint = document.getElementById('instHint');
   if (hint) {
     const amt = Number(document.querySelector('#txForm [name=amount]')?.value || 0), n = Math.floor(Number(document.querySelector('#txForm [name=instCount]')?.value || 0));
+    const rate = Number(document.querySelector('#txForm [name=instRate]')?.value || 0), rv = k => document.querySelector(`#txForm [name=${k}]`);
+    if (on && amt > 0 && n >= 2 && rate > 0) { const s = loanSchedule(amt, n, rate, rv('instMethod')?.value, 0, rv('instGrace')?.value); hint.textContent = `第 1 期 ${money(s[0].principal + s[0].interest)}（本金 ${money(s[0].principal)}＋利息 ${money(s[0].interest)}），利息合計約 ${money(s.reduce((x, y) => x + y.interest, 0))}。實際以銀行為準，各期可再修改。`; return; }
     hint.textContent = on && amt > 0 && n >= 2 ? `每期約 ${money(Math.floor(amt * 100 / n) / 100)}，共 ${n} 期，第 1 期為交易日期，之後每月同一天。` : '';
   }
 }
-document.addEventListener('change', e => { if (e.target?.closest?.('#txForm') && ['kind', 'instOn', 'instCount'].includes(e.target.name)) updateInstallmentUI(); });
-document.addEventListener('input', e => { if (e.target?.closest?.('#txForm') && ['amount', 'instCount'].includes(e.target.name)) updateInstallmentUI(); });
+document.addEventListener('change', e => { if (e.target?.closest?.('#txForm') && ['kind', 'instOn', 'instCount', 'instMethod', 'instDaily'].includes(e.target.name)) updateInstallmentUI(); });
+document.addEventListener('input', e => { if (e.target?.closest?.('#txForm') && ['amount', 'instCount', 'instRate', 'instMethod', 'instGrace'].includes(e.target.name)) updateInstallmentUI(); });

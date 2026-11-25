@@ -26,20 +26,22 @@ function recurringStop(t) { const r = seriesRule(t); if (!r) return 0; r.ended =
 function instFuture(t) { return installmentGroup(t).filter(x => x.installment.n > t.installment.n).sort((a, b) => a.installment.n - b.installment.n); }
 function instStop(t) { const l = instFuture(t), ids = new Set(l.map(x => x.id)); for (const x of l) adjust(x, -1); state.transactions = state.transactions.filter(x => !ids.has(x.id)); return l; }
 // 提前繳清: all later periods become one payment on `date`.
-function instPayoff(t, date) {
-  const l = instStop(t); if (!l.length) return null; const sum = Math.round(l.reduce((s, x) => s + Number(x.amount), 0) * 100) / 100;
-  const x = { ...l[0], id: id(), date, amount: sum, name: l[0].name.replace(/（\d+\/\d+）$/, '') + '（提前繳清）', installment: { ...l[0].installment } }; delete x.postDate; delete x.recon;
+function instPayoff(t, date, interest) {
+  const l = instStop(t); if (!l.length) return null; const prin = Math.round(l.reduce((s, x) => s + instPrincipal(x), 0) * 100) / 100, sum = Math.round((prin + Number(interest || 0)) * 100) / 100;
+  const x = { ...l[0], id: id(), date, amount: sum, name: l[0].name.replace(/（\d+\/\d+）$/, '') + '（提前繳清）', installment: { ...l[0].installment, principal: prin, interest: Number(interest || 0) } }; delete x.postDate; delete x.recon;
   state.transactions.push(x); adjust(x, 1); return x;
 }
 function instApply(t) { const l = instFuture(t), base = t.name.replace(/（\d+\/\d+）$/, ''); for (const x of l) { const same = String(x.account) === String(t.account); if (!same) adjust(x, -1); Object.assign(x, { category: t.category, project: t.project, merchant: t.merchant, account: t.account, name: `${base}（${x.installment.n}/${x.installment.total}）` }); if (!same) adjust(x, 1); } return l.length; }
 function seriesButtons(t) {
-  if (t.installment && instFuture(t).length) return '<button type="button" class="secondary" data-series="instApply">套用到未來分期</button><button type="button" class="secondary" data-series="payoff">提前繳清</button><button type="button" class="secondary" data-series="instStop">終止未來分期</button>';
+  if (t.installment && instFuture(t).length) return '<button type="button" class="secondary" data-series="instApply">套用到未來分期</button><button type="button" class="secondary" data-series="prepay">提前償還本金</button><button type="button" class="secondary" data-series="rate">調整利率</button><button type="button" class="secondary" data-series="payoff">提前繳清</button><button type="button" class="secondary" data-series="instStop">終止未來分期</button>';
   const r = seriesRule(t); return r && !recurringEnded(normRecurring(r)) ? '<button type="button" class="secondary" data-series="recApply">套用到未來週期</button><button type="button" class="secondary" data-series="recStop">終止未來週期</button>' : '';
 }
 document.addEventListener('click', async e => {
   const b = e.target.closest?.('[data-series]'); if (!b) return; const t = txById(window.detailId), a = b.dataset.series; if (!t) return;
   if (a === 'instApply') { if (!confirm('把這一期的名稱、類別、專案、商家、帳戶套用到之後所有期？（金額不變）')) return; instApply(t); }
-  if (a === 'payoff') { const l = instFuture(t); if (!confirm(`把剩餘 ${l.length} 期共 ${money(l.reduce((s, x) => s + Number(x.amount), 0))} 併成今天一筆？`)) return; instPayoff(t, isoDate(new Date())); }
+  if (a === 'payoff') { const l = instFuture(t), d = isoDate(new Date()), rest = l.reduce((s, x) => s + instPrincipal(x), 0); let i = instPayoffInterest(t, d); if (instMeta(t).rate > 0) { const v = prompt(`剩餘本金 ${money(rest)}，另加當期利息：`, String(i)); if (v === null) return; i = Math.max(0, Number(v) || 0); } else if (!confirm(`把剩餘 ${l.length} 期共 ${money(rest)} 併成今天一筆？`)) return; instPayoff(t, d, i); }
+  if (a === 'prepay') { const rest = instFuture(t).reduce((s, x) => s + instPrincipal(x), 0), v = prompt(`提前償還多少本金？（剩餘本金 ${money(rest)}，之後各期會重新計算）`, ''); if (v === null) return; const r = instPrepay(t, v, isoDate(new Date())); if (r.error) { alert(r.error); return; } }
+  if (a === 'rate') { const v = prompt(`從 ${t.date} 這一期起的新年利率 %（目前 ${instMeta(t).rate}）：`, String(instMeta(t).rate)); if (v === null || v.trim() === '') return; if (!instRate(t, v)) return; }
   if (a === 'instStop') { if (!confirm(`刪除之後的 ${instFuture(t).length} 期？`)) return; instStop(t); }
   if (a === 'recApply') { if (!confirm('把這筆的名稱、金額、類別、帳戶、商家套用到之後的週期？')) return; recurringApplyFrom(t); }
   if (a === 'recStop') { if (!confirm('終止這個週期？這一期之後的記錄會一併刪除。')) return; recurringStop(t); }
