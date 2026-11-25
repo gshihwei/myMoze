@@ -303,7 +303,7 @@ function acctInfoHTML(a) {
   if (a.bank) rows.push(infoRow('所屬銀行', esc(a.bank)));
   if (card) rows.push(infoRow('信用額度', a.limit ? money(a.limit) : '尚未設定'), infoRow('結帳日', `每月 ${a.statement || 15} 日`), infoRow('繳款期限', due), infoRow('主帳戶', payFrom ? esc(payFrom) : '無'), infoRow('紅利回饋', a.rewardPct ? `${a.rewardPct}%` : '無'));
   rows.push(infoRow('不計入總資產', a.excludeNet ? '是' : '否'), infoRow('封存帳戶', a.archived ? '是' : '否'));
-  return `<section class="detail-sec"><h4>帳戶資訊 <button type="button" class="ghost detail-gear" data-acct-manage="${esc(a.id)}" aria-label="管理 ${esc(a.name)}">管理 ⚙</button></h4>${rows.join('')}</section>`;
+  return `<section class="detail-sec"><h4>帳戶資訊 <button type="button" class="ghost detail-gear" data-acct-manage="${esc(a.id)}" aria-label="管理 ${esc(a.name)}">管理 ⚙</button></h4>${rows.join('')}</section>${rewardSectionHTML(a)}`;
 }
 function bankCards(sel) { return (state.accounts || []).filter(a => acctGroupKey(a) === sel.key && String(a.bank || '').trim() === sel.bank); }
 function bankDetailHTML(sel) {

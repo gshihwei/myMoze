@@ -536,3 +536,9 @@ button.notice-row{cursor:pointer}.notice-row.overdue .day-main small:last-child{
 /* V26.73 combined cards */
 .recon-group{display:flex;justify-content:space-between;padding:10px 14px;background:#101e2c;color:#9db0c2;position:sticky;top:0;z-index:2}
 .stmt-adjust{margin:8px 0;color:#9fb2c4}.stmt-adjust summary{cursor:pointer}
+
+/* V26.75 rewards */
+.reward-pick{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.reward-pick:empty{display:none}
+.reward-tag{display:inline-flex;gap:6px;align-items:center;border:1px solid #6b5a2c;background:#2d2a1d;color:#f0d489;border-radius:999px;padding:5px 12px;font-size:14px;cursor:pointer}.reward-tag em{font-style:normal;color:#a9cf89}
+.reward-row{display:grid;grid-template-columns:1fr auto;gap:10px;padding:10px 0;border-bottom:1px solid #22364a}.reward-row.dead{opacity:.45}.reward-row small{display:block}
+.reward-form{border:1px solid #2a4054;border-radius:12px;padding:12px;margin-top:10px}.reward-items .notice-row{grid-template-columns:56px 1fr auto}
