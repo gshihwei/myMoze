@@ -3,10 +3,10 @@
 // acctCur, adjust, isoDate, selectedDate, openEntity, deleteAccount, save, render, id).
 // Function declarations / var only.
 //
-// Account record: { id, name, type: 'cash' | 'bank' | 'ewallet' | 'card', balance, currency?, limit?, statement?, due?, note?, archived? }
+// Account record: { id, name, type: 'cash' | 'bank' | 'ewallet' | 'broker' | 'card', balance, currency?, limit?, statement?, due?, note?, archived? }
 
 function acctCurrencies() { return ['TWD', 'USD', 'JPY', 'EUR', 'CNY', 'HKD', 'KRW', 'GBP', 'AUD', 'SGD', 'CAD', 'THB']; }
-function acctTypes() { return [['bank', '銀行'], ['cash', '現金'], ['ewallet', '電子支付'], ['card', '信用卡']]; }
+function acctTypes() { return [['bank', '銀行'], ['cash', '現金'], ['ewallet', '電子支付'], ['broker', '證券戶'], ['card', '信用卡']]; }
 function acctTypeLabel(a) { return (acctTypes().find(([k]) => k === a?.type) || [0, '銀行'])[1]; }
 function acctHasTx(aid) { const k = String(aid); return (state.transactions || []).some(t => String(t.account) === k || String(t.toAccount ?? '') === k); }
 // User-defined order (account.order); accounts without one keep their stored order after the ordered ones.

@@ -68,7 +68,7 @@ test('新增帳戶表單：選項 HTML 與表單轉換（信用卡不存餘額�
 test('帳戶類型：新增電子支付；現有帳戶可改類型，轉成信用卡帶預設欄位、轉離信用卡清掉卡片欄位', () => {
   const { J, run } = bundle(mk([A('錢包', 100), A('卡', -500, { type: 'card', limit: 80000, statement: 10, due: 25, lowBalance: 5 })]));
   assert.equal(J(`acctTypeLabel({type:'ewallet'})`), '電子支付');
-  assert.deepEqual(J('acctTypes().map(x => x[0])'), ['bank', 'cash', 'ewallet', 'card']);
+  assert.deepEqual(J('acctTypes().map(x => x[0])'), ['bank', 'cash', 'ewallet', 'broker', 'card']);
   const e = J(`acctFromEditForm(new Map([['aname','錢包'],['acur','TWD'],['atype','ewallet']]), state.accounts[0]).account`);
   assert.equal(e.type, 'ewallet'); assert.equal(e.limit, undefined); assert.equal(e.balance, 100);
   const c = J(`acctFromEditForm(new Map([['aname','錢包'],['acur','TWD'],['atype','card'],['alimit','30000']]), state.accounts[0]).account`);
@@ -79,4 +79,15 @@ test('帳戶類型：新增電子支付；現有帳戶可改類型，轉成信�
   assert.equal(bad.type, 'bank');
   assert.match(J('acctEditFormHTML(state.accounts[1])'), /data-acct-card-fields\s*>/);
   assert.match(J('acctEditFormHTML(state.accounts[0])'), /data-acct-card-fields hidden/);
+});
+
+test('帳戶類型：證券戶（標籤、可選、改類型、獨立分組、圖示）', () => {
+  const { J, run } = bundle(mk([A('富邦證券', 5000, { type: 'broker' }), A('現金戶', 10)]));
+  assert.equal(J(`acctTypeLabel({type:'broker'})`), '證券戶');
+  assert.ok(J('acctTypes().map(x => x[0])').includes('broker'));
+  assert.equal(run(`acctFromEditForm(new Map([['aname','富邦證券'],['acur','TWD'],['atype','broker']]), state.accounts[0]).account.type`), 'broker');
+  assert.equal(run(`accountIcon(state.accounts[0])`), 'chart');
+  run(`prefs = () => ({})`);
+  const h = J(`acctGroupsHTML([], [], state.accounts, ['<i>證</i>', '<i>銀</i>'])`);
+  assert.match(h, /證券戶 \(1\)/); assert.match(h, /銀行 \(1\)/);
 });
