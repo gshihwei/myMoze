@@ -558,3 +558,6 @@ button.notice-row{cursor:pointer}.notice-row.overdue .day-main small:last-child{
 .loan-only{display:none}#modalBg[data-etab=receivable] .loan-only,#modalBg[data-etab=payable] .loan-only{display:flex}
 .loan-check{width:22px;height:22px;border-radius:6px;border:1px solid #3a526a;background:none;color:transparent;margin-right:6px;cursor:pointer;padding:0}.loan-check.on{background:#2094d4;color:#fff}
 .loan-bulk{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 14px;margin-bottom:10px;border-radius:12px;background:#1f3347}.loan-bulk input{width:120px}
+
+/* V26.79 series */
+.rc-days{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}.rc-days[hidden],.rc-to[hidden]{display:none!important}#instCountField:not([hidden]){display:grid;grid-template-columns:1fr 1fr;gap:8px}

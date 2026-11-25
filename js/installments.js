@@ -6,22 +6,24 @@
 // purchase date, linked by { installment: { group, n, total, amount } }. Budgets, reports, card
 // statements and reconciliation therefore see each month's share in its own month.
 
-function installmentPlan(t, countRaw) {
+// o (V26.79): startNo = number of the first period kept here (the rest is already paid), int = whole amounts, rem = 'first' | 'last' gets the remainder.
+function installmentPlan(t, countRaw, o) {
   const n = Math.floor(Number(countRaw) || 0);
   if (!t || t.kind !== 'expense' || n < 2) return null;
   if (n > 60) return { error: '分期最多 60 期' };
   if (Array.isArray(t.splits) && t.splits.length) return { error: '分期交易不能同時拆帳' };
   const total = Math.round(Math.abs(Number(t.amount || 0)) * 100);
   if (total < n) return { error: '金額太小，無法分期' };
-  const each = Math.floor(total / n), first = total - each * (n - 1), group = id();
+  const unit = o?.int ? 100 : 1, no = Math.max(1, Math.floor(Number(o?.startNo) || 1)), all = n + no - 1, remAt = o?.rem === 'last' ? n : 1;
+  const each = Math.floor(total / n / unit) * unit, first = total - each * (n - 1), group = id();
   const rule = { freq: 'month', interval: 1, start: t.date };
   // the fee / discount is already inside the total; the instalments carry only their own net share
   const base = { ...t }; for (const k of ['fee', 'discount', 'feeIncluded', 'feeName', 'discountName', 'attachments']) delete base[k];
   const out = [];
   let date = t.date;
   for (let i = 1; i <= n; i++) {
-    const amount = (i === 1 ? first : each) / 100;
-    out.push({ ...base, id: i === 1 ? t.id : id(), date, amount, name: t.name + '（' + i + '/' + n + '）', installment: { group, n: i, total: n, amount: total / 100 } });
+    const amount = (i === remAt ? first : each) / 100, k = no + i - 1;
+    out.push({ ...base, id: i === 1 ? t.id : id(), date, amount, name: t.name + '（' + k + '/' + all + '）', installment: { group, n: k, total: all, amount: total / 100 } });
     date = addPeriod(date, rule);
   }
   return { list: out };

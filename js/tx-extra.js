@@ -54,7 +54,7 @@ function txDetailExtra(t) {
   let bar = document.getElementById('detailExtraBar');
   if (!bar) { bar = document.createElement('div'); bar.id = 'detailExtraBar'; bar.className = 'form-actions detail-extra'; grid.after(bar); }
   const bt = depositBalance(t);
-  bar.innerHTML = (t.pending && pendingVisible(t) && !isLoanTx(t) ? `<button type="button" class="primary" data-finish-pending="${esc(t.id)}">✓ 完成入帳</button>` : '') + (bt?.pending && pendingVisible(bt) ? `<button type="button" class="primary" data-finish-pending="${esc(bt.id)}">補尾款</button>` : '') + (refundable(t) ? '<button type="button" class="secondary" data-refund>退款</button>' : '') + '<div id="refundBox"></div>';
+  bar.innerHTML = seriesButtons(t) + (t.pending && pendingVisible(t) && !isLoanTx(t) ? `<button type="button" class="primary" data-finish-pending="${esc(t.id)}">✓ 完成入帳</button>` : '') + (bt?.pending && pendingVisible(bt) ? `<button type="button" class="primary" data-finish-pending="${esc(bt.id)}">補尾款</button>` : '') + (refundable(t) ? '<button type="button" class="secondary" data-refund>退款</button>' : '') + '<div id="refundBox"></div>';
 }
 function refundFormHTML(t) {
   const accts = acctActive(acctOrdered(state.accounts), t.account).map(a => `<option value="${esc(a.id)}"${String(a.id) === String(t.account) ? ' selected' : ''}>${acctName(a)}</option>`).join('');

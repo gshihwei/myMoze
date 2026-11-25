@@ -40,7 +40,7 @@ function noticeBillsHTML(l) {
 function noticePendingHTML(l) { return l.map(pendingRow).join(''); }
 function noticeLoansHTML() { return loanGroups().map(g => `<button type="button" class="notice-row" data-loan-id="${esc(g.firstId)}"><div class="notice-ico">👤</div><div class="day-main"><b>${esc(g.person)}</b><small>${[g.receivable ? `${g.receivable} 筆應收` : '', g.payable ? `${g.payable} 筆應付` : ''].filter(Boolean).join(' · ')}</small></div><div class="day-side"><b class="${g.net < 0 ? 'expense-text' : 'income-text'}">${g.net < 0 ? '應付 ' : '應收 '}${money(Math.abs(g.net))}</b></div></button>`).join(''); }
 function noticeUpcomingHTML(l) {
-  const net = Math.round(l.reduce((s, x) => s + (x.kind === 'income' ? 1 : -1) * (txTWD(x.amount, x.account) ?? x.amount), 0));
+  const net = Math.round(l.reduce((s, x) => s + (x.kind === 'income' ? 1 : x.kind === 'transfer' ? 0 : -1) * (txTWD(x.amount, x.account) ?? x.amount), 0));
   return l.length ? `<div class="notice-total">${l.length} 筆 · 合計 ${net < 0 ? '−' : '+'}${money(Math.abs(net))}</div>` + l.map(x => `<div class="notice-row"><div class="notice-ico">${esc(cat(x.category).icon)}</div><div class="day-main"><b>${esc(x.name)}</b><small>${x.date}（${reminderDayText(remindDaysBetween(x.date, new Date()))}）· ${esc(x.label)}</small></div><div class="day-side"><b class="${x.kind === 'income' ? 'income-text' : 'expense-text'}">${x.kind === 'income' ? '+' : '−'}${acctMoney(x.amount, acct(x.account))}</b></div></div>`).join('') : '';
 }
 function renderNotice() {
