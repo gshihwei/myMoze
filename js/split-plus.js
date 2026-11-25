@@ -22,7 +22,7 @@ function splitNeedsGroup(t, rows) { return rows.some(r => r.lend || (r.account &
 function splitStored(t, rows) {
   const typed = rows.map(r => r.amount), sum = Math.round(typed.reduce((s, x) => s + x, 0) * 1e4) / 1e4;
   if (Math.abs(sum - t.amount) < 1e-6) return rows.map(r => ({ category: r.category, amount: r.amount }));
-  const net = splitShare(typed, t.amount, acctCur(acct(t.account)));
+  const ex = window.__splitNet, net = Array.isArray(ex) && ex.length === rows.length && Math.abs(ex.reduce((s, x) => s + x, 0) - t.amount) < 1e-6 ? ex : splitShare(typed, t.amount, acctCur(acct(t.account)));
   return rows.map((r, i) => ({ category: r.category, amount: net[i], base: r.amount }));
 }
 // Builds the linked transactions for `t` (not yet saved). Returns { list, loans } or { error }.

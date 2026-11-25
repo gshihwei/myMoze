@@ -69,8 +69,14 @@ function efStrip() {
   if (src) { name = src.querySelector('.entry-cat-name')?.textContent || ''; bub = src.querySelector('.entry-bubble').outerHTML; }
   else if (efLoanTab()) { name = efTab() === 'payable' ? '應付款項' : '應收款項'; bub = '<span class="entry-bubble" style="background:#4b8f84"><span class="emoji">🤝</span></span>'; }
   else { name = c?.name || '類別'; const on = document.querySelector('#categoryChoices .entry-cat.active .entry-bubble,#categorySubs .entry-cat.active .entry-bubble'), par = c?.parentId ? state.categories.find(x => String(x.id) === String(c.parentId)) : null; bub = [...document.querySelectorAll('#categorySubs .entry-cat.active .entry-bubble')][0]?.outerHTML || on?.outerHTML || `<span class="entry-bubble" style="background:${esc(c?.color || par?.color || '#3f86e6')}"><span class="emoji">${esc(c?.icon || '🏷️')}</span></span>`; }
-  const n = Number(efEl('amount')?.value || 0);
-  box.innerHTML = `<button type="button" class="entry-cat small active" data-ef-change>${bub}<span class="entry-cat-name">${esc(name)}</span><small class="${efTab() === 'income' ? 'income-text' : 'expense-text'}">${n ? money(n) : ''}</small></button><button type="button" class="ghost ef-change" data-ef-change>‹ 更換類別／類型</button>`;
+  const n = Number(efEl('amount')?.value || 0), chip = `<button type="button" class="ghost ef-change" data-ef-change>‹ 更換類別／類型</button>`, add = efTab() === 'transfer' ? '' : '<button type="button" class="entry-cat small" data-item-add aria-label="增加類別（拆帳）"><span class="entry-bubble ef-add">＋</span><span class="entry-cat-name">拆帳</span></button>';
+  const S = window.entryItems?.state?.();
+  if (S && S.items.length > 1) {
+    const colour = it => { const k = (state.categories || []).find(x => String(x.id) === String(it.category)), par = k?.parentId ? state.categories.find(x => String(x.id) === String(k.parentId)) : null; return itemLoan(it) ? (it.tab === 'payable' ? '#d05c82' : '#4fae9c') : k?.color || par?.color || (it.kind === 'income' ? '#c9a35a' : '#3f86e6'); };
+    box.innerHTML = itemsStripHTML(S.items, S.ci, it => `<span class="entry-bubble" style="background:${esc(colour(it))}"><span class="emoji">${itemLoan(it) ? '🤝' : esc(cat(it.category).icon)}</span></span>`, it => it.preset || (itemLoan(it) ? (it.tab === 'payable' ? '應付款項' : '應收款項') : cat(it.category).name)) + add + `<span class="ef-chips">${S.items[S.ci].locked ? '<span class="hint">應收應付請到借還款頁修改</span>' : `${chip}<button type="button" class="ghost ef-change" data-item-del="${S.ci}">移除此項</button>`}</span>`;
+    return;
+  }
+  box.innerHTML = `<button type="button" class="entry-cat small active" data-ef-change>${bub}<span class="entry-cat-name">${esc(name)}</span><small class="${efTab() === 'income' ? 'income-text' : 'expense-text'}">${n ? money(n) : ''}</small></button>${add}<span class="ef-chips">${chip}</span>`;
 }
 function efPicked(on) { document.getElementById('modalBg')?.classList.toggle('picked', !!on); }
 function efOpen(t) {
@@ -122,6 +128,10 @@ function efTagsRender() {
 }
 document.addEventListener('click', e => {
   const c = s => e.target.closest?.(s); let b;
+  if (c('[data-item-add]')) { window.entryItems?.add(); return; }
+  if ((b = c('[data-item-del]'))) { window.entryItems?.remove(Number(b.dataset.itemDel)); return; }
+  if ((b = c('[data-item]'))) { const i = Number(b.dataset.item); if (b.classList.contains('active')) { if (!window.entryItems.state().items[i].locked) efPicked(false); } else window.entryItems.go(i); return; }
+  if (c('[data-item-all]')) { const S = window.entryItems.state(); alert(`共 ${S.items.length} 項，合計 ${money(Math.abs(itemsTotal(S.items)))}\n\n${S.items.map((it, k) => `${k + 1}. ${it.preset || cat(it.category).name} ${itemSign(it) > 0 ? '+' : '−'}${itemNet(it)}${it.name ? ` ${it.name}` : ''}（${acct(it.account).name}）`).join('\n')}`); return; }
   if (c('[data-ef-change]')) { efPicked(false); document.querySelector('.entry-scroll')?.scrollTo?.(0, 0); return; }
   if ((b = c('#categoryChoices [data-cat],#categorySubs [data-cat],#entryPresets [data-preset]'))) {
     const x = b.dataset.cat ? state.categories.find(k => String(k.id) === b.dataset.cat) : null, subs = x && !x.parentId && state.categories.some(k => String(k.parentId) === String(x.id) && catVisible(k));

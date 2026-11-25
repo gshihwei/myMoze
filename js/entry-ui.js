@@ -7,7 +7,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const PALETTE=['#e8c88c','#3f86e6','#9a63c9','#d4706e','#aaa88f','#e24c4c','#40648e','#d99ac9','#6f8f5e','#f5a623'];
   const COLOR={income:'#c9a35a',transfer:'#d98a3d',system:'#d98a3d',receivable:'#7dd8c6',payable:'#d05c82'};
-  let tab='expense',preset='',expr='',exprIn='',side='out',pick='out',inTouched=false,prevTab='expense',keepCat={},tfKeep=null;
+  let tab='expense',preset='',expr='',exprIn='',side='out',pick='out',inTouched=false,prevTab='expense',keepCat={},tfKeep=null,items=[],ci=0,oldIds=[];
   const isTf=()=>tab==='transfer';
   const form=()=>$('txForm'),input=()=>$('amountInput');
   const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
@@ -177,11 +177,76 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   document.querySelectorAll('input[name="kind"]').forEach(r=>r.addEventListener('change',()=>setTimeout(()=>{if(tab==='expense'||tab==='income'||tab==='transfer'){if(tab!==curKind())tab=curKind();}refresh();},0)));
   $('formCategory')?.addEventListener('change',()=>{renderCats();sync();});
 
+  // ---- 多類別 items (pure parts in js/entry-items.js) ----
+  function snap(){
+    const v=n=>f(n)?.value||'',it=items[ci]||{};
+    return {...it,tab:tab==='suggest'?(curKind()==='income'?'income':'expense'):tab,kind:curKind(),category:v('category'),preset,expr,fee:Number(v('fee'))||0,discount:Number(v('discount'))||0,feeName:$('entryFeeName')?.value||'',discountName:$('entryDiscountName')?.value||'',account:v('account'),project:v('project'),person:v('person'),name:f('name')?.dataset.auto==='1'?'':v('name'),invoiceNo:v('invoiceNo'),invoiceCode:v('invoiceCode'),cur:$('entryCurSel')&&$('entryCurSel').value!==acctCur(acct(v('account')))?$('entryCurSel').value:'',conv:f('convAuto')?{auto:f('convAuto').checked,amount:Number(v('convAmount'))||0}:null,rewards:[...document.querySelectorAll('#rewardPick input:checked')].map(i=>i.value)};
+  }
+  function loadItem(it){
+    tab=it.tab==='suggest'?'expense':it.tab;preset=it.preset||'';expr=String(it.expr||'');
+    const bg=$('modalBg');if(bg)bg.dataset.etab=tab;
+    setKind(it.kind||'expense');fillCategorySelect(it.category);
+    const set=(n,v)=>{const e=f(n);if(e)e.value=v??'';};
+    set('account',it.account);set('project',it.project);set('person',it.person);set('name',it.name);set('fee',it.fee||'');set('discount',it.discount||'');set('invoiceNo',it.invoiceNo);set('invoiceCode',it.invoiceCode);
+    if($('entryFeeName'))$('entryFeeName').value=it.feeName||'';if($('entryDiscountName'))$('entryDiscountName').value=it.discountName||'';
+    if(f('name'))delete f('name').dataset.auto;
+    const cs=$('entryCurSel');if(cs)cs.dataset.cur=it.cur||'';if(f('convAuto')){f('convAuto').checked=it.conv?it.conv.auto:true;f('convAmount').value=it.conv?it.conv.amount||'':'';}
+    applyExpr();fxSyncUI();rewardSync(it.rewards||[]);renderCats();renderPresets();renderAccounts();sync();
+  }
+  function go(i){if(i===ci||!items[i])return;if(!items[ci]?.locked)items[ci]=snap();ci=i;loadItem(items[i]);$('modalBg')?.classList.toggle('item-locked',!!items[i].locked);efPicked(true);efSync();}
+  window.entryItems={
+    state(){if(items.length>1&&!items[ci]?.locked)items[ci]=snap();return {items,ci};},
+    go,
+    add(){
+      if(isTf()){alert('多類別不能包含轉帳');return;}
+      if(!items.length)items=[snap()];else if(!items[ci].locked)items[ci]=snap();
+      const b=items[ci];items.push({tab:b.locked?'expense':b.tab==='receivable'||b.tab==='payable'?'expense':b.tab,kind:b.kind||'expense',category:b.category,expr:'',account:b.account,project:b.project||'',person:b.person||'',name:'',cur:'',rewards:[]});
+      ci=items.length-1;loadItem(items[ci]);$('modalBg')?.classList.remove('item-locked');efPicked(false);for(const k of ['account','project'])if(f(k))f(k).dataset.userSet='1';$('entrySide')?.classList.add('open');efSync();
+    },
+    remove(i){
+      if(items.length<2||items[i]?.locked){if(items[i]?.locked)alert('應收應付款項請到借還款頁處理');return;}
+      items.splice(i,1);ci=Math.min(i,items.length-1);const one=items[ci];if(items.length===1&&!oldIds.length)items=[];loadItem(one);efPicked(true);efSync();
+    },
+    reset(t){
+      items=[];ci=0;oldIds=[];$('modalBg')?.classList.remove('item-locked');const l=itemsOfTx(t);if(!l)return;
+      items=l;oldIds=l.map(x=>x.id).filter(x=>x!==undefined);ci=Math.max(0,t.id?l.findIndex(x=>x.id===t.id):0);if(typeof splitRows!=='undefined')splitRows.innerHTML='';loadItem(items[ci]);$('modalBg')?.classList.toggle('item-locked',!!items[ci].locked);
+    },
+  };
+  // Saves every item. Lines that only differ in category stay one record; otherwise each becomes a linked record (splitGroup).
+  async function submitItems(){
+    if(!items[ci].locked)items[ci]=snap();const ck=itemsCheck(items);if(ck.error){alert(ck.error);if(ck.i!==undefined)go(ck.i);return;}
+    const el=form().elements;if(el.evType?.value!=='single'||el.depOn?.checked){alert('多類別不能同時設定週期、分期或訂金尾款');return;}
+    const ev={preventDefault(){}},drop=async ids=>{for(const x of state.transactions.filter(x=>ids.includes(x.id)&&!isLoanTx(x))){adjust(x,-1);}state.transactions=state.transactions.filter(x=>!(ids.includes(x.id)&&!isLoanTx(x)));};
+    window.__itemsRun=true;window.__savedTx=null;
+    try{
+      if(items.length===1||itemsUniform(items)){
+        const keep=oldIds.find(x=>state.transactions.some(t=>t.id===x&&!isLoanTx(t))),sum=k=>Math.round(items.reduce((s,x)=>s+k(x),0)*1e4)/1e4,m={...items[0],name:items.find(x=>x.name)?.name||'',expr:String(sum(itemBase)),fee:sum(x=>Number(x.fee)||0),discount:sum(x=>Number(x.discount)||0)};
+        editId=keep||null;loadItem(m);splitRows.innerHTML='';
+        if(items.length>1){items.forEach(x=>addSplitRow({category:x.category,amount:itemBase(x)}));window.__splitNet=items.map(itemNet);}
+        await submitTx(ev);window.__splitNet=null;if(!window.__savedTx)return;
+        delete window.__savedTx.splitGroup;await drop(oldIds.filter(x=>x!==keep));
+      }else{
+        const gid=oldIds.length&&txById(oldIds[0])?.splitGroup?.id||crypto.randomUUID(),n=items.length,att=window.__attachDraft,done=[];
+        for(let i=0;i<n;i++){
+          const it=items[i];if(it.locked){const x=txById(it.id);if(x)x.splitGroup={id:gid,n:i+1,total:n};continue;}
+          window.__savedTx=null;window.__attachDraft=done.length?[]:att;loadItem(it);splitRows.innerHTML='';editId=it.id&&txById(it.id)&&!isLoanTx(txById(it.id))?it.id:null;
+          await submitTx(ev);const x=window.__savedTx;
+          if(!x){ci=i;window.__itemsRun=false;efSync();return;} // the failing line stays open; saved lines keep their ids and are updated next time
+          it.id=x.id;x.splitGroup={id:gid,n:i+1,total:n};done.push(x.id);if(!oldIds.includes(x.id))oldIds.push(x.id);
+        }
+        const ids=items.map(x=>x.id);await drop(oldIds.filter(x=>!ids.includes(x)));
+      }
+    }finally{window.__itemsRun=false;window.__splitNet=null;}
+    items=[];oldIds=[];await save();closeModals();render();
+  }
   // ---- submit: 應收／應付 tabs create loans; everything else falls through to submitTx ----
   window.entryHandleSubmit=async function(fd){
+    if(items.length>1&&!window.__itemsRun){await submitItems();return true;}
+    if(items.length===1&&oldIds.length>1&&!window.__itemsRun){await submitItems();return true;}
     if(!isLoanTab())return false;
     const r=entryPostLoan(state,{direction:tab,amount:fd.get('amount'),account:fd.get('account'),date:fd.get('date'),time:fd.get('time'),person:fd.get('person'),name:fd.get('name'),note:fd.get('note'),label:preset||(tab==='payable'?'借入':'借出'),existing:!!fd.get('loanExisting')});
     if(r.error){alert(r.error);return true;}
+    if(window.__itemsRun){window.__savedTx=state.transactions.find(x=>x.kind==='loan'&&x.loanId===r.loan.id);return true;}
     await save();closeModals();render();
     window.__mozeLoanFilter='all';window.__mozeSelectedLoanId=r.loan.id;if(typeof renderLoans==='function')renderLoans();
     return true;
@@ -204,7 +269,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     preset='';exprIn='';inTouched=false;side='out';pick='out';keepCat={};tfKeep=null;prevTab='expense';if(tab==='transfer'){if(t){preset=cat(t.category).name;if(t.toAmount!==undefined){exprIn=String(t.toAmount);inTouched=true;}if($('formToProject'))$('formToProject').value=t.toProject||'';}else{tab='';setTab('transfer');prevTab='expense';}}if($('entrySideTitle'))$('entrySideTitle').textContent=tab==='transfer'?'轉出金額':'金額';if($('entryAcctTitle')&&tab!=='transfer')$('entryAcctTitle').textContent='常用帳戶';if(bg)bg.dataset.etab=tab;
     if(tab==='suggest')setKind('expense');
     $('entrySide')?.classList.add('open');
-    setTimeout(()=>{window.mozeState=window.state;if(cs&&t&&t.category!==undefined)cs.dataset.keep=String(t.category);refresh();},0);
+    setTimeout(()=>{window.mozeState=window.state;if(cs&&t&&t.category!==undefined)cs.dataset.keep=String(t.category);refresh();window.entryItems.reset(t||null);efSync();},0);
   };}
   setTimeout(()=>{window.mozeState=window.state;refresh();},200);
 })();

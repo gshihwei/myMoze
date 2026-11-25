@@ -658,3 +658,9 @@ html[data-keypad=phone] #amountKeypad [data-key=enter]{order:6}html[data-keypad=
 .ef-row{display:flex;align-items:center;gap:14px;width:100%;padding:11px 12px;border:0;background:none;color:inherit;font:inherit;font-size:16px;text-align:left;cursor:pointer;border-radius:10px}
 .ef-row.on{background:#16273a}.ef-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:899px){.ef-top .attach-add,.ef-top .attach-thumb{width:112px;height:112px}}
+
+/* V26.90 multi-category strip */
+.ef-add{background:#31465b!important;font-size:24px}.ef-multi .entry-bubble{position:relative}.ef-multi .entry-bubble i{position:absolute;top:-4px;right:-4px;background:#2094d4;color:#fff;border-radius:999px;min-width:20px;height:20px;font-size:12px;font-style:normal;display:grid;place-items:center;padding:0 4px}
+.ef-strip .ef-chips{display:flex;flex:none;gap:6px;align-items:center}
+.split-section[hidden]{display:none}
+#modalBg.item-locked .ef-top,#modalBg.item-locked .entry-side{pointer-events:none;opacity:.45}
