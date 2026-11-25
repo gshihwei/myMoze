@@ -52,6 +52,7 @@ function fxSyncUI(t) {
   const lab = document.getElementById('fxLabel'); if (lab) lab.textContent = `轉換成 ${ac}`;
   const n = Number(el.amount?.value || 0);
   if (foreign && el.convAuto.checked) { const v = n ? fxConvert(n, cur, ac) : ''; el.convAmount.value = v === null ? '' : v; }
+  const ri = document.getElementById('fxRateIn'); if (ri && document.activeElement !== ri) ri.value = foreign ? (Number(el.convAmount.value) > 0 && n > 0 ? Number((Number(el.convAmount.value) / n).toPrecision(8)) : fxPair(cur, ac) ? Number(fxPair(cur, ac).toPrecision(8)) : '') : '';
   const conv = Number(el.convAmount.value || 0), hint = document.getElementById('fxHint');
   if (hint) hint.textContent = !foreign ? '' : conv > 0 && n > 0 ? `1 ${cur} ≈ ${(conv / n).toLocaleString('zh-TW', { maximumFractionDigits: 6 })} ${ac}${el.convAuto.checked ? '（線上匯率，收到帳單後可改成實際金額）' : '（手動）'}` : fxPair(cur, ac) ? '' : `沒有 ${cur} 的線上匯率，請手動輸入`;
   const fr = document.getElementById('fxFeeRow'), fee = fxFeeAmount(a, conv || n), can = kind === 'expense' && a?.type === 'card' && Number(a.fxFeePct) > 0 && !editId;
@@ -77,6 +78,7 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('input', e => {
   const t = e.target; if (!t?.closest?.('#txForm')) return;
+  if (t.id === 'fxRateIn') { const el = txForm.elements, n = Number(el.amount.value || 0), r = Number(t.value); if (n > 0 && r > 0) { el.convAuto.checked = false; el.convAmount.value = curRound(n * r, acctCur(acct(el.account.value))); fxSyncUI(); efSync(); } return; }
   if (t.name === 'convAmount') { txForm.elements.convAuto.checked = false; fxSyncUI(); } else if (t.name === 'amount') fxSyncUI();
 });
 document.addEventListener('click', e => { if (e.target.closest?.('#entryCurSel')) e.stopPropagation(); }, true);

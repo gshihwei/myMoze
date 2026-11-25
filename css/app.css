@@ -730,3 +730,5 @@ button.account-detail-row{width:100%;background:none;border:0;border-bottom:1px 
 .rv-day{display:flex;justify-content:space-between;padding:10px 4px 4px;color:#8ea0b2;border-bottom:1px solid #22354a}.qm-item.on{border-color:#b8a6ff;box-shadow:0 0 0 1px #b8a6ff}
 .recon-period .tx-link{width:auto;height:auto;border:0;background:none;font-size:inherit;color:inherit;text-decoration:none;padding:4px 8px}
 .recon-head>span{display:flex;gap:2px;align-items:center}
+
+.fc-month{position:relative;cursor:pointer}.fc-month input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
