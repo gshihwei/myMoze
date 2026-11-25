@@ -61,7 +61,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const kind=curKind(),ordered=typeof catOrdered==='function'?catOrdered():state.categories;
     const mains=ordered.filter(c=>!c.parentId&&(c.kind||'expense')===kind);
     const cur=ordered.find(c=>String(c.id)===String($('formCategory')?.value));
-    const list=tab==='suggest'?entrySuggest(state,today(),10):mains;
+    const list=(tab==='suggest'?entrySuggest(state,today(),10):mains).filter(c=>modeAllows('categories',c.parentId||c.id));
     const chip=(c,small)=>{const on=cur&&String(cur.id)===String(c.id);return `<button type="button" class="entry-cat${on?' active':''}${small?' small':''}" data-cat="${c.id}"><span class="entry-bubble" style="background:${colorFor(c,mains,c.kind||kind)}">${iconHTML(c)}</span><span class="entry-cat-name">${esc(c.name)}</span></button>`;};
     cc.innerHTML=list.map(c=>chip(c)).join('');
     const mainOfCur=cur?(cur.parentId?ordered.find(x=>String(x.id)===String(cur.parentId)):cur):null;
@@ -76,7 +76,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   function renderAccounts(){
     const box=$('accountChoices'),sel=$('formAccount');if(!box||!sel)return;
     const present=new Set(Array.from(sel.options).map(o=>o.value));
-    let list=entryAccountsByUse(state).filter(a=>present.has(String(a.id)));
+    let list=entryAccountsByUse(state).filter(a=>present.has(String(a.id))&&modeAllows('accounts',a.id));
     if(isLoanTab())list=list.filter(a=>a.type!=='card');
     if(isLoanTab()&&!list.some(a=>String(a.id)===String(sel.value))&&list[0])sel.value=list[0].id;
     box.innerHTML=list.map(a=>`<button type="button" class="entry-acct" data-acct="${a.id}"><span class="entry-acct-ico">${svgForAccount(a)}</span><span>${esc(typeof acctName==='function'?acctName(a):a.name)}</span></button>`).join('');

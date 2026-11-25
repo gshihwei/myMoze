@@ -3,7 +3,7 @@
 // ledgerEffects, isUnappliedPending, render, renderCalendar). Function declarations / var only.
 
 // ---------- app version (keep in step with sw.js CACHE, index.html and manifest.json) ----------
-function appVersion() { return 'V26.68'; }
+function appVersion() { return 'V26.69'; }
 function appReleaseDate() { return '2026-11-25'; }
 function appVersionLabel() { const [y, m, d] = appReleaseDate().split('-').map(Number); return { version: appVersion(), date: `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')}` }; }
 // newest app shell cache ('moze-v26.26-shell-v1' → 'V26.26'), compared numerically so V26.26 beats V26.9
@@ -91,6 +91,7 @@ function settingsInit() {
   if (typeof matchMedia === 'function') { const mq = matchMedia('(prefers-color-scheme: light)'); mq.addEventListener?.('change', () => { if (prefs().theme === 'system') applyTheme(); }); }
   renderFxPrefs();
   renderTemplates();
+  renderModes();
   lockSettingsRender();
   if (lockEnabled()) lockShow(); else delete document.documentElement.dataset.locked;
   const ex = document.getElementById('exportMozeCsv'); if (ex) ex.onclick = () => downloadMozeCsv();

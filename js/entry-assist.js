@@ -83,7 +83,7 @@ function tplOpen(tid) {
 function renderTemplates() {
   const box = document.getElementById('quickTemplates'); if (!box) return;
   const list = tplList();
-  box.innerHTML = list.length ? list.map(x => `<span class="tpl-chip"><button type="button" data-tpl-open="${esc(x.id)}">${esc(cat(x.data.category).icon)} ${esc(x.name)}${x.data.amount ? ` <small>${money(x.data.amount)}</small>` : ''}</button><button type="button" class="tpl-del" data-tpl-del="${esc(x.id)}" aria-label="刪除範本 ${esc(x.name)}">×</button></span>`).join('')
+  box.innerHTML = list.length ? list.map(x => `<span class="tpl-chip"><button type="button" data-tpl-up="${esc(x.id)}" aria-label="往前移">‹</button><button type="button" data-tpl-open="${esc(x.id)}">${esc(cat(x.data.category).icon)} ${esc(x.name)}${x.data.amount ? ` <small>${money(x.data.amount)}</small>` : ''}</button><button type="button" class="tpl-del" data-tpl-del="${esc(x.id)}" aria-label="刪除範本 ${esc(x.name)}">×</button></span>`).join('')
     : '<p class="hint">在交易明細按「存成範本」，常用的記帳就能一鍵開啟。</p>';
 }
 document.addEventListener('click', e => {
