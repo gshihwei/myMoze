@@ -1,0 +1,4 @@
+V26.60
+- tools/build-icons.py 改成增量轉換：只處理新增或內容有變的圖片（以內容雜湊記錄在 images/.converted.json），舊圖不再重轉。
+- 新增 --list（只列出未轉換的圖片）與 --all（全部重轉）；刪掉來源圖後會清除對應輸出。
+- 新增 sinopac/dawho（Daway／大戶卡卡面）。

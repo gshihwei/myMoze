@@ -5,3 +5,9 @@
 帳戶名稱含關鍵字就會自動套用；多個符合時取最長的關鍵字，同長度時卡片優先於銀行。
 支援 png / jpg / webp，不必裁成方形（會置中補透明邊、縮成 128px）。檔名不可重複。
 新增或更換圖片後執行：python tools/build-icons.py ，再執行 node tools/build-bundle.js
+
+只會轉換「新增或有變更」的圖片（記錄在 images/.converted.json）：
+  python tools/build-icons.py --list   只列出尚未轉換的圖片，不轉
+  python tools/build-icons.py          轉換未轉換的圖片並更新清單
+  python tools/build-icons.py --all    全部重轉
+刪除來源圖片後再執行，會自動清掉對應的輸出。
