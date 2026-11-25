@@ -25,7 +25,7 @@ async function lockSetPin(pin) {
   if (prefs().lockAfter === undefined) setPref('lockAfter', 1);
 }
 async function lockVerify(pin) { const p = prefs(); if (!p.lockHash || !p.lockSalt) return true; return (await lockHash(pin, p.lockSalt)) === p.lockHash; }
-function lockClear() { setPref('lockHash', ''); setPref('lockSalt', ''); }
+function lockClear() { setPref('lockHash', ''); setPref('lockSalt', ''); setPref('lockBio', ''); }
 
 // minutes in the background before locking again (0 = every time the app is reopened)
 function lockShouldRelock(hiddenAt, now, afterMin) { if (!hiddenAt) return false; return now - hiddenAt >= Math.max(0, Number(afterMin) || 0) * 60000; }
@@ -35,8 +35,8 @@ function lockShow() {
   document.documentElement.dataset.locked = '1';
   let el = document.getElementById('appLock');
   if (!el && document.body) {
-    el = document.createElement('div'); el.id = 'appLock'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', '輸入密碼解鎖');
-    el.innerHTML = `<div class="lock-card"><div class="lock-title">帳小簿已鎖定</div><div class="lock-dots" id="lockDots"></div><div class="lock-msg" id="lockMsg">輸入 PIN 解鎖</div><div class="lock-pad">${['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map(k => k ? `<button type="button" data-lock-key="${k}">${k}</button>` : '<span></span>').join('')}</div><button type="button" class="lock-forgot" data-lock-forgot>忘記 PIN？</button></div>`;
+    el = document.createElement('div'); el.id = 'appLock'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', '輸入密碼解鎖'); if (prefs().lockBio) setTimeout(bioUnlock, 300);
+    el.innerHTML = `<div class="lock-card"><div class="lock-title">帳小簿已鎖定</div><div class="lock-dots" id="lockDots"></div><div class="lock-msg" id="lockMsg">輸入 PIN 解鎖</div>${prefs().lockBio ? '<button type="button" class="secondary lock-bio" data-lock-bio>用 Face ID／指紋解鎖</button>' : ''}<div class="lock-pad">${['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map(k => k ? `<button type="button" data-lock-key="${k}">${k}</button>` : '<span></span>').join('')}</div><button type="button" class="lock-forgot" data-lock-forgot>忘記 PIN？</button></div>`;
     document.body.appendChild(el);
   }
   lockEntry = ''; lockRenderDots();
@@ -55,9 +55,9 @@ function lockSettingsRender() {
   if (!lockAvailable()) { box.innerHTML = '<p class="hint">這個瀏覽器不支援密碼鎖（需要 HTTPS）。</p>'; return; }
   const on = lockEnabled(), after = prefs().lockAfter ?? 1;
   box.innerHTML = on
-    ? `<label class="setting"><span>離開多久後重新鎖定</span><select id="lockAfter">${[[0, '每次開啟'], [1, '1 分鐘'], [5, '5 分鐘'], [15, '15 分鐘'], [60, '1 小時']].map(([v, l]) => `<option value="${v}" ${Number(after) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label><div class="lock-actions"><button type="button" class="secondary" data-lock-change>變更 PIN</button><button type="button" class="secondary danger-btn" data-lock-off>關閉密碼鎖</button><button type="button" class="secondary" data-lock-now>立即鎖定</button></div>`
+    ? `<label class="setting"><span>離開多久後重新鎖定</span><select id="lockAfter">${[[0, '每次開啟'], [1, '1 分鐘'], [5, '5 分鐘'], [10, '10 分鐘'], [15, '15 分鐘'], [30, '30 分鐘'], [60, '1 小時']].map(([v, l]) => `<option value="${v}" ${Number(after) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label><div class="lock-actions"><button type="button" class="secondary" data-lock-change>變更 PIN</button><button type="button" class="secondary danger-btn" data-lock-off>關閉密碼鎖</button><button type="button" class="secondary" data-lock-now>立即鎖定</button></div>`
     : '<div class="lock-actions"><button type="button" class="secondary" data-lock-on>設定 PIN 密碼鎖</button></div>';
-  document.getElementById('lockAfter')?.addEventListener('change', e => setPref('lockAfter', Number(e.target.value) || 0));
+  box.insertAdjacentHTML('beforeend', bioSettingsHTML()); document.getElementById('lockAfter')?.addEventListener('change', e => setPref('lockAfter', Number(e.target.value) || 0));
 }
 
 async function lockAskNewPin() {

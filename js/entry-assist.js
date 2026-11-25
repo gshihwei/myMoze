@@ -48,7 +48,7 @@ function entryApplyTemplate() {
 function entryCopyOf(t) {
   const c = JSON.parse(JSON.stringify(t));
   for (const k of ['id', '_importKey', 'imported', 'recordType', 'balanceEffect', 'toBalanceEffect', 'pending', 'pendingApplied', 'recurringId', 'recurringSeq', 'cardPayment', 'cardStatementKey', 'paymentId', 'refundOf', 'refundSplit', 'postDate', 'recon', 'orig', 'attachments', 'invoiceNo', 'invoiceCode', 'feeOf', 'rewardOf', 'stmtInst', 'stmtInstNo', 'stmtInstTotal', 'autoPost', 'depositOf', 'balanceTx', 'remindOn', 'installment', 'splitGroup', 'depositInst']) delete c[k];
-  if (prefs().copyTime !== 'keep') { c.date = selectedDate || isoDate(new Date()); c.time = nowTime(); }
+  copyTimeApply(c, t);
   if (t.kind === 'transfer' && t.fee) c.fee = t.fee;
   return c;
 }

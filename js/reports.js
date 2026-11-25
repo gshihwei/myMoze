@@ -48,7 +48,7 @@ function rptTotals(txs) {
   for (const k of Object.keys(o)) o[k].amount = Math.round(o[k].amount); return o;
 }
 function rptSt() { return window.__rpt || (window.__rpt = { id: 'm', off: 0, tab: 'ov', kind: 'expense', drill: null, asc: false, menu: false, edit: null }); }
-function rptRowHTML(t) { const v = txEffect(t); return `<button type="button" class="notice-row" data-tx-open="${esc(t.id)}"><div class="notice-ico">${catIconHTML(cat(t.category))}</div><div class="day-main"><b>${esc(t.name)}</b><small>${t.date} ${esc(t.merchant || t.person || '')} · ${acctName(acct(t.account))}</small></div><div class="day-side"><b class="${v < 0 ? 'expense-text' : v > 0 ? 'income-text' : ''}">${acctMoney(v || t.amount, acct(t.account))}</b></div></button>`; }
+function rptRowHTML(t) { const v = txEffect(t); return `<button type="button" class="notice-row" data-tx-open="${esc(t.id)}"><div class="notice-ico">${catIconHTML(cat(t.category))}</div><div class="day-main"><b>${esc(t.name)}</b><small>${fmtDate(t.date)} ${esc(t.merchant || t.person || '')} · ${acctName(acct(t.account))}</small></div><div class="day-side"><b class="${v < 0 ? 'expense-text' : v > 0 ? 'income-text' : ''}">${acctMoney(v || t.amount, acct(t.account))}</b></div></button>`; }
 function rptBodyHTML(def, s, txs) {
   const K = s.kind, by = f => `<div class="seg an-kind"><label><input type="radio" name="rptKind" value="expense"${K === 'expense' ? ' checked' : ''}>支出</label><label><input type="radio" name="rptKind" value="income"${K === 'income' ? ' checked' : ''}>收入</label></div>${anRankHTML(f, { empty: '沒有資料' })}`;
   const tot = rptTotals(txs), pr = t => (state.projects || []).filter(p => projMatch(p, t)).map(p => p.name);

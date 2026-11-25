@@ -9,7 +9,7 @@ function efLoanTab() { const t = efTab(); return t === 'receivable' || t === 'pa
 function efDateText(d, today) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d || ''))) return '日期';
   const t0 = today || isoDate(new Date()), n = Math.round((new Date(d + 'T00:00:00') - new Date(t0 + 'T00:00:00')) / 864e5), wk = '週' + '日一二三四五六'[new Date(d + 'T00:00:00').getDay()];
-  const w = { 0: '今天', '-1': '昨天', 1: '明天', '-2': '前天', 2: '後天' }[n]; return w ? `${w} (${wk})` : `${d.replace(/-/g, '/')} (${wk})`;
+  const w = { 0: '今天', '-1': '昨天', 1: '明天', '-2': '前天', 2: '後天' }[n]; return w ? `${w} (${wk})` : `${fmtDate(d)} (${wk})`;
 }
 function efEventText() {
   const ev = efEl('evType')?.value || 'single', mode = efEl('postMode')?.value;
@@ -60,7 +60,7 @@ function efSync() {
   set('efDate', efDateText(el.date?.value), true); set('efTime', el.time?.value || '時間', el.time?.value);
   set('efAdv', efEventText(), true); set('efBar', efBarText()); const bar = document.getElementById('efBar'); if (bar) bar.hidden = !bar.textContent;
   const pl = document.querySelector('.loan-field'); if (pl) pl.style.display = !efLoanTab() && efTab() !== 'transfer' && el.person?.value ? 'flex' : '';
-  efTagsRender(); efStrip();
+  efTagsRender(); efStrip(); renderAmountSug();
 }
 function efStrip() {
   const box = document.getElementById('entryItems'), bg = document.getElementById('modalBg'); if (!box || !bg) return;

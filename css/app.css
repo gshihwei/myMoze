@@ -689,3 +689,6 @@ button.account-detail-row{width:100%;background:none;border:0;border-bottom:1px 
 .cat-img{width:100%;height:100%;min-width:1.2em;object-fit:cover;border-radius:50%;display:inline-block;vertical-align:middle}.cat-sub .cat-img{width:1.3em;height:1.3em}
 .entry-bubble{overflow:hidden}.entry-bubble .emoji:has(.cat-img){width:100%;height:100%;filter:none}.ef-multi .entry-bubble{overflow:visible}
 .cat-tabs{grid-column:1/-1}.cat-special{grid-column:1/-1;display:grid;gap:6px}.cat-srow{display:flex;align-items:center;gap:14px;padding:8px 6px;border-bottom:1px solid #22354a}.cat-srow .entry-bubble{width:44px;height:44px}.cat-srow .emoji{font-size:20px}.cat-srow b{flex:1}.cat-srow.off{opacity:.5}.cat-sact{display:flex;gap:4px}
+
+.amount-sug{display:flex;gap:8px;overflow-x:auto;padding:8px 2px 0}.amount-sug:empty{display:none}.amount-sug button{flex:none;border:0;border-radius:10px;background:#24384b;color:#dbe5ee;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer}
+.lock-bio{margin:8px auto;display:block}.backup-tools{justify-content:flex-start;margin-bottom:8px}

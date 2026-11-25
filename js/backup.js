@@ -1,9 +1,9 @@
 // 帳小簿 V26.16 — 自動備份（本機每日快照）.
 // Bundled after js/bulk.js; uses app.js globals (state, esc, money, isoDate). Function declarations / var only.
 //
-// Once per day, after a successful save, a full JSON snapshot of the data is stored in its own
+// Once per 4-hour slot (V26.94), after a successful save, a full JSON snapshot of the data is stored in its own
 // IndexedDB database ('moze-backups', separate from the app's database so its schema never changes).
-// The newest 7 days are kept. Snapshots stay on this device and are never synced.
+// The newest 30 are kept. Snapshots stay on this device and are never synced.
 
 var backupLastDay = '', backupBusy = false;
 function backupKeep() { return 30; }
@@ -36,7 +36,7 @@ function backupGet(day) { return backupOpen().then(db => backupTx(db, 'readonly'
 
 // Called after every successful save; does real work at most once per day.
 async function backupMaybe() {
-  const today = isoDate(new Date());
+  const today = backupSlot();
   if (backupBusy || !backupShouldRun(backupLastDay, today) || !state) return;
   backupBusy = true;
   try {
@@ -60,8 +60,8 @@ async function renderBackups() {
   const box = document.getElementById('backupList'); if (!box) return;
   let list = [];
   try { list = await backupList(); } catch { box.innerHTML = '<div class="empty">這個瀏覽器無法使用本機備份</div>'; return; }
-  box.innerHTML = list.length ? list.map(b => `<div class="backup-row"><div><b>${esc(b.day)}</b><small>${b.summary?.transactions ?? 0} 筆交易 · ${b.summary?.accounts ?? 0} 個帳戶</small></div><span><button type="button" class="ghost" data-backup-dl="${esc(b.day)}">下載</button><button type="button" class="secondary" data-backup-restore="${esc(b.day)}">還原</button></span></div>`).join('')
-    : '<div class="empty">還沒有備份；下次存檔時會自動建立今天的備份。</div>';
+  box.innerHTML = '<div class="form-actions backup-tools"><button type="button" class="secondary" data-backup-now>立即備份</button><button type="button" class="secondary" data-backup-share>分享／匯出備份檔</button></div>' + (list.length ? list.map(b => `<div class="backup-row"><div><b>${esc(b.day)}</b><small>${b.summary?.transactions ?? 0} 筆交易 · ${b.summary?.accounts ?? 0} 個帳戶</small></div><span><button type="button" class="ghost" data-backup-dl="${esc(b.day)}">下載</button><button type="button" class="secondary" data-backup-restore="${esc(b.day)}">還原</button></span></div>`).join('')
+    : '<div class="empty">還沒有備份；下次存檔時會自動建立備份。</div>');
 }
 
 document.addEventListener('click', async e => {

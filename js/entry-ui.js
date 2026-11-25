@@ -255,6 +255,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     window.__mozeLoanFilter='all';window.__mozeSelectedLoanId=r.loan?.id||null;if(typeof renderLoans==='function')renderLoans();
     return true;
   };
+  window.entrySetAmount=v=>{if(isTf()&&side==='in'){exprIn=String(v);inTouched=true;}else expr=String(v);applyExpr();};
   window.refreshEntryChoices=refresh;
   window.mozeState=window.state;
   const originalOpen=window.openTx||(typeof openTx==='function'?openTx:null);

@@ -589,6 +589,7 @@ html[data-theme="light"][data-swap="1"] .income-text{color:#cc0012!important}
 :root[data-theme="light"] .ar-row.done .ar-tick{background:#3fa66b;border-color:#3fa66b}
 :root[data-theme="light"] .av-foot select{background:#eef1f5;color:#141b22;border:1px solid #ecf0f4}
 :root[data-theme="light"] .cat-srow{border-bottom:1px solid #eef1f5}
+:root[data-theme="light"] .amount-sug button{background:#eef1f5;color:#1b252d}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}
