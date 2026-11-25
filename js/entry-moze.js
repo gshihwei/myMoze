@@ -130,3 +130,25 @@ function entryBaseAmount(t) {
   const d = Number(t.fee || 0) - Number(t.discount || 0);
   return Math.round((t.kind === 'income' ? a + d : a - d) * 10000) / 10000;
 }
+
+// ---- V26.86 轉帳版面 ----
+// Accounts a transfer preset starts from: 提款 bank → cash, 存款 cash → bank; `fixed` = { from, to } wins.
+function tfDefaults(st, preset, fixed) {
+  const use = entryAccountsByUse(st).filter(a => a.type !== 'card'), bank = use.filter(a => a.type === 'bank'), cash = use.filter(a => a.type === 'cash'), f = fixed || {};
+  const pick = (list, not) => list.find(a => String(a.id) !== String(not ?? ''))?.id;
+  let from = f.from, to = f.to;
+  if (preset === '提款') { from = from ?? pick(bank, to) ?? pick(use, to); to = to ?? pick(cash, from) ?? pick(use, from); }
+  else if (preset === '存款') { to = to ?? pick(bank, from) ?? pick(use, from); from = from ?? pick(cash, to) ?? pick(use, to); }
+  else { from = from ?? pick(use, to); to = to ?? pick(use, from); }
+  return { from, to };
+}
+// Amount that arrives when `v` leaves `a`: same currency 1:1, otherwise today's rate (null = no rate).
+function tfConvert(v, a, b) { return acctCur(a) === acctCur(b) ? v : fxConvert(v, acctCur(a), acctCur(b)); }
+// Value for the hidden toAmount field ('' = same as the outgoing amount).
+function tfToAmount(v, vin, a, b) { return acctCur(a) !== acctCur(b) ? (vin > 0 ? String(vin) : '') : vin > 0 && Math.abs(vin - v) > 1e-6 ? String(vin) : ''; }
+// Opens the transfer form ready to go. o = { preset, from, to }
+function openTransfer(o) {
+  if ((state.accounts || []).filter(a => !a.archived).length < 2) { alert('至少要有兩個帳戶才能轉帳'); return; }
+  window.openTx('transfer'); setTimeout(() => window.entryTransferStart?.(o || {}), 60);
+}
+document.addEventListener('click', e => { const b = e.target.closest?.('[data-transfer]'); if (!b) return; const a = b.dataset.account, p = b.dataset.transfer; e.stopPropagation(); openTransfer({ preset: p, ...(a ? (p === '存款' ? { to: a } : { from: a }) : {}) }); });

@@ -21,7 +21,7 @@ function projRuleHit(k, list, t) {
   const v = String((k === 'names' ? t.name : t.merchant) || '').toLowerCase(); return list.some(x => v.includes(String(x).toLowerCase()));
 }
 function projMatch(p, t) {
-  if (!p?.rules) return String(t.project) === String(p?.id);
+  if (!p?.rules) return String(t.project) === String(p?.id) || (t.kind === 'transfer' && !!t.toProject && String(t.toProject) === String(p?.id));
   for (const [k] of projRuleKeys()) { const r = p.rules[k]; if (r?.list?.length && projRuleHit(k, r.list, t) !== (r.mode !== 'ex')) return false; }
   return true;
 }
@@ -50,6 +50,7 @@ function projStats(p) {
       const parts = Array.isArray(t.splits) && t.splits.length ? t.splits.map(s => [s.category, anValue(t, s.amount)]) : [[t.category, anValue(t)]];
       for (const [cid, v] of parts) { const k = anTopCategory(cid), c = cat(k), r = byCat.get(k) || { id: k, name: c.name, icon: c.icon, amount: 0, count: 0 }; r.amount += v; r.count++; byCat.set(k, r); }
     } else if (t.kind === 'income') income += anValue(t);
+    else if (t.kind === 'transfer' && p.countTransfers && !p.rules && String(t.project || '') !== String(t.toProject || '')) { if (String(t.project) === String(p.id)) spent += anValue(t); else income += anValue(t); }
   }
   const dates = txs.map(t => t.date).filter(Boolean).sort();
   return { txs, count: txs.length, spent: Math.round(spent), income: Math.round(income), first: dates[0] || '', last: dates[dates.length - 1] || '', categories: anRank(byCat, 8) };
@@ -129,6 +130,7 @@ function projFormHTML(p) {
   </div>
   <div class="form-grid form-grid-1"><label>備註<input name="pnote" maxlength="200" value="${esc(r.note || '')}" placeholder="可留空"></label></div>
   <label class="proj-archive"><input type="checkbox" name="phome" ${r.home ? 'checked' : ''}> 在首頁月曆下方顯示統計</label>
+  <label class="proj-archive"><input type="checkbox" name="ptransfer" ${r.countTransfers ? 'checked' : ''}> 轉帳計入統計與預算（轉出這個專案算支出，轉入算收入）</label>
   <label class="proj-archive"><input type="checkbox" name="pstat" ${r.rules ? 'checked' : ''}> 統計專案（依條件自動統計，記帳時不必選）</label><div id="projRules" ${r.rules ? '' : 'hidden'}>${projRulesHTML(r.rules || {})}</div>
   ${r.id ? `<label class="proj-archive"><input type="checkbox" name="parchived" ${r.archived ? 'checked' : ''}> 封存（結束的專案；記帳表單不再列出，資料保留）</label>` : ''}`;
 }
@@ -141,6 +143,7 @@ function projFromForm(f, old) {
   const p = { ...(old || { id: id() }), name, budget: Math.max(0, Number(f.get('pbudget') || 0)), start, end, note: String(f.get('pnote') || '').trim() };
   p.archived = !!f.get('parchived');
   const cy = String(f.get('pcycle') || ''); if (cy === 'month' || cy === 'year') p.cycle = cy; else delete p.cycle;
+  if (f.get('ptransfer')) p.countTransfers = true; else delete p.countTransfers;
   if (f.get('phome')) p.home = true; else delete p.home;
   if (f.get('pstat')) p.rules = projRulesFromForm(f); else delete p.rules;
   if (!p.start) delete p.start; if (!p.end) delete p.end; if (!p.note) delete p.note;

@@ -535,6 +535,19 @@ html[data-theme="light"],:root[data-theme="light"] body{background:#f7f8fa !impo
 :root[data-theme="light"] .qa-remind{background:#2094d4;color:#141414}
 html[data-theme="light"][data-swap="1"] .expense-text{color:#31a875!important}
 html[data-theme="light"][data-swap="1"] .income-text{color:#cc0012!important}
+:root[data-theme="light"] .tf-ico{background:#edf0f4}
+:root[data-theme="light"] .tf-acc.on .tf-ico{border-color:#2094d4}
+:root[data-theme="light"] .tf-ico svg{stroke:#141b22}
+:root[data-theme="light"] .tf-all,:root[data-theme="light"] .tf-proj{color:#4d5f71}
+:root[data-theme="light"] .tf-all{border:1px solid #8394a5}
+:root[data-theme="light"] .tf-swap{border:1px solid #8394a5;color:#242f3b}
+:root[data-theme="light"] .tf-amt{border-left:3px solid #e0555f}
+:root[data-theme="light"] .tf-amt.in{border-left-color:#5fbf4a}
+:root[data-theme="light"] .tf-amt.on{background:#f0f3f6}
+:root[data-theme="light"] .tf-amt small{color:#4d5f71}
+:root[data-theme="light"] .tf-amt i{background:#ebeff3}
+:root[data-theme="light"] .tf-amt.in b{color:#479b31}
+:root[data-theme="light"] .entry-calc-card.tf-active{outline:2px solid #2094d4}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}

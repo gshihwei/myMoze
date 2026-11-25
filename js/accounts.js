@@ -447,7 +447,7 @@ function transferNeedsFx(fromId, toId) { const a = acct(fromId), b = acct(toId);
 // (its own currency) when the currencies differ, otherwise the same amount.
 // V26.85 o = { discount, toFee, toDiscount }: source pays amount + fee − discount, destination gets amount − toFee + toDiscount.
 function transferFields(amount, fromId, toId, toAmountRaw, feeRaw, o) {
-  const fee = Math.max(0, Number(feeRaw) || 0), fx = transferNeedsFx(fromId, toId), toAmount = Number(toAmountRaw);
+  const fee = Math.max(0, Number(feeRaw) || 0), fx = transferNeedsFx(fromId, toId) || (Number(toAmountRaw) > 0 && Math.abs(Number(toAmountRaw) - Math.abs(amount)) > 1e-6), toAmount = Number(toAmountRaw);
   if (String(fromId) === String(toId)) return { error: '轉出與轉入帳戶不能相同' };
   if (fx && !(toAmount > 0)) return { error: `兩個帳戶幣別不同，請輸入轉入金額（${acctCur(acct(toId))}）` };
   const pos = v => Math.max(0, Number(v) || 0), disc = pos(o?.discount), tf = pos(o?.toFee), td = pos(o?.toDiscount), rd = v => Math.round(v * 1e4) / 1e4;

@@ -58,7 +58,7 @@ function entryContinue() { window.__entryContinue = document.querySelector('inpu
 function entryPlusOpen(t) { entryModeFillSelect(); if (!t) entryModeApply(); entryStarSync(); entryTplChips(); }
 document.addEventListener('click', e => {
   const c = s => e.target.closest?.(s);
-  if (c('#entrySwap')) { const el = txForm.elements, a = el.account.value; el.account.value = el.toAccount.value; el.toAccount.value = a; el.account.dispatchEvent(new Event('change', { bubbles: true })); return; }
+  if (c('#entrySwap')) { const el = txForm.elements, a = el.account.value; el.account.value = el.toAccount.value; el.toAccount.value = a; const p = el.project?.value; if (el.toProject) { el.project.value = el.toProject.value; el.toProject.value = p; } el.account.dispatchEvent(new Event('change', { bubbles: true })); return; }
   if (c('#entryStar')) { const r = entryTplFromForm(); alert(r.error || `已存成範本「${r.tpl.name}」`); renderTemplates(); entryStarSync(); entryTplChips(); return; }
   if (c('#entryContinueBtn')) { entryContinue(); return; }
   const acc = c('#accountChoices [data-acct]'); if (acc && txForm?.elements?.account) txForm.elements.account.dataset.userSet = '1';

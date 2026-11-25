@@ -44,12 +44,12 @@ test('跨幣別轉帳：需要轉入金額，兩邊各用自己的幣別；手�
   assert.deepEqual([t.toAmount, t.toBalanceEffect, t.toCurrency, t.fee, t.balanceEffect], [100, 100, 'USD', 15, -3215]);
 });
 
-test('同幣別轉帳：轉入金額忽略、可有手續費；不能轉給自己', () => {
+test('同幣別轉帳：轉入金額可不同（V26.86）、可有手續費；不能轉給自己', () => {
   const b = bundle(base());
   b.submit(tx({ toAccount: 'cash', amount: '500', toAmount: '999', fee: '0' }));
-  assert.deepEqual(bal(b), { twd: 9500, usd: 0, cash: 500 });
+  assert.deepEqual(bal(b), { twd: 9500, usd: 0, cash: 999 });
   const t = b.J('state.transactions[0]');
-  assert.equal(t.toAmount, undefined); assert.equal(t.fee, undefined); assert.equal(t.balanceEffect, undefined);
+  assert.equal(t.toAmount, 999); assert.equal(t.fee, undefined); assert.equal(t.balanceEffect, undefined);
   b.submit(tx({ toAccount: 'twd' }));
   assert.match(b.alerts.at(-1), /不能相同/);
 });

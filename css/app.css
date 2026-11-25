@@ -586,3 +586,24 @@ html[data-keypad=phone] #amountKeypad [data-key=enter]{order:6}html[data-keypad=
 .split-more{grid-column:1/-1;font-size:13px}.split-more summary{cursor:pointer;color:var(--muted)}.split-more-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;align-items:center}
 
 .entry-pair input[type=date],.entry-pair input[type=time]{font-size:14px;letter-spacing:-.3px}
+
+/* V26.86 transfer layout */
+.tf-only{display:none}#modalBg[data-etab=transfer] .tf-only{display:block}
+#modalBg[data-etab=transfer] .tf-hide,#modalBg[data-etab=transfer] #entryAmountRow{display:none!important}
+.tf-head{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px;margin:4px 0 14px}
+.tf-acc{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;text-align:center}
+.tf-acc b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:17px}
+.tf-ico{width:104px;height:104px;border-radius:50%;overflow:hidden;border:3px solid transparent;background:#2a3b4d;display:grid;place-items:center;padding:0;cursor:pointer}
+.tf-acc.on .tf-ico{border-color:#2094d4}.tf-ico svg{width:52px;height:52px;fill:none;stroke:#eef4fa;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}.tf-ico .acct-img{width:100%;height:100%;object-fit:cover}
+.tf-bal{font-size:15px}.tf-all,.tf-proj{background:none;border:0;color:#8ea0b2;cursor:pointer;font:inherit;padding:2px 4px}
+.tf-all{border:1px solid #5a6b7c;border-radius:5px;font-size:12px;line-height:1.2}.tf-proj{font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tf-swap{width:44px;height:44px;border-radius:50%;border:1px solid #5a6b7c;background:none;color:#c6d2de;font-size:20px;cursor:pointer}
+.tf-amts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:12px}
+.tf-amt{border:0;border-left:3px solid #e0555f;background:none;color:inherit;padding:4px 10px;text-align:left;cursor:pointer;border-radius:0 10px 10px 0;min-width:0}
+.tf-amt.in{border-left-color:#5fbf4a}.tf-amt.on{background:#1b2e41}
+.tf-amt small{color:#8ea0b2}.tf-amt span{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px}
+.tf-amt i{font-style:normal;background:#2f4358;border-radius:10px;padding:3px 10px;font-size:13px}.tf-amt b{font-size:22px;word-break:break-all;text-align:right}.tf-amt.in b{color:#7fd06a}
+.entry-calc-card.tf-active{outline:2px solid #2094d4}
+.acct-quick{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+@media(max-width:899px){.tf-ico{width:78px;height:78px}.tf-ico svg{width:38px;height:38px}#modalBg[data-etab=transfer] .entry-side:not(.tf-side-in) #tfInCard,#modalBg[data-etab=transfer] .entry-side.tf-side-in>.entry-calc-card{display:none}#modalBg[data-etab=transfer] #entryPresets{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:6px}#modalBg[data-etab=transfer] #entryPresets .entry-bubble{width:42px;height:42px}}
+#modalBg:not([data-etab=transfer]) .entry-calc-card.tf-active{outline:0}

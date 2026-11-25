@@ -28,7 +28,7 @@ function similarTx(t) { return (state.transactions || []).find(x => x.id !== t.i
 function similarConfirm(t) { if (!prefOn('similar')) return true; const s = similarTx(t); return !s || confirm(`今天這個帳戶已經有一筆相似的記錄：\n${s.name} ${money(s.amount)} ${s.time || ''}\n\n仍要儲存嗎？`); }
 function dailyRemindHTML(today) { if (!prefOn('dailyRemind')) return ''; const t = today || isoDate(new Date()); return (state.transactions || []).some(x => x.date === t && !x.autoPost && !x.recurringId) ? '' : '今天還沒有記帳'; }
 // ---- quick access ----
-function quickDefs() { return [['notice', '通知中心', '#noticeBtn'], ['cal', '月曆', '#fullCalBtn'], ['reports', '統計報表', '#openReports', 'analysis'], ['compare', '比較報表', '#openCompare', 'analysis'], ['recurring', '週期', '', 'recurring'], ['loans', '借還款', '', 'loans'], ['budgets', '預算', '', 'budgets'], ['projects', '專案', '', 'projects'], ['categories', '分類', '', 'categories'], ['accounts', '帳戶', '', 'accounts'], ['privacy', '隱私模式', '#privacyBtn'], ['changelog', '版本記錄', '#openChangelog']]; }
+function quickDefs() { return [['notice', '通知中心', '#noticeBtn'], ['cal', '月曆', '#fullCalBtn'], ['reports', '統計報表', '#openReports', 'analysis'], ['compare', '比較報表', '#openCompare', 'analysis'], ['recurring', '週期', '', 'recurring'], ['loans', '借還款', '', 'loans'], ['budgets', '預算', '', 'budgets'], ['projects', '專案', '', 'projects'], ['categories', '分類', '', 'categories'], ['accounts', '帳戶', '', 'accounts'], ['transfer', '轉帳', '[data-transfer="轉帳"]:not([data-account])'], ['withdraw', '提款', '[data-transfer="提款"]:not([data-account])'], ['privacy', '隱私模式', '#privacyBtn'], ['changelog', '版本記錄', '#openChangelog']]; }
 function quickList() { const l = prefs().quickAccess; return (Array.isArray(l) ? l : ['recurring', 'loans', 'reports']).filter(k => quickDefs().some(d => d[0] === k)).slice(0, 8); }
 function renderQuickAccess() {
   const host = document.querySelector('#view-overview .metrics'); let el = document.getElementById('quickAccess');
@@ -57,7 +57,7 @@ document.addEventListener('change', e => {
 document.addEventListener('click', e => {
   const c = s => e.target.closest?.(s); let b;
   if (c('[data-qa-add]')) { openTx(); return; }
-  if ((b = c('[data-qa]'))) { const d = quickDefs().find(x => x[0] === b.dataset.qa); if (d[3]) nav(d[3]); if (d[2]) setTimeout(() => document.querySelector(d[2])?.click(), d[3] ? 80 : 0); return; }
+  if ((b = c('[data-qa]'))) { const d = quickDefs().find(x => x[0] === b.dataset.qa); if (d[3]) nav(d[3]); if (d[0] === 'transfer' || d[0] === 'withdraw') { openTransfer({ preset: d[1] }); return; } if (d[2]) setTimeout(() => document.querySelector(d[2])?.click(), d[3] ? 80 : 0); return; }
   if ((b = c('[data-qa-toggle]'))) { const l = quickList(), k = b.dataset.qaToggle; setPref('quickAccess', l.includes(k) ? l.filter(x => x !== k) : [...l, k].slice(0, 8)); renderQuickAccess(); return; }
   if ((b = c('[data-qa-up]'))) { const l = quickList(), i = l.indexOf(b.dataset.qaUp); if (i > 0) { [l[i - 1], l[i]] = [l[i], l[i - 1]]; setPref('quickAccess', l); renderQuickAccess(); } }
 });
