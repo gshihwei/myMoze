@@ -46,7 +46,7 @@ function updateInstallmentUI() {
   const box = document.getElementById('installmentBox'); if (!box) return;
   const kind = document.querySelector('input[name=kind]:checked')?.value;
   box.hidden = kind !== 'expense' || (!!editId && !instEditable(txById(editId)));
-  const on = document.querySelector('#txForm [name=instOn]')?.checked;
+  const on = document.querySelector('#txForm [name=instOn]')?.checked; box.hidden = !on;
   const cnt = document.getElementById('instCountField'); if (cnt) cnt.hidden = !on;
   const hint = document.getElementById('instHint');
   if (hint) {

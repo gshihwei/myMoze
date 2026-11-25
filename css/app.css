@@ -612,3 +612,49 @@ html[data-keypad=phone] #amountKeypad [data-key=enter]{order:6}html[data-keypad=
 #modalBg.editing[data-etab=receivable] .entry-back{display:none}
 
 .inst-events{margin-top:24px}.inst-bar{height:6px;border-radius:3px;background:#24384b;overflow:hidden;margin:6px 0}.inst-bar i{display:block;height:100%;background:#2094d4}
+
+/* V26.89 MOZE entry fields */
+.ef-strip{display:none;align-items:center;gap:14px;overflow-x:auto;padding:10px 2px 0}
+#modalBg.picked .ef-strip{display:flex}#modalBg.picked .entry-tabs,#modalBg.picked #entryChooser{display:none}
+.ef-strip .entry-cat{flex:none;min-width:64px;gap:6px;padding-top:6px}.ef-strip small{font-size:12px;min-height:1em}
+.ef-change{flex:none;border-radius:999px;padding:7px 12px;font-size:13px}
+.ef-top{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:stretch}
+#modalBg[data-etab=transfer] .ef-top .attach-box{display:flex}
+.ef-topr{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-content:stretch;min-width:0}
+.ef-topr .entry-cur{max-width:96px}.adv-card .form-actions{background:none;position:static}
+.ef-top .attach-box{flex-direction:column;flex-wrap:nowrap;max-height:118px;overflow:auto}
+.ef-top .attach-add{width:118px;height:118px;border:1px solid #2a4054;border-radius:13px;font-size:30px;opacity:.75}
+.ef-top .attach-thumb{width:118px;height:118px;flex:none}.ef-top .attach-thumb button{top:4px;right:4px}
+.ef-plus{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:#31465b;color:#eef4fa;font-size:16px;line-height:1;display:grid;place-items:center;cursor:pointer;padding:0}
+.entry-amount-row .entry-amount-mirror{flex:1;text-align:right}
+#modalBg[data-etab=transfer] .ef-topr{grid-template-rows:1fr}
+.ef-pill{display:flex;align-items:center;justify-content:center;min-height:50px;padding:0 12px;border:1px solid #2a4054;border-radius:13px;background:#1b2e41;color:#8194a7;font:inherit;font-size:16px;cursor:pointer;position:relative;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0}
+.ef-pill.filled,.ef-pill .filled{color:#eef4fa}
+.ef-in input{width:100%;background:transparent!important;border:0!important;box-shadow:none!important;color:#eef4fa;text-align:center;font:inherit;font-size:16px;padding:12px 0;outline:none}
+.ef-in input::placeholder{color:#8194a7}
+.ef-pick-native input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0}
+.loan-field{display:none}#modalBg[data-etab=receivable] .loan-field,#modalBg[data-etab=payable] .loan-field{display:flex}
+#modalBg[data-etab=receivable] .entry-pair .tx-only,#modalBg[data-etab=payable] .entry-pair .tx-only{display:none}
+.ef-tags{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-height:44px;cursor:text}
+.ef-tags input{flex:1;min-width:140px;background:transparent!important;border:0!important;box-shadow:none!important;color:#eef4fa;font:inherit;font-size:16px;padding:8px 0;outline:none}
+.ef-tag{display:inline-flex;align-items:center;gap:6px;background:#31465b;color:#eef4fa;border:0;border-radius:10px;padding:6px 10px;font-size:14px}
+.ef-tag button{background:none;border:0;color:#b9c6d6;cursor:pointer;padding:0 2px;font-size:15px}.ef-tag.sug{cursor:pointer;background:#24384b}
+.ef-sug{display:flex;gap:8px;overflow-x:auto;padding:4px 0}.ef-sug:empty{display:none}
+.reward-tag{background:#2f7f93;color:#fff;border-radius:10px;padding:6px 10px}
+.entry-note textarea{min-height:110px}
+.ef-bar{position:sticky;bottom:-20px;background:#101e2c;color:#c6d2de;text-align:center;padding:10px;border-radius:12px;font-size:14px}
+.adv-sheet{position:absolute;inset:0;z-index:30;background:#0009;display:grid;place-items:center;margin:0!important;padding:16px}.adv-sheet[hidden]{display:none}
+.entry-form{position:relative}
+.adv-card{width:min(460px,100%);max-height:90%;display:flex;flex-direction:column;background:#1c2f43;border-radius:18px;padding:16px 18px}
+.adv-card h3{margin:0 0 6px;text-align:center}.adv-body{overflow:auto;min-height:220px;padding:10px 0;display:block}
+.adv-tabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border-bottom:1px solid #2a4054}
+.adv-tabs button{background:none;border:0;border-bottom:3px solid transparent;color:#8aa0b4;padding:10px;font:inherit;cursor:pointer}.adv-tabs button.active{color:#fff;border-bottom-color:#2094d4}
+.adv-rows,#advSheet #instCountField{display:grid;gap:4px}.adv-rows>label,#advSheet #instCountField>label{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px;color:#dbe5ee}
+#advSheet #instCountField[hidden],#advSheet .installment-box[hidden],.adv-rows>label[hidden]{display:none}
+.adv-rows input,.adv-rows select,#advSheet #instCountField input:not([type=checkbox]),#advSheet #instCountField select{max-width:150px;text-align:right}
+.adv-inline{display:flex;align-items:center;gap:8px}.adv-inline input{width:64px}
+#advSheet .installment-box{border:0;padding:0;background:none}
+.ef-list h4{margin:14px 12px 6px;color:#8194a7;font-weight:600}
+.ef-row{display:flex;align-items:center;gap:14px;width:100%;padding:11px 12px;border:0;background:none;color:inherit;font:inherit;font-size:16px;text-align:left;cursor:pointer;border-radius:10px}
+.ef-row.on{background:#16273a}.ef-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:899px){.ef-top .attach-add,.ef-top .attach-thumb{width:112px;height:112px}}

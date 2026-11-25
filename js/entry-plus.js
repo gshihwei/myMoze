@@ -55,7 +55,7 @@ function entryTplFromForm() {
   return { tpl: tplSave(t, name) };
 }
 function entryContinue() { window.__entryContinue = document.querySelector('input[name=kind]:checked')?.value || 'expense'; setTimeout(() => { window.__entryContinue = null; }, 4000); txForm.requestSubmit(); }
-function entryPlusOpen(t) { entryModeFillSelect(); if (!t) entryModeApply(); entryStarSync(); entryTplChips(); }
+function entryPlusOpen(t) { entryModeFillSelect(); if (!t) entryModeApply(); entryStarSync(); entryTplChips(); efOpen(t); }
 document.addEventListener('click', e => {
   const c = s => e.target.closest?.(s);
   if (c('#entrySwap')) { const el = txForm.elements, a = el.account.value; el.account.value = el.toAccount.value; el.toAccount.value = a; const p = el.project?.value; if (el.toProject) { el.project.value = el.toProject.value; el.toProject.value = p; } el.account.dispatchEvent(new Event('change', { bubbles: true })); return; }

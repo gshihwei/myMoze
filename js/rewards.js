@@ -103,7 +103,7 @@ function rewardSync(reset) {
   if (box.dataset.acct !== String(a.id || '') && reset === undefined && !editId) { box.dataset.user = ''; sel = rewardDefaults(a, el.category?.value, date); }
   box.dataset.acct = String(a.id || '');
   const n = Number((document.getElementById('fxRow')?.hidden === false ? el.convAmount?.value : el.amount?.value) || 0) - Math.max(0, Number(el.discount?.value || 0));
-  box.innerHTML = list.length ? `<span class="entry-lbl">紅利回饋</span>${list.map(r => `<label class="reward-tag"><input type="checkbox" value="${esc(r.id)}"${sel.includes(r.id) ? ' checked' : ''}> ${esc(r.name)} ${esc(rewardRuleText(r))}${sel.includes(r.id) && n > 0 && n >= Number(r.minSingle || 0) ? `<em>約 ${esc(rewardText(rewardRound(rewardUnit(r, n), r.roundEach || 'round', curDigits(acctCur(acct(r.account || a.id)))), r.account || a.id))}</em>` : ''}</label>`).join('')}` : '';
+  box.innerHTML = list.length ? `${list.map(r => `<label class="reward-tag"><input type="checkbox" value="${esc(r.id)}"${sel.includes(r.id) ? ' checked' : ''}> ${esc(r.name)} ${esc(rewardRuleText(r))}${sel.includes(r.id) && n > 0 && n >= Number(r.minSingle || 0) ? `<em>約 ${esc(rewardText(rewardRound(rewardUnit(r, n), r.roundEach || 'round', curDigits(acctCur(acct(r.account || a.id)))), r.account || a.id))}</em>` : ''}</label>`).join('')}` : '';
 }
 function rewardOpen(t) { const box = document.getElementById('rewardPick'); if (!box) return; box.dataset.user = ''; box.dataset.keep = (t?.rewards || []).join(','); box.dataset.acct = t ? String(t.account) : ''; rewardSync(t ? (t.rewards || []) : undefined); if (t && !t.id && t.rewards?.length) box.dataset.user = '1'; }
 function rewardApply(t) {

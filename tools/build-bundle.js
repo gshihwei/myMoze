@@ -32,7 +32,7 @@ function build() {
   const reminders = read('js/reminders.js');
   const subscriptions = read('js/subscriptions.js');
   const yearly = read('js/yearly.js');
-  const recon = read('js/recon-mode.js') + '\n' + read('js/tx-extra.js') + '\n' + read('js/tx-post.js') + '\n' + read('js/tx-fx.js') + '\n' + read('js/entry-plus.js') + '\n' + read('js/tx-attach.js') + '\n' + read('js/notify.js') + '\n' + read('js/changelog.js') + '\n' + read('js/card-plus.js') + '\n' + read('js/card-inst.js') + '\n' + read('js/rewards.js') + '\n' + read('js/reports.js') + '\n' + read('js/loan-plus.js') + '\n' + read('js/series.js') + '\n' + read('js/acct-plus.js') + '\n' + read('js/prefs-plus.js') + '\n' + read('js/split-plus.js') + '\n' + read('js/prefs-sync.js') + '\n' + read('js/inst-plus.js');
+  const recon = read('js/recon-mode.js') + '\n' + read('js/tx-extra.js') + '\n' + read('js/tx-post.js') + '\n' + read('js/tx-fx.js') + '\n' + read('js/entry-plus.js') + '\n' + read('js/tx-attach.js') + '\n' + read('js/notify.js') + '\n' + read('js/changelog.js') + '\n' + read('js/card-plus.js') + '\n' + read('js/card-inst.js') + '\n' + read('js/rewards.js') + '\n' + read('js/reports.js') + '\n' + read('js/loan-plus.js') + '\n' + read('js/series.js') + '\n' + read('js/acct-plus.js') + '\n' + read('js/prefs-plus.js') + '\n' + read('js/split-plus.js') + '\n' + read('js/prefs-sync.js') + '\n' + read('js/inst-plus.js') + '\n' + read('js/entry-fields.js');
   const settings = read('js/settings.js');
   const entryAssist = read('js/entry-assist.js');
   const installments = read('js/installments.js');

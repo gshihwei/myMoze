@@ -21,7 +21,7 @@ function recurringFromForm(r, f, isNew) {
   return '';
 }
 function seriesRule(t) { return t?.recurringId ? (state.recurring || []).find(r => String(r.id) === String(t.recurringId)) : null; }
-function recurringApplyFrom(t) { const r = seriesRule(t); if (!r) return false; for (const k of ['name', 'amount', 'category', 'account', 'merchant']) r[k] = t[k] ?? r[k]; if (t.kind === 'transfer') r.toAccount = t.toAccount; return true; }
+function recurringApplyFrom(t) { const r = seriesRule(t); if (!r) return false; for (const k of ['name', 'amount', 'category', 'account', 'merchant']) r[k] = t[k] ?? r[k]; if (r.extra) for (const k of Object.keys(r.extra)) { if (t[k] === undefined) delete r.extra[k]; else r.extra[k] = t[k]; } if (t.kind === 'transfer') r.toAccount = t.toAccount; return true; }
 function recurringStop(t) { const r = seriesRule(t); if (!r) return 0; r.ended = true; const l = state.transactions.filter(x => String(x.recurringId) === String(r.id) && x.date > t.date); for (const x of l) adjust(x, -1); const ids = new Set(l.map(x => x.id)); state.transactions = state.transactions.filter(x => !ids.has(x.id)); return l.length; }
 function instFuture(t) { return installmentGroup(t).filter(x => x.installment.n > t.installment.n).sort((a, b) => a.installment.n - b.installment.n); }
 function instStop(t) { const l = instFuture(t), ids = new Set(l.map(x => x.id)); for (const x of l) adjust(x, -1); state.transactions = state.transactions.filter(x => !ids.has(x.id)); return l; }

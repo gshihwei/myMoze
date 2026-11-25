@@ -550,6 +550,26 @@ html[data-theme="light"][data-swap="1"] .income-text{color:#cc0012!important}
 :root[data-theme="light"] .entry-calc-card.tf-active{outline:2px solid #2094d4}
 :root[data-theme="light"] .inst-bar{background:#eef1f5}
 :root[data-theme="light"] .inst-bar i{background:#2094d4}
+:root[data-theme="light"] .ef-top .attach-add{border:1px solid #ecf0f4}
+:root[data-theme="light"] .ef-plus{background:#eaeef3;color:#141b22}
+:root[data-theme="light"] .ef-pill{border:1px solid #ecf0f4;background:#f0f3f6;color:#586b7e}
+:root[data-theme="light"] .ef-pill.filled,:root[data-theme="light"] .ef-pill .filled{color:#141b22}
+:root[data-theme="light"] .ef-in input{color:#141b22}
+:root[data-theme="light"] .ef-in input::placeholder{color:#586b7e}
+:root[data-theme="light"] .ef-tags input{color:#141b22}
+:root[data-theme="light"] .ef-tag{background:#eaeef3;color:#141b22}
+:root[data-theme="light"] .ef-tag button{color:#283443}
+:root[data-theme="light"] .ef-tag.sug{background:#eef1f5}
+:root[data-theme="light"] .reward-tag{background:#2f7f93;color:#141414}
+:root[data-theme="light"] .ef-bar{background:#f4f6f9;color:#242f3b}
+:root[data-theme="light"] .adv-sheet{background:rgba(255,255,255,0.6)}
+:root[data-theme="light"] .adv-card{background:#f0f3f6}
+:root[data-theme="light"] .adv-tabs{border-bottom:1px solid #ecf0f4}
+:root[data-theme="light"] .adv-tabs button{color:#4b6175}
+:root[data-theme="light"] .adv-tabs button.active{color:#141414;border-bottom-color:#2094d4}
+:root[data-theme="light"] .adv-rows>label,:root[data-theme="light"] #advSheet #instCountField>label{color:#1b252d}
+:root[data-theme="light"] .ef-list h4{color:#586b7e}
+:root[data-theme="light"] .ef-row.on{background:#f2f4f7}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}
