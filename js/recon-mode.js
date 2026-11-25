@@ -54,7 +54,7 @@ function reconRowHTML(t, period) {
   <div class="recon-swipe-bg"><span class="ok">已確認</span><span class="later">${posted ? '改回原期' : '延後入帳'}</span></div>
   <div class="recon-body">
     <div class="recon-date">${t.date.replace(/-/g, '/')} 週${reconWeekday(t.date)}${t.time ? ' ' + esc(t.time) : ''}${posted ? ` <em>延後入帳 ${esc(t.postDate)}</em>` : ''}</div>
-    <div class="recon-main"><div class="recon-icon">${esc(c.icon || '🏷️')}</div>
+    <div class="recon-main"><div class="recon-icon">${catIconHTML(c)}</div>
       <div class="recon-text"><b>${esc(t.name)}</b><small>${esc(t.merchant || t.note || '')}</small></div>
       <div class="recon-amt">${cardLineAmount(t) < 0 ? '−' : ''}${money(Math.abs(t.amount))}</div></div>
     <div class="recon-foot"><span class="recon-chip">${esc(c.name || '')}</span><span class="recon-chip">${esc(a.name || '')}</span>

@@ -84,7 +84,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
 
   // ---- categories / presets / accounts ----
   function colorFor(c,mains,kind){const own=c.color||(c.parentId&&mains.find(x=>String(x.id)===String(c.parentId))?.color);if(/^#[0-9a-f]{6}$/i.test(own||''))return own;if(kind==='income')return COLOR.income;const main=c.parentId?mains.find(x=>String(x.id)===String(c.parentId))||c:c;const i=mains.findIndex(x=>String(x.id)===String(main.id));return PALETTE[(i<0?0:i)%PALETTE.length];}
-  function iconHTML(c){return (typeof iconPaths!=='undefined'&&iconPaths[c.id])?svg(c.id):`<span class="emoji">${esc(c.icon||'🏷️')}</span>`;}
+  function iconHTML(c){return c.image?catIconHTML(c):(typeof iconPaths!=='undefined'&&iconPaths[c.id])?svg(c.id):`<span class="emoji">${esc(c.icon||'🏷️')}</span>`;}
   function fillCategorySelect(prev){
     const cs=$('formCategory');if(!cs)return;
     const kind=curKind(),ordered=typeof catOrdered==='function'?catOrdered():state.categories;
@@ -111,7 +111,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   function renderPresets(){
     const box=$('entryPresets');if(!box)return;
     const defs=entryPresets()[tab]||[],col=COLOR[tab]||COLOR.transfer;
-    box.innerHTML=defs.map(p=>`<button type="button" class="entry-cat${preset===p.name?' active':''}" data-preset="${esc(p.name)}"><span class="entry-bubble" style="background:${col}"><span class="emoji">${p.icon}</span></span><span class="entry-cat-name">${esc(p.name)}</span></button>`).join('');
+    box.innerHTML=defs.map(p=>`<button type="button" class="entry-cat${preset===p.name?' active':''}" data-preset="${esc(p.name)}"><span class="entry-bubble" style="background:${esc(p.color||col)}"><span class="emoji">${catIconHTML(p)}</span></span><span class="entry-cat-name">${esc(p.name)}</span></button>`).join('');
   }
   function renderAccounts(){
     const box=$('accountChoices'),sel=$('formAccount');if(!box||!sel)return;
@@ -248,7 +248,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     if(items.length>1&&!window.__itemsRun){await submitItems();return true;}
     if(items.length===1&&oldIds.length>1&&!window.__itemsRun){await submitItems();return true;}
     if(!isLoanTab())return false;
-    const r=entryPostLoan(state,{direction:tab,amount:fd.get('amount'),account:fd.get('account'),date:fd.get('date'),time:fd.get('time'),person:fd.get('person'),name:fd.get('name'),note:fd.get('note'),label:preset||(tab==='payable'?'借入':'借出'),existing:!!fd.get('loanExisting')});
+    const r=entryPostLoan(state,{direction:tab,amount:fd.get('amount'),account:fd.get('account'),date:fd.get('date'),time:fd.get('time'),person:fd.get('person'),name:fd.get('name'),note:fd.get('note'),label:preset||(tab==='payable'?'借入':'借出'),existing:!!fd.get('loanExisting'),category:entryEnsureCategory(state,preset||(tab==='payable'?'借入':'借出'),tab).id});
     if(r.error){alert(r.error);return true;}
     if(window.__itemsRun){window.__savedTx=state.transactions.find(x=>x.kind==='loan'&&x.loanId===r.loan.id);return true;}
     await save();closeModals();render();

@@ -79,10 +79,12 @@ function catFormHTML(c) {
   const kind = r.kind || 'expense';
   const isMainWithKids = r.id && !r.parentId && catChildren(r).length;
   const parents = catMains(kind).filter(m => String(m.id) !== String(r.id));
-  return `<div class="seg"><label><input type="radio" name="ckind" value="expense" ${kind === 'expense' ? 'checked' : ''} ${r.parentId ? 'disabled' : ''}>支出</label><label><input type="radio" name="ckind" value="income" ${kind === 'income' ? 'checked' : ''} ${r.parentId ? 'disabled' : ''}>收入</label></div>
+  const special = catSpecialKind(kind) || r.__sys, lockName = r.__sys || (r.id && r['name'] === '轉帳' && kind === 'transfer') ? 'readonly' : '';
+  return `${special ? `<input type="hidden" name="ckind" value="${esc(kind)}">` : `<div class="seg"><label><input type="radio" name="ckind" value="expense" ${kind === 'expense' ? 'checked' : ''} ${r.parentId ? 'disabled' : ''}>支出</label><label><input type="radio" name="ckind" value="income" ${kind === 'income' ? 'checked' : ''} ${r.parentId ? 'disabled' : ''}>收入</label></div>`}
+  ${acctImageFieldHTML({ image: r.image, type: 'cash' })}
   <div class="form-grid">
-    <label>名稱<input name="cname" required maxlength="30" value="${esc(r.name || '')}" placeholder="例如：早餐"></label>
-    <label>上層分類<select name="cparent" ${isMainWithKids ? 'disabled' : ''}><option value="">（主分類）</option>${parents.map(m => `<option value="${esc(m.id)}" ${String(m.id) === String(r.parentId) ? 'selected' : ''}>${esc(m.icon)} ${esc(m.name)}</option>`).join('')}</select></label>
+    <label>名稱<input name="cname" required maxlength="30" value="${esc(r.name || '')}" placeholder="例如：早餐" ${lockName}></label>
+    <label ${special ? 'hidden' : ''}>上層分類<select name="cparent" ${isMainWithKids || special ? 'disabled' : ''}><option value="">（主分類）</option>${parents.map(m => `<option value="${esc(m.id)}" ${String(m.id) === String(r.parentId) ? 'selected' : ''}>${esc(m.icon)} ${esc(m.name)}</option>`).join('')}</select></label>
     <label>圖示<input name="cicon" maxlength="4" value="${esc(r.icon || '•')}"></label>
   </div>
   <div class="cat-icon-groups" role="group" aria-label="常用圖示">${catIconGroups().map(([label, list]) => `<div class="cat-icon-group"><small>${esc(label)}</small><div class="cat-icons">${list.map(i => `<button type="button" data-cat-icon="${esc(i)}" aria-label="${esc(i)}">${esc(i)}</button>`).join('')}</div></div>`).join('')}</div>
@@ -104,11 +106,12 @@ function catFromForm(f, old) {
   const parent = parentId ? (state.categories || []).find(c => String(c.id) === parentId) : null;
   if (parentId && !parent) return { error: '找不到上層分類' };
   if (parent && parent.parentId) return { error: '只能放在主分類底下（最多兩層）' };
-  const kind = parent ? (parent.kind || 'expense') : (f.get('ckind') === 'income' ? 'income' : (old?.parentId ? (old.kind || 'expense') : 'expense'));
+  const ck = String(f.get('ckind') || ''); const kind = catSpecialKind(ck) ? ck : parent ? (parent.kind || 'expense') : (f.get('ckind') === 'income' ? 'income' : (old?.parentId ? (old.kind || 'expense') : 'expense'));
   const dup = (state.categories || []).some(c => c !== old && c.name === name && (c.kind || 'expense') === kind && String(c.parentId || '') === parentId);
   if (dup) return { error: `「${name}」已經存在` };
   const c = { ...(old || { id: id() }), name, icon: String(f.get('cicon') || '•').trim().slice(0, 4) || '•', kind };
   if (parentId) c.parentId = parentId; else delete c.parentId;
+  delete c.image; Object.assign(c, acctImageFromForm(f)); delete c.removed;
   if (f.get('chidden')) c.hidden = true; else delete c.hidden;
   const col = String(f.get('ccolor') || ''); if (f.get('ccoloron') && /^#[0-9a-f]{6}$/i.test(col)) c.color = col; else delete c.color;
   return { category: c };
@@ -124,21 +127,22 @@ function catDeleteFormHTML(c) {
 
 function renderCategoryPage() {
   const grid = document.getElementById('categoryGrid'); if (!grid) return;
+  const tabs = `<div class="entry-tabs cat-tabs">${catKinds().map(([k, l]) => `<button type="button" data-cat-page="${k}" class="${k === catPageKind ? 'active' : ''}">${l}</button>`).join('')}</div>`;
+  if (catSpecialKind(catPageKind)) { grid.innerHTML = tabs + catSpecialHTML(catPageKind); return; }
   const kind = catPageKind === 'income' ? 'income' : 'expense';
   const mains = catMains(kind);
   const card = m => {
     const kids = catChildren(m), u = catUsage(m.id), sib = catSiblings(m).length;
     return `<div class="cat-card">
-      <div class="cat-head"><span class="cat-icon">${esc(m.icon)}</span><div><b>${esc(m.name)}</b><small>${u.tx} 筆交易${kids.length ? ` · ${kids.length} 個子分類` : ''}</small></div>
+      <div class="cat-head"><span class="cat-icon">${catIconHTML(m)}</span><div><b>${esc(m.name)}</b><small>${u.tx} 筆交易${kids.length ? ` · ${kids.length} 個子分類` : ''}</small></div>
         <span class="cat-order"><button type="button" aria-label="上移" data-cat-move="-1" data-cat-id="${esc(m.id)}" ${sib < 2 ? 'disabled' : ''}>↑</button><button type="button" aria-label="下移" data-cat-move="1" data-cat-id="${esc(m.id)}" ${sib < 2 ? 'disabled' : ''}>↓</button></span></div>
-      ${kids.length ? `<div class="cat-subs">${kids.map(s => `<button type="button" class="cat-sub" data-cat-edit="${esc(s.id)}" title="編輯子分類">${esc(s.icon)} ${esc(s.name)}<small>${catUsage(s.id).tx}</small></button>`).join('')}</div>` : ''}
-      <div class="cat-actions"><button type="button" class="secondary" data-cat-edit="${esc(m.id)}">編輯</button><button type="button" class="secondary" data-cat-addsub="${esc(m.id)}">＋ 子分類</button><button type="button" class="secondary danger-btn" data-cat-del="${esc(m.id)}">刪除</button></div>
+      ${kids.length ? `<div class="cat-subs">${kids.map(s => `<button type="button" class="cat-sub" data-cat-edit="${esc(s.id)}" title="編輯子分類"${s.hidden ? ' style="opacity:.45"' : ''}>${catIconHTML(s)} ${esc(s.name)}<small>${catUsage(s.id).tx}</small></button>`).join('')}</div>` : ''}
+      <div class="cat-actions"><button type="button" class="secondary" data-cat-edit="${esc(m.id)}">編輯</button><button type="button" class="secondary" data-cat-addsub="${esc(m.id)}">＋ 子分類</button><button type="button" class="secondary" data-cat-hide="${esc(m.id)}">${m.hidden ? '顯示' : '隱藏'}</button>${kids.length ? '' : `<button type="button" class="secondary" data-cat-merge="${esc(m.id)}">合併</button>`}<button type="button" class="secondary danger-btn" data-cat-del="${esc(m.id)}">刪除</button></div>
     </div>`;
   };
-  grid.innerHTML = `<div class="seg cat-kind"><label><input type="radio" name="catPageKind" value="expense" ${kind === 'expense' ? 'checked' : ''}>支出分類</label><label><input type="radio" name="catPageKind" value="income" ${kind === 'income' ? 'checked' : ''}>收入分類</label></div>
+  grid.innerHTML = `${tabs}
     <p class="cat-icon-tools"><button type="button" class="secondary" id="catApplyIcons">依名稱補上預設圖示</button></p>
     ${mains.length ? mains.map(card).join('') : '<div class="empty">還沒有分類</div>'}`;
-  grid.querySelectorAll('input[name=catPageKind]').forEach(r => r.onchange = () => { catPageKind = r.value; renderCategoryPage(); });
 }
 
 async function catDelete(c) {
@@ -150,9 +154,47 @@ async function catDelete(c) {
 }
 
 document.addEventListener('click', async e => {
+  const pg = e.target.closest?.('[data-cat-page]'); if (pg) { catPageKind = pg.dataset.catPage; renderCategoryPage(); return; }
   const find = v => (state.categories || []).find(c => String(c.id) === String(v));
   const ed = e.target.closest?.('[data-cat-edit]'); if (ed) { const c = find(ed.dataset.catEdit); if (c) openEntity('category', c); return; }
   const add = e.target.closest?.('[data-cat-addsub]'); if (add) { const m = find(add.dataset.catAddsub); if (m) openEntity('category', { kind: m.kind || 'expense', parentId: m.id, icon: m.icon, __new: true }); return; }
   const del = e.target.closest?.('[data-cat-del]'); if (del) { const c = find(del.dataset.catDel); if (!c) return; if (del.closest('#entityBg')) closeModals(); catDelete(c); return; }
   const mv = e.target.closest?.('[data-cat-move]'); if (mv) { const c = find(mv.dataset.catId); if (c && catMove(c, Number(mv.dataset.catMove))) { await save(); render(); } }
+});
+
+// ---- V26.92 類別圖片與轉帳／應收／應付／系統類別 ----
+function catIconHTML(c) { return c?.image && acctImageValid(c.image) ? `<img class="cat-img" src="${c.image}" alt="">` : esc(c?.icon || '🏷️'); }
+function catKinds() { return [['expense', '支出'], ['income', '收入'], ['transfer', '轉帳'], ['receivable', '應收款項'], ['payable', '應付款項'], ['system', '系統']]; }
+function catSpecialKind(k) { return ['transfer', 'receivable', 'payable', 'system'].includes(k); }
+// Built-in entries of a special kind. 系統 ones that are real income / expense categories are edited there (kind in `as`).
+function catBuiltins(kind) {
+  if (kind !== 'system') return presetDefaults()[kind] || [];
+  return [{ name: '帳單分期', icon: '⇄' }, { name: '信用卡繳款', icon: '💳' }, ...presetDefaults().system.map(x => ({ ...x, as: x.kind })), { name: '餘額調整', icon: '＄' }, { name: '多類別', icon: '🗂️' }];
+}
+function catBuiltinRecord(kind, name) { const b = catBuiltins(kind).find(x => x.name === name), k = b?.as || kind; return (state.categories || []).find(c => c.name === name && (c.kind || 'expense') === k && !c.parentId) || null; }
+// Presets shown in the entry form: built-ins (with the user's icon / picture / colour / order, minus hidden) plus own ones.
+function catPresetList(kind) {
+  const base = presetDefaults()[kind] || [], own = (state.categories || []).filter(c => c.kind === kind && !c.parentId), seen = new Set();
+  const l = base.map((b, i) => { seen.add(b.name); const r = catBuiltinRecord(kind === 'system' ? 'system' : kind, b.name); return r ? { ...b, icon: r.icon || b.icon, color: r.color, image: r.image, hidden: r.hidden, removed: r.removed, order: Number.isFinite(Number(r.order)) && r.order !== undefined ? Number(r.order) : i, id: r.id } : { ...b, order: i }; });
+  for (const c of own) if (!seen.has(c.name) && kind !== 'system') l.push({ name: c.name, icon: c.icon, color: c.color, image: c.image, hidden: c.hidden, removed: c.removed, order: Number.isFinite(Number(c.order)) && c.order !== undefined ? Number(c.order) : 100, id: c.id });
+  return l.filter(x => !x.removed).sort((a, b) => a.order - b.order);
+}
+function catSpecialRec(kind, name) {
+  const b = catBuiltins(kind).find(x => x.name === name), k = b?.as || kind; let r = catBuiltinRecord(kind, name) || (state.categories || []).find(c => c.kind === kind && c.name === name);
+  if (!r) { r = { id: id(), name, icon: b?.icon || '🏷️', kind: k }; (state.categories = state.categories || []).push(r); } return r;
+}
+function catSpecialIcon(name, fallback) { const r = (state?.categories || []).find(c => c.kind === 'system' && c.name === name); return { icon: r?.icon || fallback, image: r?.image, color: r?.color }; }
+function catSpecialHTML(kind) {
+  const l = kind === 'system' ? catBuiltins('system').map(b => { const r = catBuiltinRecord('system', b.name); return { ...b, icon: r?.icon || b.icon, image: r?.image, color: r?.color }; }) : catPresetList(kind), sys = kind === 'system';
+  return `<div class="cat-special">${l.map((c, i) => `<div class="cat-srow${c.hidden ? ' off' : ''}"><span class="entry-bubble" style="background:${esc(c.color || ({ transfer: '#d98a3d', receivable: '#7dd8c6', payable: '#d05c82' }[kind] || '#d98a3d'))}"><span class="emoji">${catIconHTML(c)}</span></span><b>${esc(c.name)}</b><span class="cat-sact"><button type="button" class="ghost" data-cats-edit="${esc(c.name)}" aria-label="編輯">✎</button>${sys ? '' : `<button type="button" class="ghost" data-cats-hide="${esc(c.name)}" aria-label="${c.hidden ? '顯示' : '隱藏'}">${c.hidden ? '🙈' : '👁'}</button><button type="button" class="ghost" data-cats-up="${i}" ${i ? '' : 'disabled'} aria-label="上移">↑</button><button type="button" class="ghost" data-cats-down="${i}" ${i < l.length - 1 ? '' : 'disabled'} aria-label="下移">↓</button>${c.name === '轉帳' ? '' : `<button type="button" class="ghost" data-cats-del="${esc(c.name)}" aria-label="刪除">🗑</button>`}`}</span></div>`).join('')}${sys ? '<p class="hint">系統類別供內建功能使用，不能改名或刪除，可以換圖示與顏色。</p>' : `<button type="button" class="secondary" data-cats-add>＋ 新增類別</button>`}</div>`;
+}
+document.addEventListener('click', async e => {
+  const c = s => e.target.closest?.(s); let b; const kind = catPageKind;
+  if ((b = c('[data-cats-edit]'))) { const r = catSpecialRec(kind, b.dataset.catsEdit); openEntity('category', { ...r, __sys: kind === 'system' }); entityFormEl.dataset.editId = r.id; return; }
+  if (c('[data-cats-add]')) { openEntity('category', { kind, icon: '🏷️', __new: true }); return; }
+  if ((b = c('[data-cats-hide]'))) { const r = catSpecialRec(kind, b.dataset.catsHide); if (r.hidden) delete r.hidden; else r.hidden = true; await save(); render(); return; }
+  if ((b = c('[data-cats-del]'))) { const n = b.dataset.catsDel; if (!confirm(`刪除類別「${n}」？已經用它記錄的交易會保留。`)) return; const r = catSpecialRec(kind, n); if (catUsage(r.id).total || (presetDefaults()[kind] || []).some(x => x.name === n)) r.removed = true; else state.categories = state.categories.filter(x => x !== r); await save(); render(); return; }
+  if ((b = c('[data-cats-up],[data-cats-down]'))) { const l = catPresetList(kind), i = Number(b.dataset.catsUp ?? b.dataset.catsDown), j = b.dataset.catsUp !== undefined ? i - 1 : i + 1; if (!l[j]) return; [l[i], l[j]] = [l[j], l[i]]; l.forEach((x, k) => { catSpecialRec(kind, x.name).order = k; }); await save(); render(); return; }
+  if ((b = c('[data-cat-hide]'))) { const r = (state.categories || []).find(x => String(x.id) === b.dataset.catHide); if (r) { if (r.hidden) delete r.hidden; else r.hidden = true; await save(); render(); } return; }
+  if ((b = c('[data-cat-merge]'))) { const r = (state.categories || []).find(x => String(x.id) === b.dataset.catMerge); if (!r) return; if (catChildren(r).length) { alert('底下還有子分類，請先合併或移動子分類。'); return; } openEntity('categoryDelete', r); return; }
 });

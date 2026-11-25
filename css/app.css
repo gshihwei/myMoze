@@ -685,3 +685,7 @@ button.account-detail-row{width:100%;background:none;border:0;border-bottom:1px 
 .ar-row{display:flex;gap:12px;align-items:center;width:100%;border:0;background:none;color:inherit;font:inherit;text-align:left;padding:12px 14px;cursor:pointer}.ar-tick{width:26px;height:26px;border-radius:50%;border:2px solid #46607a;display:grid;place-items:center;flex:none}.ar-row.done .ar-tick{background:#3fa66b;border-color:#3fa66b}
 .av-foot select{background:#24384b;color:#eef4fa;border:1px solid #2a4054;border-radius:10px;padding:5px 8px;font:inherit}
 .account-tile strong small{font-size:12px}
+
+.cat-img{width:100%;height:100%;min-width:1.2em;object-fit:cover;border-radius:50%;display:inline-block;vertical-align:middle}.cat-sub .cat-img{width:1.3em;height:1.3em}
+.entry-bubble{overflow:hidden}.entry-bubble .emoji:has(.cat-img){width:100%;height:100%;filter:none}.ef-multi .entry-bubble{overflow:visible}
+.cat-tabs{grid-column:1/-1}.cat-special{grid-column:1/-1;display:grid;gap:6px}.cat-srow{display:flex;align-items:center;gap:14px;padding:8px 6px;border-bottom:1px solid #22354a}.cat-srow .entry-bubble{width:44px;height:44px}.cat-srow .emoji{font-size:20px}.cat-srow b{flex:1}.cat-srow.off{opacity:.5}.cat-sact{display:flex;gap:4px}

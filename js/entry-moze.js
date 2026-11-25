@@ -2,7 +2,8 @@
 // Bundled before js/entry-ui.js (tools/build-bundle.js). Function declarations / var only (hoisted).
 
 // Preset rows of the non-category tabs. System presets become a normal expense / income with a category of that name.
-function entryPresets() { return {
+function entryPresets() { return typeof catPresetList === 'function' && state ? { transfer: catPresetList('transfer').filter(x => !x.hidden), receivable: catPresetList('receivable').filter(x => !x.hidden), payable: catPresetList('payable').filter(x => !x.hidden), system: catPresetList('system').filter(x => !x.hidden) } : presetDefaults(); }
+function presetDefaults() { return {
   transfer: [{ name: '轉帳', icon: '⇄' }, { name: '提款', icon: '⬆' }, { name: '存款', icon: '⬇' }, { name: '退款', icon: '↩' }, { name: '兌換', icon: '⇋' }],
   receivable: [{ name: '借出', icon: '💰' }, { name: '代付', icon: '🤝' }, { name: '報帳', icon: '💼' }],
   payable: [{ name: '借入', icon: '💵' }, { name: '信貸', icon: '💳' }, { name: '車貸', icon: '🚗' }, { name: '房貸', icon: '🏠' }],
@@ -105,7 +106,7 @@ function entryPostLoan(st, o) {
   const loan = { id: loanId, person, direction, amount, paid: 0, account: account.id, date, dueDate: '', name, note: o.note || '', label, payments: [], status: 'active' };
   (st.loans = st.loans || []).push(loan);
   account.balance = Math.round((Number(account.balance || 0) + (direction === 'receivable' ? -amount : amount)) * 100) / 100;
-  st.transactions.push({ id: id(), date, name, amount, kind: 'loan', loanId, direction, loanAction: direction === 'receivable' ? 'lend' : 'borrow', account: account.id, note: loan.note, person, category: '', loanRecord: true, time: o.time || '' });
+  st.transactions.push({ id: id(), date, name, amount, kind: 'loan', loanId, direction, loanAction: direction === 'receivable' ? 'lend' : 'borrow', account: account.id, note: loan.note, person, category: o.category || '', loanRecord: true, time: o.time || '' });
   return { loan };
 }
 
