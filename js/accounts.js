@@ -368,6 +368,7 @@ function acctEditFormHTML(a) {
   <label class="proj-archive"><input type="checkbox" name="aarchived" ${a.archived ? 'checked' : ''}> 封存（不再出現在記帳的帳戶選單；餘額仍計入淨資產）</label>
   <label class="proj-archive"><input type="checkbox" name="aexclude" ${a.excludeNet ? 'checked' : ''}> 不納入總資產（概覽的淨資產、淨資產走勢與資產負債總覽都不計入這個帳戶）</label>
   ${card ? '' : `<div class="form-grid form-grid-1"><label>餘額不足提醒（餘額低於此金額時提醒，留空＝不提醒）<input name="alow" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.lowBalance ?? '')}" placeholder="例如 3000"></label></div>`}
+  ${acctPlusFieldsHTML(a)}
   ${locked ? '<p class="hint">這個帳戶已有交易，幣別不能修改。</p>' : ''}
   <div class="acct-manage-actions">
     <span class="hint">目前餘額 ${acctMoney(a.balance, a)}</span>
@@ -395,6 +396,7 @@ function acctFromEditForm(f, old) {
   if (a.type === 'card') delete a.lowBalance;
   if (f.get('aexclude')) a.excludeNet = true; else delete a.excludeNet;
   const low = Number(f.get('alow')); if (old.type !== 'card' && String(f.get('alow') ?? '').trim() !== '' && Number.isFinite(low) && low >= 0) a.lowBalance = low; else delete a.lowBalance;
+  acctPlusFromForm(a, f);
   return { account: a };
 }
 

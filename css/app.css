@@ -561,3 +561,11 @@ button.notice-row{cursor:pointer}.notice-row.overdue .day-main small:last-child{
 
 /* V26.79 series */
 .rc-days{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}.rc-days[hidden],.rc-to[hidden]{display:none!important}#instCountField:not([hidden]){display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* V26.80 accounts */
+.acct-totals{background:#18293b;border:1px solid #26384b;border-radius:16px;padding:14px 16px;margin-bottom:12px}.at-head{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end}.at-head>div{display:grid}.at-head small{color:#8194a7}.at-head strong{font-size:24px}
+.at-head select{margin-left:auto;background:#1d3349;border:1px solid #2a4054;color:#eef4fa;border-radius:10px;padding:6px}.at-row{display:grid;grid-template-columns:80px 1fr auto;gap:10px;align-items:center;padding:4px 0}.at-row i{height:8px;border-radius:4px;background:#3f86e6;min-width:2px}.at-row em{font-style:normal}
+.acct-totals summary{cursor:pointer;color:#9fb2c4;margin-top:8px}.acct-totals h4{margin:10px 0 4px}.pb-after{display:block;color:#8194a7;font-size:12px;font-weight:400}
+.app-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:10000;background:#5a2430;color:#fff;border-radius:12px;padding:12px 18px;box-shadow:0 10px 30px #0008;max-width:90vw}
+
+.top-tools{display:flex;gap:8px}.account-detail-list .account-detail-row{display:grid;grid-template-columns:auto 34px minmax(0,1fr) auto;gap:10px;align-items:center}.account-detail-list .account-detail-row .amount{text-align:right}
