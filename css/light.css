@@ -404,6 +404,45 @@ html[data-theme="light"],:root[data-theme="light"] body{background:#f7f8fa !impo
 :root[data-theme="light"] .crop-card{background:#f2f5f7}
 :root[data-theme="light"] .crop-stage{background:#fcfcfc}
 :root[data-theme="light"] .crop-ring{box-shadow:0 0 0 999px rgba(15,23,32,0.16);border:2px solid #141414}
+:root[data-theme="light"] .entry-head .icon{color:#141b22}
+:root[data-theme="light"] .entry-tabs{border-bottom:1px solid #eef1f5}
+:root[data-theme="light"] .entry-tabs button{color:#4b6175}
+:root[data-theme="light"] .entry-tabs button.active{color:#141414;border-bottom-color:#2094d4}
+:root[data-theme="light"] .entry-cat{color:#495d6f}
+:root[data-theme="light"] .entry-bubble{color:#141414}
+:root[data-theme="light"] .entry-cat.active .entry-bubble{box-shadow:0 0 0 3px rgba(15,23,32,0.16),0 0 0 5px rgba(15,23,32,0.16)}
+:root[data-theme="light"] .entry-cat.active .entry-cat-name{color:#141414}
+:root[data-theme="light"] .entry-subs-title{color:#586b7e}
+:root[data-theme="light"] .entry-field{background:#f0f3f6;border:1px solid #ecf0f4}
+:root[data-theme="light"] .entry-field input,:root[data-theme="light"] .entry-field select,:root[data-theme="light"] .entry-field textarea{color:#141b22}
+:root[data-theme="light"] .entry-field select option{background:#f2f5f7;color:#141b22}
+:root[data-theme="light"] .entry-lbl{color:#586b7e}
+:root[data-theme="light"] .entry-amount-row{background:#f0f3f6;border:1px solid #ecf0f4}
+:root[data-theme="light"] .entry-cur{background:#ecf0f3}
+:root[data-theme="light"] .entry-amount-mirror{color:#5f7082}
+:root[data-theme="light"] .entry-amount-mirror.filled{color:#141414}
+:root[data-theme="light"] .entry-more{background:#f1f4f7}
+:root[data-theme="light"] .entry-more summary{color:#465c72}
+:root[data-theme="light"] .entry-side{background:#f4f6f9;border-left:1px solid #eef1f5}
+:root[data-theme="light"] .entry-side-head .ghost{color:#586b7e}
+:root[data-theme="light"] .entry-calc-card{background:#f1f4f7}
+:root[data-theme="light"] .entry-calc-row{color:#495d6f}
+:root[data-theme="light"] .entry-calc-main b{color:#141414}
+:root[data-theme="light"] .entry-calc-row input{border-bottom:1px solid #ecf0f4;color:#141b22}
+:root[data-theme="light"] .entry-calc-total{border-top:1px solid #ecf0f4;color:#141414}
+:root[data-theme="light"] #amountKeypad.entry-keypad{background:#f1f4f7}
+:root[data-theme="light"] #amountKeypad.entry-keypad button{color:#141b22}
+:root[data-theme="light"] #amountKeypad.entry-keypad button:hover{background:#edf1f4}
+:root[data-theme="light"] #amountKeypad.entry-keypad button:active{background:#eaeef2}
+:root[data-theme="light"] #amountKeypad.entry-keypad button.op{color:#141414}
+:root[data-theme="light"] #amountKeypad.entry-keypad button[data-key=ok]{color:#28a45f}
+:root[data-theme="light"] .entry-acct-title{color:#586b7e}
+:root[data-theme="light"] .entry-accts{background:#f1f4f7}
+:root[data-theme="light"] .entry-acct{color:#182027}
+:root[data-theme="light"] .entry-acct.active{background:#edf1f4;border-left-color:#2094d4}
+:root[data-theme="light"] .entry-acct-ico{background:#edf1f4}
+:root[data-theme="light"] .entry-acct-ico svg{stroke:#283443}
+@media(max-width:899px){:root[data-theme="light"] .entry-side{border-top:1px solid #eef1f5}:root[data-theme="light"] .entry-acct.active{border-bottom-color:#2094d4}}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}
