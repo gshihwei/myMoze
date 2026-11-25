@@ -26,14 +26,14 @@ function catIcons() { return [...new Set(catIconGroups().flatMap(g => g[1]))]; }
 
 function catSiblings(c) { return (state.categories || []).filter(x => x.kind === c.kind && String(x.parentId || '') === String(c.parentId || '')); }
 function catSortKey(c) { const i = (state.categories || []).indexOf(c); return Number.isFinite(Number(c.order)) ? Number(c.order) : 1e6 + i; }
-function catMains(kind) { return (state.categories || []).filter(c => !c.parentId && (!kind || (c.kind || 'expense') === kind)).sort((a, b) => catSortKey(a) - catSortKey(b)); }
+function catMains(kind) { return (state.categories || []).filter(c => !c.parentId && c.kind !== 'prefs' && (!kind || (c.kind || 'expense') === kind)).sort((a, b) => catSortKey(a) - catSortKey(b)); }
 function catChildren(main) { return (state.categories || []).filter(c => String(c.parentId) === String(main.id)).sort((a, b) => catSortKey(a) - catSortKey(b)); }
 
 // Mains in order, each followed by its subcategories. Orphan subcategories (parent missing) are listed as mains.
 function catOrdered(kind) {
   const out = [], seen = new Set();
   for (const m of catMains(kind)) { out.push(m); seen.add(m); for (const s of catChildren(m)) { out.push(s); seen.add(s); } }
-  for (const c of (state.categories || [])) if (!seen.has(c) && (!kind || (c.kind || 'expense') === kind)) out.push(c);
+  for (const c of (state.categories || [])) if (!seen.has(c) && c.kind !== 'prefs' && (!kind || (c.kind || 'expense') === kind)) out.push(c);
   return out;
 }
 function catLabel(c) { const p = c.parentId ? (state.categories || []).find(x => String(x.id) === String(c.parentId)) : null; return p ? p.name + ' › ' + c.name : c.name; } // plain text; callers escape

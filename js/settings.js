@@ -3,7 +3,7 @@
 // ledgerEffects, isUnappliedPending, render, renderCalendar). Function declarations / var only.
 
 // ---------- app version (keep in step with sw.js CACHE, index.html and manifest.json) ----------
-function appVersion() { return 'V26.83'; }
+function appVersion() { return 'V26.84'; }
 function appReleaseDate() { return '2026-11-25'; }
 function appVersionLabel() { const [y, m, d] = appReleaseDate().split('-').map(Number); return { version: appVersion(), date: `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')}` }; }
 // newest app shell cache ('moze-v26.26-shell-v1' → 'V26.26'), compared numerically so V26.26 beats V26.9
@@ -27,7 +27,7 @@ function prefs() {
   if (!prefsCache) { let p = {}; try { p = JSON.parse(localStorage.getItem(prefsKey()) || '{}') || {}; } catch { p = {}; } prefsCache = { ...prefsDefaults(), ...p }; }
   return prefsCache;
 }
-function setPref(k, v) { prefs()[k] = v; try { localStorage.setItem(prefsKey(), JSON.stringify(prefsCache)); } catch {} applyPrefs(); }
+function setPref(k, v) { prefs()[k] = v; try { localStorage.setItem(prefsKey(), JSON.stringify(prefsCache)); } catch {} if (typeof prefSyncTouch === 'function') prefSyncTouch(k); applyPrefs(); }
 // 'system' follows the OS; the inline script in index.html applies the same rule before first paint.
 function themeResolved(p = prefs()) { return p.theme === 'light' ? 'light' : p.theme === 'system' ? (typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : 'dark'; }
 function applyTheme() {
@@ -93,7 +93,7 @@ function settingsInit() {
   renderTemplates();
   renderModes();
   renderCarrier();
-  renderPrefPlus(); applyPrefPlus(); renderQuickAccess(); searchHistFill(); renderOffline();
+  renderPrefPlus(); applyPrefPlus(); renderQuickAccess(); searchHistFill(); renderOffline(); renderPrefSync();
   const pb = document.getElementById('privacyBtn'); if (pb) pb.textContent = privacyOn() ? '🙈' : '👁';
   lockSettingsRender();
   if (lockEnabled()) lockShow(); else delete document.documentElement.dataset.locked;
