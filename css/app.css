@@ -293,3 +293,6 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .acct-card-fields{margin-bottom:6px}
 .acct-group-head{display:block;width:100%;text-align:left;margin:14px 0 6px;padding:6px 2px;background:none;border:0;border-bottom:1px solid rgba(255,255,255,.1);color:inherit;font:inherit;font-weight:600;cursor:pointer}
 .credit-reward{margin:6px 0 2px}
+
+/* V26.42 account icons were drawn as solid black blobs (svg paths are stroke icons) */
+.account-tile-icon svg,.account-detail-icon svg,.cc-mini-icon svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;color:#b9c6d6}
