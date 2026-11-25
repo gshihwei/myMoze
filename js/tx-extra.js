@@ -42,6 +42,7 @@ function txLink(t, text) { return `<button type="button" class="tx-link" data-tx
 // Called at the end of openDetail().
 function txDetailExtra(t) {
   const grid = document.getElementById('detailGrid'); if (!grid) return;
+  if (typeof detailCard === 'function') detailCard(t);
   let h = '';
   if (t.kind === 'transfer') { const src = acct(t.account), dst = acct(t.toAccount), fx = (f, d, a) => [f ? `手續費 ${acctMoney(f, a)}` : '', d ? `折扣 ${acctMoney(d, a)}` : ''].filter(Boolean).join('、'); if (t.toFee || t.toDiscount) h += txExtraBox('實際入帳', `${acctName(dst)} ${acctMoney(Number(t.toBalanceEffect ?? t.toAmount ?? t.amount), dst)}`); const o = fx(t.fee, t.discount, src), i = fx(t.toFee, t.toDiscount, dst); if (o && t.discount) h += txExtraBox('轉出費用／折扣', o); if (i) h += txExtraBox('轉入費用／折扣', i); }
   if (t.orig) h += txExtraBox('外幣金額', `${esc(curText(t.orig.amount, t.orig.cur))}　匯率 ${esc(t.orig.rate)}${t.orig.auto ? '（線上）' : ''}`, true);
@@ -54,7 +55,6 @@ function txDetailExtra(t) {
   if (t.installment?.interest) h += txExtraBox('本金／利息', `${acctMoney(instPrincipal(t), acct(t.account))}／${acctMoney(t.installment.interest, acct(t.account))}（年利率 ${esc(t.installment.rate)}%）`);
   if (t.depositInst) { const o = txById(t.depositInst); if (o) h += txExtraBox('訂金', txLink(o, esc(o.name))); }
   if (t.installment) h += txExtraBox('分期', `<button type="button" class="tx-link" data-inst-open="${esc(t.installment.group)}">查看各期</button>`);
-  if (t.rewards?.length) h += txExtraBox('紅利回饋', t.rewards.map(x => { const f = rewardRuleById(x); return f ? esc(f.rule.name) : ''; }).filter(Boolean).join('、'));
   h += invDetailHTML(t);
   h += loanDetailExtra(t);
   h += splitGroupDetail(t);

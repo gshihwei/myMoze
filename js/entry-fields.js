@@ -111,8 +111,8 @@ function efPickHTML(kind) {
     return [...g].map(([k, l]) => `<h4>— ${esc(k)}</h4>${l.map(a => row(a.id, svgForAccount(a), a.name, acctMoney(a.balance, a), a.balance < 0 ? 'expense-text' : 'income-text', String(el[kind].value) === String(a.id))).join('')}`).join('');
   }
   const t0 = isoDate(new Date()), list = (state.projects || []).filter(p => !p.archived && !p.rules && modeAllows('projects', p.id)), later = p => !p.cycle && p.start && p.start > t0, side = p => { if (!p.budget) return ['無預算', 'hint']; const s = projStats(p).spent, v = p.budget - s; return [money(v), v < 0 ? 'expense-text' : 'income-text']; };
-  const sec = (h, l) => l.length ? `<h4>— ${h}</h4>${l.map(p => { const [v, c] = side(p); return row(p.id, '▣', p.name, v, c, String(el.project.value) === String(p.id)); }).join('')}` : '';
-  return `<h4>— 進行中</h4>${row('', '⊖', '無專案', '', '', !el.project.value)}${list.filter(p => !later(p) && !projEnded(p)).map(p => { const [v, c] = side(p); return row(p.id, '▣', p.name, v, c, String(el.project.value) === String(p.id)); }).join('')}${sec('未開始', list.filter(later))}${sec('已結束', list.filter(p => !later(p) && projEnded(p)))}`;
+  const sec = (h, l) => l.length ? `<h4>— ${h}</h4>${l.map(p => { const [v, c] = side(p); return row(p.id, projIconHTML(p), p.name, v, c, String(el.project.value) === String(p.id)); }).join('')}` : '';
+  return `<h4>— 進行中</h4>${row('', '⊖', '無專案', '', '', !el.project.value)}${list.filter(p => !later(p) && !projEnded(p)).map(p => { const [v, c] = side(p); return row(p.id, projIconHTML(p), p.name, v, c, String(el.project.value) === String(p.id)); }).join('')}${sec('未開始', list.filter(later))}${sec('已結束', list.filter(p => !later(p) && projEnded(p)))}`;
 }
 function efPick(kind) { const el = sheetEl('efPickBg'); el.style.zIndex = 400; el.dataset.kind = kind; el.hidden = false; el.innerHTML = `<div class="recon-sheet">${sheetHead(kind === 'account' ? (efTab() === 'transfer' ? '轉出帳戶' : '帳戶') : kind === 'toAccount' ? '轉入帳戶' : '專案')}<div class="recon-list ef-list">${efPickHTML(kind)}</div></div>`; }
 // ---- tags ----

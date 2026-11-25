@@ -17,6 +17,7 @@ function prefPlusDefs() {
     { k: 'similar', l: '相似交易提醒', b: true, d: true },
     { k: 'hideRewards', l: '首頁隱藏紅利回饋', b: true },
     { k: 'dailyRemind', l: '今天還沒記帳時在首頁提醒', b: true },
+    { k: 'billRemind', l: '繳費提醒（每天一次）', b: true, d: true },
     { k: 'noAnim', l: '關閉動畫效果', b: true },
   ];
 }

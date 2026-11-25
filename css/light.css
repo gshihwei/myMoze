@@ -596,6 +596,22 @@ html[data-theme="light"][data-swap="1"] .income-text{color:#cc0012!important}
 :root[data-theme="light"] .qm-item{border:1px solid #ecf0f4;background:#f0f3f6;color:#141b22}
 :root[data-theme="light"] .pull-hint{color:#4d5f71}
 :root[data-theme="light"] .scan{background:#fcfcfc}
+:root[data-theme="light"] .dc-modal .modal-head .icon{background:rgba(255,255,255,0.333);color:#141414}
+:root[data-theme="light"] .dc-hero{color:#141414}
+:root[data-theme="light"] .dc-big{border:2px solid #141414}
+:root[data-theme="light"] .dc-tools button{background:rgba(255,255,255,0.267);color:#141414}
+:root[data-theme="light"] .dc-note{background:rgba(255,255,255,0.2)}
+:root[data-theme="light"] .dc-sub{border:2px solid #141414}
+:root[data-theme="light"] .dc-tags{color:#4d5f71}
+:root[data-theme="light"] .dc-title{border-bottom:1px solid #ecf0f4}
+:root[data-theme="light"] .dc-fee{color:#4d5f71}
+:root[data-theme="light"] .dc-line{color:#4d5f71}
+:root[data-theme="light"] .dc-kids{background:#f2f4f7}
+:root[data-theme="light"] .proj-sec{color:#4d5f71}
+:root[data-theme="light"] .br-card{background:#f0f3f6}
+:root[data-theme="light"] .br-ico{background:#edf1f4}
+:root[data-theme="light"] .br-dots button{background:#8396a9}
+:root[data-theme="light"] .br-dots .on{background:#141414}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}

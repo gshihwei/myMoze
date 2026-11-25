@@ -26,10 +26,8 @@ function projMatch(p, t) {
   return true;
 }
 // Period shown for a project: cycle month / year = the one containing `today`; range (or start / end dates) = those dates; else everything.
-function projPeriod(p, today) {
-  const t = today || isoDate(new Date());
-  if (p.cycle === 'month') return periodBounds(periodKeyOf(t));
-  if (p.cycle === 'year') return { start: t.slice(0, 4) + '-01-01', end: t.slice(0, 4) + '-12-31' };
+function projPeriod(p, today, off) {
+  const c = projPeriodAt(p, off, today); if (c) return c;
   if (p.rules && (p.start || p.end)) return { start: p.start || '0000-01-01', end: p.end || '9999-12-31' };
   return null;
 }
@@ -41,8 +39,8 @@ function projTxs(pid, period) {
 }
 
 // Spending summary for one project (TWD; splits keep their own categories).
-function projStats(p) {
-  const txs = projTxs(p.id, projPeriod(p)), byCat = new Map();
+function projStats(p, off) {
+  const txs = projTxs(p.id, projPeriod(p, undefined, off)), byCat = new Map();
   let spent = 0, income = 0;
   for (const t of txs) {
     if (t.kind === 'expense') {
@@ -68,19 +66,20 @@ function projCardHTML(p) {
   const s = projStats(p), st = budgetStatus(s.spent, p.budget);
   const meter = p.budget ? budgetMeterHTML({ title: p.name, spent: s.spent, limit: p.budget, ratio: s.spent / p.budget, pace: 0, status: st }) : '';
   return `<div class="proj-card ${p.archived ? 'archived' : ''} ${String(projSelected) === String(p.id) ? 'selected' : ''}">
-    <div class="bc-head"><span class="bc-icon">▣</span><b>${esc(p.name)}</b>${p.rules ? '<span class="bc-status none">統計</span>' : ''}${projEnded(p) ? '<span class="bc-status none">已結束</span>' : ''}${p.archived ? '<span class="bc-status none"><i aria-hidden="true">—</i>已封存</span>' : p.budget ? `<span class="bc-status ${st.key}"><i aria-hidden="true">${st.mark}</i>${st.label}</span>` : ''}</div>
+    <div class="bc-head"><span class="bc-icon">${projIconHTML(p)}</span><b>${esc(p.name)}</b>${p.rules ? '<span class="bc-status none">統計</span>' : ''}${projEnded(p) ? '<span class="bc-status none">已結束</span>' : ''}${p.archived ? '<span class="bc-status none"><i aria-hidden="true">—</i>已封存</span>' : p.budget ? `<span class="bc-status ${st.key}"><i aria-hidden="true">${st.mark}</i>${st.label}</span>` : ''}</div>
     <div class="bc-fig"><strong>${money(s.spent)}</strong>${p.budget ? `<span>/ ${money(p.budget)}</span><small>${Math.round(s.spent / p.budget * 100)}%</small>` : '<span>未設預算</span>'}</div>
     ${meter}
-    <div class="bc-foot"><span>${projPeriodText(p, s)}</span><span>${s.count} 筆${s.income ? ` · 收入 ${money(s.income)}` : ''}</span></div>
+    <div class="bc-foot"><span>${projPeriodText(p, s)}</span><span>${s.count} 筆${s.income ? ` · 收入 ${money(s.income)}` : ''}</span></div>${projTodayText(p) ? `<div class="bc-foot"><span>${projTodayText(p)}</span></div>` : ''}${p.note ? `<p class="hint">${esc(p.note)}</p>` : ''}
     <div class="bc-actions"><button type="button" class="primary" data-proj-open="${esc(p.id)}">明細</button><button type="button" class="secondary" data-proj-edit="${esc(p.id)}">編輯</button><button type="button" class="secondary danger-btn" data-proj-del="${esc(p.id)}">刪除</button></div>
   </div>`;
 }
 
 function projDetailHTML(p) {
-  const s = projStats(p);
+  const s = projStats(p, p.cycle ? projSt().off : 0);
   return `<div class="panel proj-detail">
     <div class="panel-head"><div><h2>${esc(p.name)}</h2><p>${projPeriodText(p, s)} · ${s.count} 筆 · 支出 ${money(s.spent)}${p.budget ? ` / 預算 ${money(p.budget)}` : ''}</p></div><button type="button" class="ghost" data-proj-close>關閉</button></div>
     ${p.note ? `<p class="hint proj-note">${esc(p.note)}</p>` : ''}
+    ${projDetailExtra(p, s)}
     <div class="proj-detail-grid">
       <div><h3>分類花費</h3>${anRankHTML(s.categories, { empty: '這個專案還沒有支出' })}</div>
       <div><h3>交易</h3><div class="proj-tx">${s.txs.length ? s.txs.slice(0, 100).map(t => `<div class="proj-tx-row" data-proj-tx="${esc(t.id)}"><span class="proj-tx-date">${esc(t.date)}</span>${txRow(t)}</div>`).join('') + (s.txs.length > 100 ? `<p class="hint">只列出最近 100 筆，共 ${s.txs.length} 筆；可到交易頁以「專案」篩選查看全部。</p>` : '') : '<div class="empty">還沒有交易。記帳時在「專案」欄選擇這個專案即可。</div>'}</div></div>
@@ -95,7 +94,7 @@ function renderProjectPage() {
   const detail = document.getElementById('projectDetail');
   if (detail) { detail.innerHTML = sel ? projDetailHTML(sel) : ''; detail.querySelectorAll('[data-proj-tx]').forEach(r => r.onclick = () => openDetail(r.dataset.projTx)); }
   grid.innerHTML = (archived ? `<label class="proj-archived-toggle"><input type="checkbox" id="projShowArchived" ${projShowArchived ? 'checked' : ''}> 顯示已封存（${archived}）</label>` : '') +
-    (list.length ? list.map(projCardHTML).join('') : '<div class="empty">還沒有專案。旅行、裝修、婚禮等可以建立專案，獨立追蹤花費。</div>');
+    (list.length ? (() => { const t0 = isoDate(new Date()), later = p => !p.cycle && p.start && p.start > t0, on = list.filter(p => !p.archived && !later(p) && !projEnded(p)), sec = (h, l) => l.length ? `<h3 class="proj-sec">${h}（${l.length}）</h3>${l.map(projCardHTML).join('')}` : ''; return sec('進行中', on) + sec('未開始', list.filter(p => !p.archived && later(p))) + sec('已結束', list.filter(p => !p.archived && !later(p) && projEnded(p))) + sec('封存', list.filter(p => p.archived)); })() : '<div class="empty">還沒有專案。旅行、裝修、婚禮等可以建立專案，獨立追蹤花費。</div>');
   const tg = document.getElementById('projShowArchived'); if (tg) tg.onchange = () => { projShowArchived = tg.checked; renderProjectPage(); };
 }
 
@@ -124,10 +123,13 @@ function projFormHTML(p) {
   return `<div class="form-grid">
     <label>專案名稱<input name="pname" required maxlength="40" value="${esc(r.name || '')}" placeholder="例如：台南旅行"></label>
     <label>預算（可留空）<input name="pbudget" type="number" min="0" step="any" value="${r.budget ? esc(r.budget) : ''}"></label>
-    <label>週期<select name="pcycle"><option value="">單一區間／不限</option><option value="month"${r.cycle === 'month' ? ' selected' : ''}>每月重複</option><option value="year"${r.cycle === 'year' ? ' selected' : ''}>每年重複</option></select></label>
+    <label>週期<select name="pcycle"><option value="">單一區間／不限</option><option value="month"${r.cycle === 'month' ? ' selected' : ''}>每月重複</option><option value="week"${r.cycle === 'week' ? ' selected' : ''}>每週重複</option><option value="year"${r.cycle === 'year' ? ' selected' : ''}>每年重複</option></select></label>
+    <label>起始日（每月第幾天 1～28，每週 0＝日…6＝六；留空＝依偏好）<input name="pstartday" type="number" min="0" max="28" value="${esc(r.startDay ?? '')}"></label>
+    <label>圖示<input name="picon" maxlength="4" value="${esc(r.icon || '')}" placeholder="例如 🐷"></label>
     <label>開始日期<input name="pstart" type="date" value="${esc(r.start || '')}"></label>
     <label>結束日期<input name="pend" type="date" value="${esc(r.end || '')}"></label>
   </div>
+  ${acctImageFieldHTML({ image: r.image, type: 'cash' })}
   <div class="form-grid form-grid-1"><label>備註<input name="pnote" maxlength="200" value="${esc(r.note || '')}" placeholder="可留空"></label></div>
   <label class="proj-archive"><input type="checkbox" name="phome" ${r.home ? 'checked' : ''}> 在首頁月曆下方顯示統計</label>
   <label class="proj-archive"><input type="checkbox" name="ptransfer" ${r.countTransfers ? 'checked' : ''}> 轉帳計入統計與預算（轉出這個專案算支出，轉入算收入）</label>
@@ -142,7 +144,9 @@ function projFromForm(f, old) {
   if (start && end && start > end) return { error: '結束日期不能早於開始日期' };
   const p = { ...(old || { id: id() }), name, budget: Math.max(0, Number(f.get('pbudget') || 0)), start, end, note: String(f.get('pnote') || '').trim() };
   p.archived = !!f.get('parchived');
-  const cy = String(f.get('pcycle') || ''); if (cy === 'month' || cy === 'year') p.cycle = cy; else delete p.cycle;
+  const cy = String(f.get('pcycle') || ''); if (cy === 'month' || cy === 'year' || cy === 'week') p.cycle = cy; else delete p.cycle;
+  const sd = String(f.get('pstartday') ?? '').trim(); if (sd !== '' && (cy === 'month' || cy === 'week')) p.startDay = Math.min(28, Math.max(0, Math.floor(Number(sd) || 0))); else delete p.startDay;
+  const pi = String(f.get('picon') || '').trim().slice(0, 4); if (pi) p.icon = pi; else delete p.icon; delete p.image; Object.assign(p, acctImageFromForm(f));
   if (f.get('ptransfer')) p.countTransfers = true; else delete p.countTransfers;
   if (f.get('phome')) p.home = true; else delete p.home;
   if (f.get('pstat')) p.rules = projRulesFromForm(f); else delete p.rules;
