@@ -580,3 +580,5 @@ html[data-keypad=phone] #amountKeypad .op{order:1}html[data-keypad=phone] #amoun
 html[data-keypad=phone] #amountKeypad [data-key="4"],html[data-keypad=phone] #amountKeypad [data-key="5"],html[data-keypad=phone] #amountKeypad [data-key="6"],html[data-keypad=phone] #amountKeypad [data-key=clear]{order:4}
 html[data-keypad=phone] #amountKeypad [data-key="7"],html[data-keypad=phone] #amountKeypad [data-key="8"],html[data-keypad=phone] #amountKeypad [data-key="9"]{order:5}
 html[data-keypad=phone] #amountKeypad [data-key=enter]{order:6}html[data-keypad=phone] #amountKeypad [data-key="."],html[data-keypad=phone] #amountKeypad [data-key="0"],html[data-keypad=phone] #amountKeypad [data-key="00"],html[data-keypad=phone] #amountKeypad [data-key=ok]{order:7}
+
+.sync-offline{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:10px 0}

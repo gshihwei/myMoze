@@ -10,7 +10,8 @@ function sheetHead(title, right) { return `<div class="recon-head"><button type=
 
 // ---- notification center ----
 // Closed statements (last 3) that still owe money: { card, period, offset, owed, due, days, reconDone, key }.
-function billNotices(today) {
+function billNotices(today) { return withTxIndex(() => billNoticesRun(today)); }
+function billNoticesRun(today) {
   const base = today ? new Date(today) : new Date(), mid = new Date(base.getFullYear(), base.getMonth(), base.getDate()), gone = new Set(prefs().billDismissed || []), out = [];
   for (const card of (state.accounts || [])) {
     if (card.type !== 'card' || card.archived) continue;

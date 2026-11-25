@@ -48,7 +48,8 @@ function remindDaysBetween(iso, today) {
   const mid = new Date(today.getFullYear(), today.getMonth(), today.getDate()), d = new Date(String(iso) + 'T00:00:00');
   return Math.round((d - mid) / 864e5);
 }
-function reminderList(today, lead) {
+function reminderList(today, lead) { return withTxIndex(() => reminderListRun(today, lead)); }
+function reminderListRun(today, lead) {
   const base = today ? new Date(today) : new Date(), n = Number.isFinite(Number(lead)) ? Number(lead) : 3, out = [];
   for (const card of (state.accounts || [])) {
     if (card.type !== 'card' || card.archived) continue;

@@ -61,3 +61,13 @@ document.addEventListener('click', e => {
   if ((b = c('[data-qa-toggle]'))) { const l = quickList(), k = b.dataset.qaToggle; setPref('quickAccess', l.includes(k) ? l.filter(x => x !== k) : [...l, k].slice(0, 8)); renderQuickAccess(); return; }
   if ((b = c('[data-qa-up]'))) { const l = quickList(), i = l.indexOf(b.dataset.qaUp); if (i > 0) { [l[i - 1], l[i]] = [l[i], l[i - 1]]; setPref('quickAccess', l); renderQuickAccess(); } }
 });
+
+// ---- 離線模式 (js/sync.js checks the same key before every sync) ----
+function offlineOn() { try { return localStorage.getItem('moze-offline-mode') === '1'; } catch { return false; } }
+function offlineSet(on) { try { if (on) localStorage.setItem('moze-offline-mode', '1'); else localStorage.removeItem('moze-offline-mode'); } catch { } renderOffline(); }
+function renderOffline() { const c = document.getElementById('offlineMode'), b = document.getElementById('offlineRevert'); if (c) c.checked = offlineOn(); if (b) b.hidden = !offlineOn(); }
+document.addEventListener('change', e => { if (e.target?.id === 'offlineMode') { offlineSet(e.target.checked); window.MozeSync?.syncNow?.('auto'); } });
+document.addEventListener('click', async e => {
+  if (!e.target.closest?.('#offlineRevert') || !confirm('放棄離線期間的修改，回復到雲端最新資料？\n回復後會重新開啟同步。')) return;
+  try { if (await window.MozeSync?.pullAllFromCloud?.()) offlineSet(false); } catch (x) { alert('回復失敗：' + (x?.message || x)); }
+});

@@ -117,7 +117,8 @@ function renderRecent(){recent.innerHTML=state.transactions.slice().sort((a,b)=>
 function avatarHtml(o){const n=String((o&&typeof o==='object'?o.name:o)||'?');let h=0;for(const ch of n)h=(h*31+ch.codePointAt(0))%360;return `<span class="avatar" style="--h:${h}">${esc([...n.trim()][0]||'?')}</span>`}
 function mdLabel(date){const [,m,d]=String(date).split('-').map(Number);return `${m}/${d}`}
 function cardBill(a,base=new Date()){const p=cardPeriod(a,base,0),bill=cardSpendSum(cardSpendTxs(a,p.start,p.end)),paid=creditStatementPayments(a,p).reduce((s,t)=>s+Math.abs(Number(t.amount||0)),0),status=creditStatementStatus(a,p,paid,bill);return {card:a,period:p,bill:Math.round(bill),paid:Math.round(paid),due:Math.max(0,Math.round(bill-paid)),status}}
-function cardBills(base=new Date()){const order={overdue:0,unpaid:1,partial:1,paid:2};return state.accounts.filter(a=>a.type==='card').map(a=>cardBill(a,base)).sort((x,y)=>(order[x.status.key]-order[y.status.key])||x.status.date.localeCompare(y.status.date))}
+function cardBills(base=new Date()){return withTxIndex(()=>cardBillsRun(base))}
+function cardBillsRun(base){const order={overdue:0,unpaid:1,partial:1,paid:2};return state.accounts.filter(a=>a.type==='card').map(a=>cardBill(a,base)).sort((x,y)=>(order[x.status.key]-order[y.status.key])||x.status.date.localeCompare(y.status.date))}
 function loanGroups(){const map=new Map();for(const l of (state.loans||[])){if(loanStatus(l)!=='active')continue;const p=l.person||'未指定對象';if(!map.has(p))map.set(p,{person:p,receivable:0,payable:0,net:0,latest:'',firstId:l.id});const g=map.get(p),dir=loanDirection(l),out=loanOutstanding(l);g[dir]+=1;g.net+=(dir==='receivable'?1:-1)*out;const last=[l.date,...(l.payments||[]).map(x=>x.date)].filter(Boolean).sort().pop()||'';if(last>g.latest)g.latest=last}return [...map.values()].sort((a,b)=>Math.abs(b.net)-Math.abs(a.net))}
 function renderLoanTracking(){const el=document.getElementById('loanSummary');if(!el)return;const gs=loanGroups(),head=document.getElementById('loanTrackTotal');if(head)head.textContent=gs.length?`${gs.length} 位對象`:'';el.innerHTML=gs.length?gs.slice(0,5).map(g=>{const kind=g.receivable&&g.payable?'mixed':g.payable?'payable':'receivable',desc=[g.receivable?`${g.receivable} 筆應收款項`:'',g.payable?`${g.payable} 筆應付款項`:''].filter(Boolean).join(' · ');return `<button type="button" class="loan-track ${kind}" data-loan-id="${esc(g.firstId)}"><div><b>${esc(g.person)}</b><small>${desc}</small></div><div class="day-side"><b class="${g.net>=0?'income-text':'expense-text'}">${g.net>=0?'+':'−'}${money(Math.abs(g.net))}</b><small>${esc(g.latest||'')}</small></div></button>`}).join('')+(gs.length>5?`<button type="button" class="ghost more-link" data-view="loans">查看更多（另 ${gs.length-5} 位）</button>`:''):'<div class="empty">目前沒有進行中的借還款</div>'}
 function renderCards(){{const bills=cardBills(),head=document.getElementById('creditTotal'),total=bills.reduce((x,b)=>x+b.due,0);if(head)head.textContent=bills.length?`${bills.length} 張 · 未繳合計 ${money(total)}`:'';creditCards.innerHTML=bills.map(b=>{const a=b.card,st=b.status,over=st.key==='overdue',dueTxt=st.key==='paid'?`${mdLabel(st.date)} 到期 · 已繳清`:over?`已於 ${mdLabel(st.date)} 到期`:`將於 ${mdLabel(st.date)} 到期`;return `<button type="button" class="card-bill ${st.key}" data-dashboard-credit="${esc(a.id)}">${avatarHtml(a)}<div class="day-main"><small class="card-status ${st.key}">${st.label}</small><b>${acctName(a)}</b></div><div class="day-side"><small class="${over?'overdue':''}">${dueTxt}</small><b class="${b.due?'expense-text':''}">${money(b.due)}</b></div></button>`}).join('')||'<div class="empty">尚無信用卡</div>';}document.querySelectorAll('[data-dashboard-credit]').forEach(b=>b.onclick=()=>{nav('accounts');openCreditAccount(b.dataset.dashboardCredit)});renderUpcoming()}
@@ -160,6 +161,7 @@ function cardStatementDueDate(card, period){
   const dueDay=Math.min(31,Math.max(1,Number(card.due||5)));
   const end=new Date(period.end+'T00:00:00');
   const endDay=new Date(end.getFullYear(),end.getMonth()+1,0).getDate();
+  if(Number(card.dueAfter)>0){const d=new Date(end.getFullYear(),end.getMonth(),end.getDate()+Number(card.dueAfter));return cardAdjustDate(card,d,card.dueWeekend)}
   const due=new Date(end.getFullYear(),end.getMonth(),Math.min(dueDay,endDay));
   if(due<=end) due.setMonth(due.getMonth()+1);
   return cardAdjustDate(card,due,card.dueWeekend);
@@ -174,7 +176,7 @@ function paymentBelongsToPeriod(payment, card, period){
   return payment.date>period.end&&payment.date<=nextEnd;
 }
 function creditStatementPayments(card,period){
-  return state.transactions.filter(t=>t.cardPayment&&String(t.toAccount)===String(card.id)&&paymentBelongsToPeriod(t,card,period)).sort((a,b)=>b.date.localeCompare(a.date));
+  return (txIndexOf(card.id,'pay')||state.transactions).filter(t=>t.cardPayment&&String(t.toAccount)===String(card.id)&&paymentBelongsToPeriod(t,card,period)).sort((a,b)=>b.date.localeCompare(a.date));
 }
 function creditStatementStatus(card, period, paid, dueAmount){
   const dueDate=cardStatementDueDate(card,period), today=new Date(); today.setHours(0,0,0,0);
