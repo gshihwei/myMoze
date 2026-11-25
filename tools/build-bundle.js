@@ -20,7 +20,7 @@ function version() {
 }
 
 function build() {
-  const icons = read('js/icons.js').replace(/^export\s+/gm, '');
+  const icons = read('js/icon-manifest.js') + '\n' + read('js/icons.js').replace(/^export\s+/gm, '');
   const app = read('js/app.js');
   const analysis = read('js/analysis.js');
   const budgets = read('js/budgets.js');

@@ -1,0 +1,5 @@
+V26.58
+- 預設圖示改由 images/<銀行>/<名稱>.png 管理：與資料夾同名的是銀行圖示，其餘是該銀行的信用卡。
+- 新增 tools/build-icons.py：轉成 128px webp 放到 icons/banks/<銀行>/，並產生 js/icon-manifest.js 與 sw.js 的快取清單。
+- 比對規則：帳戶名稱含關鍵字（檔名或 images/aliases.json 內的中文別名），取最長關鍵字，同長度卡片優先於銀行。
+- 現有 26 張圖示已搬進新結構（taishin 底下有 taishin 與 flygo；twm 底下有 twm 與 openpossible）。
