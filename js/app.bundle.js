@@ -2094,7 +2094,7 @@ document.addEventListener('change', e => { if (e.target?.id === 'yrYear') { yrYe
 // Bundled after js/yearly.js (tools/build-bundle.js). Function declarations / var only (hoisted).
 // Stored on the transaction itself (syncs with it): `recon: true` when confirmed, `origDate` = the date before it was postponed.
 
-function reconSt() { return window.__recon || (window.__recon = { card: null, period: null, order: 'asc', q: '', menu: false, note: '' }); }
+function reconSt() { return window.__recon || (window.__recon = { card: null, period: null, offset: 0, order: 'asc', q: '', menu: false, note: '' }); }
 function reconNextStart(period) { const d = new Date(period.end + 'T00:00:00'); d.setDate(d.getDate() + 1); return isoDate(d); }
 // Lines of the statement: the card's expenses (not payments) dated inside the period, oldest first by default.
 function reconItems(card, period, order) {
@@ -2145,12 +2145,14 @@ function reconOverlay() {
 function renderReconMode() {
   const s = reconSt(), el = document.getElementById('reconBg'); if (!el || el.hidden || !s.card) return;
   const card = acct(s.card); if (!card || !card.id) { el.hidden = true; return; }
+  s.period = cardPeriod(card, new Date(), s.offset);
   const items = reconItems(card, s.period, s.order), shown = items.filter(t => reconMatch(t, s.q)), st = reconStats(items);
   const pct = st.count ? Math.round(st.doneCount / st.count * 100) : 0;
   const keepQ = el.querySelector('#reconSearch'), had = keepQ && document.activeElement === keepQ;
   el.innerHTML = `<div class="recon-sheet">
-  <div class="recon-head"><button type="button" class="icon" data-recon-close aria-label="關閉">×</button><div class="recon-title"><b>對帳模式</b><small>${esc(card.name)} · ${s.period.start} ～ ${s.period.end}</small></div><button type="button" class="icon" data-recon-menu aria-label="選單">⋯</button></div>
+  <div class="recon-head"><button type="button" class="icon" data-recon-close aria-label="關閉">×</button><div class="recon-title"><b>對帳模式</b><small>${esc(card.name)}</small></div><button type="button" class="icon" data-recon-menu aria-label="選單">⋯</button></div>
   ${s.menu ? `<div class="recon-menu"><button type="button" data-recon-act="add">新增記錄</button><button type="button" data-recon-act="pay">新增繳款</button><button type="button" data-recon-act="clear">取消全部選取</button><button type="button" data-recon-act="order">變更日期順序（目前：${s.order === 'asc' ? '由遠到近' : '由近到遠'}）</button></div>` : ''}
+  <div class="recon-period"><button type="button" data-recon-prev aria-label="上一期">‹</button><strong>${s.period.start} ～ ${s.period.end}</strong><button type="button" data-recon-next aria-label="下一期" ${s.offset >= 0 ? 'disabled' : ''}>›</button></div>
   <div class="recon-search"><input id="reconSearch" type="search" placeholder="搜尋（名稱、商家、金額…）" value="${esc(s.q)}" autocomplete="off"></div>
   ${s.note ? `<div class="recon-note">${esc(s.note)}</div>` : ''}
   <div class="recon-list">${shown.length ? shown.map(t => reconRowHTML(t, s.period)).join('') : `<div class="recon-empty">${items.length ? '沒有符合的記錄' : '這一期沒有消費記錄'}</div>`}</div>
@@ -2160,7 +2162,7 @@ function renderReconMode() {
 }
 function openReconMode(cardId) {
   const card = acct(cardId); if (!card || card.type !== 'card') return;
-  const s = reconSt(); s.card = card.id; s.period = cardPeriod(card, new Date(), creditStatementOffset); s.q = ''; s.menu = false; s.note = '';
+  const s = reconSt(); s.card = card.id; s.offset = creditStatementOffset; s.period = cardPeriod(card, new Date(), s.offset); s.q = ''; s.menu = false; s.note = '';
   const el = reconOverlay(); el.hidden = false; renderReconMode();
 }
 function closeReconMode() { const el = document.getElementById('reconBg'); if (el) el.hidden = true; reconSt().menu = false; if (typeof render === 'function') render(); }
@@ -2177,6 +2179,8 @@ document.addEventListener('click', async e => {
   const el = document.getElementById('reconBg'); if (!el || el.hidden || !el.contains(e.target)) return;
   const s = reconSt();
   if (e.target.closest('[data-recon-close]')) { closeReconMode(); return; }
+  const pn = e.target.closest('[data-recon-prev],[data-recon-next]');
+  if (pn) { if (pn.hasAttribute('data-recon-next')) { if (s.offset >= 0) return; s.offset++; } else s.offset--; s.q = ''; s.note = ''; s.menu = false; renderReconMode(); return; }
   if (e.target.closest('[data-recon-menu]')) { s.menu = !s.menu; renderReconMode(); return; }
   const act = e.target.closest('[data-recon-act]');
   if (act) {
@@ -2186,7 +2190,7 @@ document.addEventListener('click', async e => {
     else if (a === 'add') {
       const today = isoDate(new Date()), d = today < s.period.start ? s.period.start : today > s.period.end ? s.period.end : today;
       openTx('expense'); if (formAccount) formAccount.value = card.id; if (txForm?.elements?.date) txForm.elements.date.value = d; setTimeout(() => window.refreshEntryChoices?.(), 10);
-    } else if (a === 'pay') { el.hidden = true; if (typeof render === 'function') render(); setTimeout(() => { const b = document.querySelector('[data-inline-payment]'); if (b && !b.disabled) b.click(); else alert('這一期沒有需要繳的款項，或沒有可扣款的帳戶。'); }, 50); return; }
+    } else if (a === 'pay') { el.hidden = true; creditStatementOffset = s.offset; if (typeof render === 'function') render(); setTimeout(() => { const b = document.querySelector('[data-inline-payment]'); if (b && !b.disabled) b.click(); else alert('這一期沒有需要繳的款項，或沒有可扣款的帳戶。'); }, 50); return; }
     renderReconMode(); return;
   }
   const row = e.target.closest('.recon-row');
