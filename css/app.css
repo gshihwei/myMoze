@@ -303,3 +303,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .bank-row{position:relative}
 .bank-toggle{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:inherit;cursor:pointer;font-size:14px}
 .bank-children{margin:2px 0 6px 22px;padding-left:12px;border-left:1px solid rgba(255,255,255,.12)}
+
+/* V26.49 account / credit-card details open as a full-screen sheet instead of below the list */
+#creditAccountDetail:not([hidden]),#accountDetail:not([hidden]){position:fixed;inset:0;z-index:25;margin:0;border:0;border-radius:0;overflow-y:auto;padding:max(16px,env(safe-area-inset-top)) 16px 28px;background:#101a26}
+.detail-close-row{margin-bottom:10px}
+.bank-row{cursor:pointer}

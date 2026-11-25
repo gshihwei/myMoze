@@ -259,6 +259,8 @@ function acctSyncBankField(form) {
 document.addEventListener('change', e => { const s = e.target; if ((s?.name === 'atype' || s?.name === 'accountType') && s.closest?.('#entityForm')) { const form = s.closest('#entityForm'), box = form.querySelector('[data-acct-card-fields]'); if (box && s.name === 'atype') box.hidden = s.value !== 'card'; acctSyncBankField(form); } });
 document.addEventListener('input', e => { if (e.target?.name === 'acur' && e.target.closest?.('#entityForm')) acctSyncBankField(e.target.closest('#entityForm')); });
 document.addEventListener('click', async e => {
+  const row = e.target.closest?.('.bank-row'); if (row) { const b = row.querySelector('[data-bank-toggle]'); if (b) { acctToggleBank(b.dataset.bankToggle); renderAccounts(); } return; }
+  if (e.target.closest?.('[data-close-credit]')) { selectedCreditCardId = null; renderAccounts(); return; }
   const bk = e.target.closest?.('[data-bank-toggle]'); if (bk) { acctToggleBank(bk.dataset.bankToggle); renderAccounts(); return; }
   const grp = e.target.closest?.('[data-acct-group]'); if (grp) { acctToggleGroup(grp.dataset.acctGroup); renderAccounts(); return; }
   const find = v => (state.accounts || []).find(a => String(a.id) === String(v));

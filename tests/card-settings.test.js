@@ -181,3 +181,10 @@ test('自動依幣別歸組：非 TWD 的帳戶（任何類型）歸到外幣組
   run(`state.accounts[1].bank = '舊'`);
   assert.equal(run(`acctFromEditForm(new Map([['aname','台幣戶'],['acur','TWD'],['atype','bank'],['abank','舊']]), state.accounts[1]).account.bank`), undefined);
 });
+
+test('信用卡／帳戶詳情以全螢幕面板開啟（不再捲到頁面底部），並有返回按鈕', () => {
+  const js = fs.readFileSync(path.join(root, 'js', 'app.bundle.js'), 'utf8'), css = fs.readFileSync(path.join(root, 'css', 'app.css'), 'utf8');
+  assert.ok(js.includes('data-close-credit')); assert.ok(!js.includes("getElementById('creditAccountDetail')?.scrollIntoView"));
+  assert.ok(!js.includes("getElementById('accountDetail')?.scrollIntoView"));
+  assert.match(css, /#creditAccountDetail:not\(\[hidden\]\),#accountDetail:not\(\[hidden\]\)\{position:fixed;inset:0/);
+});
