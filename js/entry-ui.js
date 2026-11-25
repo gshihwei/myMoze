@@ -7,7 +7,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const PALETTE=['#e8c88c','#3f86e6','#9a63c9','#d4706e','#aaa88f','#e24c4c','#40648e','#d99ac9','#6f8f5e','#f5a623'];
   const COLOR={income:'#c9a35a',transfer:'#d98a3d',system:'#d98a3d',receivable:'#7dd8c6',payable:'#d05c82'};
-  let tab='expense',preset='',expr='',exprIn='',side='out',pick='out',inTouched=false;
+  let tab='expense',preset='',expr='',exprIn='',side='out',pick='out',inTouched=false,prevTab='expense',keepCat={},tfKeep=null;
   const isTf=()=>tab==='transfer';
   const form=()=>$('txForm'),input=()=>$('amountInput');
   const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
@@ -131,16 +131,27 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   }
   function refresh(){
     if(!$('categoryChoices')||typeof state==='undefined')return;
-    const cs=$('formCategory'),prev=cs?.value;
-    fillCategorySelect(prev);renderCats();renderPresets();renderAccounts();sync();applyExpr();
+    const cs=$('formCategory'),prev=cs?.value,ck=state.categories.find(c=>String(c.id)===String(prev))?.kind||'expense';
+    fillCategorySelect(ck===curKind()?prev:(keepCat[curKind()]??prev));renderCats();renderPresets();renderAccounts();sync();applyExpr();
+  }
+  // Leaving 轉帳 (or any type) never loses what was typed: the amount stays, automatic names are dropped, each type remembers its own category,
+  // and the transfer accounts / preset come back when you return.
+  function leaveTab(t){
+    if(t===tab)return;const cs=$('formCategory'),nm=f('name');
+    if(cs&&cs.value)keepCat[curKind()]=cs.value;
+    if(nm&&nm.dataset.auto==='1'){nm.value='';delete nm.dataset.auto;}
+    if(isTf()){if(!(entryCalcEval(expr)>0)&&entryCalcEval(exprIn)>0)expr=exprIn;tfKeep={preset,to:$('formToAccount')?.value,exprIn,inTouched};const ta=f('toAmount');if(ta)ta.value='';exprIn='';inTouched=false;}
+    prevTab=tab;
   }
   function setTab(t){
+    leaveTab(t);
     tab=t;preset='';side='out';pick='out';const st=$('entrySideTitle');if(st)st.textContent=t==='transfer'?'轉出金額':'金額';if(t!=='transfer'&&$('entryAcctTitle'))$('entryAcctTitle').textContent='常用帳戶';const bg=$('modalBg');if(bg)bg.dataset.etab=t;
     if(t==='expense'||t==='income'||t==='transfer')setKind(t);else if(t!=='suggest')setKind('expense');
-    if(t==='transfer'){if(!preset)preset='轉帳';tfPreset(preset);const o=$('formAccount'),i=$('formToAccount');if(o&&i&&o.value===i.value){const d=tfDefaults(state,'轉帳',{from:o.value});if(d.to!==undefined)i.value=d.to;}}
+    if(t==='transfer'){const k=tfKeep;preset=k?.preset||'轉帳';if(k?.inTouched){exprIn=k.exprIn;inTouched=true;}if(k?.to&&$('formToAccount'))$('formToAccount').value=k.to;tfPreset(preset);{const nm=f('name');if(nm&&!nm.value){nm.value=preset;nm.dataset.auto='1';}}const o=$('formAccount'),i=$('formToAccount');if(o&&i&&o.value===i.value){const d=tfDefaults(state,'轉帳',{from:o.value});if(d.to!==undefined)i.value=d.to;}}
     refresh();
   }
   document.addEventListener('click',e=>{
+    if(e.target.closest('#entryBack')){setTab(prevTab&&prevTab!==tab&&(prevTab==='suggest'||prevTab==='expense'||prevTab==='income')?prevTab:'expense');return;}
     const tb=e.target.closest('#entryTabs [data-etab-btn]');if(tb){setTab(tb.dataset.etabBtn);return;}
     const cb=e.target.closest('#categoryChoices [data-cat],#categorySubs [data-cat]');
     if(cb){
@@ -190,7 +201,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const nm=f('name');if(nm)delete nm.dataset.auto;
     const hasHistory=!t&&prefOn('suggest')&&entrySuggest(state,today(),1).length&&(state.transactions||[]).some(x=>x.kind==='expense'||x.kind==='income');
     tab=(k==='income'||k==='transfer')?k:(hasHistory?'suggest':'expense');
-    preset='';exprIn='';inTouched=false;side='out';pick='out';if(tab==='transfer'){if(t){preset=cat(t.category).name;if(t.toAmount!==undefined){exprIn=String(t.toAmount);inTouched=true;}if($('formToProject'))$('formToProject').value=t.toProject||'';}else setTab('transfer');}if($('entrySideTitle'))$('entrySideTitle').textContent=tab==='transfer'?'轉出金額':'金額';if($('entryAcctTitle')&&tab!=='transfer')$('entryAcctTitle').textContent='常用帳戶';if(bg)bg.dataset.etab=tab;
+    preset='';exprIn='';inTouched=false;side='out';pick='out';keepCat={};tfKeep=null;prevTab='expense';if(tab==='transfer'){if(t){preset=cat(t.category).name;if(t.toAmount!==undefined){exprIn=String(t.toAmount);inTouched=true;}if($('formToProject'))$('formToProject').value=t.toProject||'';}else{tab='';setTab('transfer');prevTab='expense';}}if($('entrySideTitle'))$('entrySideTitle').textContent=tab==='transfer'?'轉出金額':'金額';if($('entryAcctTitle')&&tab!=='transfer')$('entryAcctTitle').textContent='常用帳戶';if(bg)bg.dataset.etab=tab;
     if(tab==='suggest')setKind('expense');
     $('entrySide')?.classList.add('open');
     setTimeout(()=>{window.mozeState=window.state;if(cs&&t&&t.category!==undefined)cs.dataset.keep=String(t.category);refresh();},0);
