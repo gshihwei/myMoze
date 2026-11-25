@@ -553,3 +553,8 @@ button.notice-row{cursor:pointer}.notice-row.overdue .day-main small:last-child{
 .cmp thead th{position:sticky;top:0;z-index:2}.cmp tbody th,.cmp tfoot th,.cmp thead th:first-child{position:sticky;left:0;z-index:1;text-align:left}.cmp thead th:first-child{z-index:3}.cmp tfoot td,.cmp tfoot th{background:#101e2c;font-weight:700}
 .cmp button{background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:0}.cmp button.on{color:#6fb8ef;text-decoration:underline}.cmp .dim{opacity:.35}
 .cmp-stat{display:grid;grid-template-columns:1fr auto auto 60px;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid #22364a}.cmp-stat i{grid-column:1/-1;height:6px;border-radius:3px;background:#3f86e6}.cmp-svg{width:100%;height:auto}.cmp-svg g{cursor:pointer}
+
+/* V26.78 loans */
+.loan-only{display:none}#modalBg[data-etab=receivable] .loan-only,#modalBg[data-etab=payable] .loan-only{display:flex}
+.loan-check{width:22px;height:22px;border-radius:6px;border:1px solid #3a526a;background:none;color:transparent;margin-right:6px;cursor:pointer;padding:0}.loan-check.on{background:#2094d4;color:#fff}
+.loan-bulk{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 14px;margin-bottom:10px;border-radius:12px;background:#1f3347}.loan-bulk input{width:120px}

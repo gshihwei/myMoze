@@ -274,7 +274,7 @@ var selectedBank;   // { key: 'card' | 'foreign', bank } while a bank's detail s
 // refunds (income with refundOf) on the card reduce the statement.
 function cardTxDate(t) { return t.postDate || t.date; }
 function cardSpendTxs(card, start, end) {
-  return (state.transactions || []).filter(t => String(t.account) === String(card.id) && !t.cardPayment && (t.kind === 'expense' || (t.kind === 'income' && t.refundOf) || (t.kind === 'balance_adjustment' && t.stmtInst)) && !isUnappliedPending(t) && cardTxDate(t) >= start && cardTxDate(t) <= end);
+  return (state.transactions || []).filter(t => String(t.account) === String(card.id) && !t.cardPayment && (t.kind === 'expense' || (t.kind === 'income' && t.refundOf) || (t.kind === 'balance_adjustment' && t.stmtInst) || (t.kind === 'loan' && t.loanAction === 'lend')) && !isUnappliedPending(t) && cardTxDate(t) >= start && cardTxDate(t) <= end);
 }
 function cardLineAmount(t) { const v = Number(t.amount || 0); return t.kind === 'balance_adjustment' ? -v : t.kind === 'income' ? -Math.abs(v) : Math.abs(v); }
 function cardSpendSum(list) { return Math.round(list.reduce((s, t) => s + cardLineAmount(t), 0) * 100) / 100; }

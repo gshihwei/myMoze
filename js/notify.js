@@ -29,6 +29,7 @@ function upcomingNotices(today, days) {
   const t0 = isoDate(today ? new Date(today) : new Date()), d = new Date(t0 + 'T00:00:00'); d.setDate(d.getDate() + (days || 30)); const lim = isoDate(d), out = [];
   for (const r0 of (state.recurring || [])) { const r = normRecurring(r0); if (!recurringEnded(r) && !r.paused && r.next <= lim) out.push({ type: 'recurring', id: r.id, name: r.name, date: r.next, kind: r.kind, amount: Math.abs(Number(r.amount || 0)), account: r.account, label: recurringLabel(r), category: r.category }); }
   for (const t of (state.transactions || [])) if (t.installment && t.date > t0 && t.date <= lim) out.push({ type: 'installment', id: t.id, name: t.name, date: t.date, kind: t.kind, amount: Math.abs(Number(t.amount || 0)), account: t.account, label: installmentLabel(t), category: t.category });
+  for (const l of (state.loans || [])) if (l.inst && loanStatus(l) === 'active' && l.inst.next <= lim) { const x = loanInstNext(l); if (x) out.push({ type: 'loan', id: l.id, name: l.name || l.person, date: x.date, kind: loanDirection(l) === 'payable' ? 'expense' : 'income', amount: x.principal + x.interest, account: l.account, label: `分期 ${x.no} / ${l.inst.n}`, category: '' }); }
   return out.sort((a, b) => a.date.localeCompare(b.date));
 }
 function noticeCount() { return billNotices().length + pendingNotices().filter(t => t.dateTbd || t.date <= isoDate(new Date())).length; }

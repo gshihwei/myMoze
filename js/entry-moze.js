@@ -91,11 +91,12 @@ function entryEnsureCategory(st, name, kind) {
 
 // ---- 應收 / 應付 款項 created from the entry form (same ledger effect as the 借還款 page) ----
 function entryPostLoan(st, o) {
+  if (o.existing) return loanCreateExisting(o);
   const amount = Math.abs(Number(o.amount || 0));
   const account = (st.accounts || []).find(a => String(a.id) === String(o.account));
   if (!amount) return { error: '請輸入有效金額' };
   if (!account) return { error: '請選擇帳戶' };
-  if (account.type === 'card') return { error: '應收／應付款項請選擇現金或銀行帳戶，不能用信用卡' };
+  if (account.type === 'card' && o.direction === 'payable') return { error: '應付款項請選擇現金或銀行帳戶，不能用信用卡' };
   const direction = o.direction === 'payable' ? 'payable' : 'receivable';
   const date = o.date || new Date().toISOString().slice(0, 10), person = String(o.person || '').trim() || '未指定對象';
   const label = o.label || (direction === 'receivable' ? '借出' : '借入');

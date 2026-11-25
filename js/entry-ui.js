@@ -77,7 +77,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const box=$('accountChoices'),sel=$('formAccount');if(!box||!sel)return;
     const present=new Set(Array.from(sel.options).map(o=>o.value));
     let list=entryAccountsByUse(state).filter(a=>present.has(String(a.id))&&modeAllows('accounts',a.id));
-    if(isLoanTab())list=list.filter(a=>a.type!=='card');
+    if(tab==='payable')list=list.filter(a=>a.type!=='card');
     if(isLoanTab()&&!list.some(a=>String(a.id)===String(sel.value))&&list[0])sel.value=list[0].id;
     box.innerHTML=list.map(a=>`<button type="button" class="entry-acct" data-acct="${a.id}"><span class="entry-acct-ico">${svgForAccount(a)}</span><span>${esc(typeof acctName==='function'?acctName(a):a.name)}</span></button>`).join('');
     const a=state.accounts.find(x=>String(x.id)===String(sel.value));
@@ -126,7 +126,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   // ---- submit: 應收／應付 tabs create loans; everything else falls through to submitTx ----
   window.entryHandleSubmit=async function(fd){
     if(!isLoanTab())return false;
-    const r=entryPostLoan(state,{direction:tab,amount:fd.get('amount'),account:fd.get('account'),date:fd.get('date'),time:fd.get('time'),person:fd.get('person'),name:fd.get('name'),note:fd.get('note'),label:preset||(tab==='payable'?'借入':'借出')});
+    const r=entryPostLoan(state,{direction:tab,amount:fd.get('amount'),account:fd.get('account'),date:fd.get('date'),time:fd.get('time'),person:fd.get('person'),name:fd.get('name'),note:fd.get('note'),label:preset||(tab==='payable'?'借入':'借出'),existing:!!fd.get('loanExisting')});
     if(r.error){alert(r.error);return true;}
     await save();closeModals();render();
     window.__mozeLoanFilter='all';window.__mozeSelectedLoanId=r.loan.id;if(typeof renderLoans==='function')renderLoans();
