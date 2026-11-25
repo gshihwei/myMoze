@@ -692,3 +692,7 @@ button.account-detail-row{width:100%;background:none;border:0;border-bottom:1px 
 
 .amount-sug{display:flex;gap:8px;overflow-x:auto;padding:8px 2px 0}.amount-sug:empty{display:none}.amount-sug button{flex:none;border:0;border-radius:10px;background:#24384b;color:#dbe5ee;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer}
 .lock-bio{margin:8px auto;display:block}.backup-tools{justify-content:flex-start;margin-bottom:8px}
+
+.draft-add textarea,.say-box textarea{width:100%;background:#1b2e41;color:#eef4fa;border:1px solid #2a4054;border-radius:13px;padding:12px;font:inherit;font-size:16px}
+.draft-row.open{background:#16273a;border-radius:13px}.draft-mark{padding:0 14px 12px}.draft-row .notice-row{width:100%;background:none;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+#draftQ{width:100%;background:#1b2e41;color:#eef4fa;border:1px solid #2a4054;border-radius:12px;padding:10px;font:inherit;margin:6px 0}

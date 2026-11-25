@@ -211,6 +211,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
       if(items.length<2||items[i]?.locked){if(items[i]?.locked)alert('應收應付款項請到借還款頁處理');return;}
       items.splice(i,1);ci=Math.min(i,items.length-1);const one=items[ci];if(items.length===1&&!oldIds.length)items=[];loadItem(one);efPicked(true);efSync();
     },
+    load(l){items=l;ci=0;oldIds=[];loadItem(items[0]);efPicked(true);},
     reset(t){
       items=[];ci=0;oldIds=[];$('modalBg')?.classList.remove('item-locked');const l=itemsOfTx(t);if(!l)return;
       items=l;oldIds=l.map(x=>x.id).filter(x=>x!==undefined);ci=Math.max(0,t.id?l.findIndex(x=>x.id===t.id):0);if(typeof splitRows!=='undefined')splitRows.innerHTML='';loadItem(items[ci]);$('modalBg')?.classList.toggle('item-locked',!!items[ci].locked);
