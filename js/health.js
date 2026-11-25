@@ -31,7 +31,7 @@ function healthCheck(st = state, today = isoDate(new Date())) {
   // V26.33: checks that only report (amounts are never changed automatically).
   const badTransfer = txs.filter(t => t.kind === 'transfer' && (!t.toAccount || String(t.toAccount) === String(t.account)));
   if (badTransfer.length) issues.push({ key: 'transfer', level: 'minor', count: badTransfer.length, text: `${badTransfer.length} 筆轉帳缺少轉入帳戶，或轉出轉入是同一帳戶`, hint: '請到交易頁找出這些轉帳後修正帳戶。', ids: badTransfer.map(t => t.id) });
-  const future = txs.filter(t => t.date > today && !t.pending && !t.installment);
+  const future = txs.filter(t => t.date > today && !t.pending && !t.installment && !t.origDate);
   if (future.length) issues.push({ key: 'future', level: 'info', count: future.length, text: `${future.length} 筆交易的日期在今天之後`, hint: '可能是日期輸入錯誤；若是預先記帳可忽略。', ids: future.map(t => t.id) });
   const zero = txs.filter(t => ['expense', 'income', 'transfer'].includes(t.kind) && !(Math.abs(Number(t.amount || 0)) > 0));
   if (zero.length) issues.push({ key: 'zero', level: 'info', count: zero.length, text: `${zero.length} 筆交易金額為 0`, hint: '通常是沒有意義的紀錄，確認後可刪除。', ids: zero.map(t => t.id) });
