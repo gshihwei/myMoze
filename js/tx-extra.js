@@ -42,13 +42,15 @@ function txDetailExtra(t) {
   const grid = document.getElementById('detailGrid'); if (!grid) return;
   let h = '';
   if (t.postDate) h += txExtraBox('入帳日', esc(t.postDate));
+  const dt = depositText(t); if (dt) { const o = t.depositOf ? txById(t.depositOf) : depositBalance(t); h += txExtraBox(t.depositOf ? '尾款' : '訂金', `${esc(dt)} ${o ? txLink(o, t.depositOf ? '查看訂金' : o.pending ? '查看尾款' : '查看') : ''}`, true); }
   const rs = refundsOf(t);
   if (rs.length) h += txExtraBox('已退款', `${acctMoney(refundedAmount(t), acct(t.account))} ${rs.map(r => txLink(r, `${esc(r.date)} 查看`)).join(' ')}`, true);
   if (t.refundOf !== undefined) { const o = txById(t.refundOf); h += txExtraBox('原記錄', o ? txLink(o, `${esc(o.name)} ${esc(o.date)}`) : '已刪除', true); }
   grid.insertAdjacentHTML('beforeend', h);
   let bar = document.getElementById('detailExtraBar');
   if (!bar) { bar = document.createElement('div'); bar.id = 'detailExtraBar'; bar.className = 'form-actions detail-extra'; grid.after(bar); }
-  bar.innerHTML = (refundable(t) ? '<button type="button" class="secondary" data-refund>退款</button>' : '') + '<div id="refundBox"></div>';
+  const bt = depositBalance(t);
+  bar.innerHTML = (t.pending && pendingVisible(t) && !isLoanTx(t) ? `<button type="button" class="primary" data-finish-pending="${esc(t.id)}">✓ 完成入帳</button>` : '') + (bt?.pending && pendingVisible(bt) ? `<button type="button" class="primary" data-finish-pending="${esc(bt.id)}">補尾款</button>` : '') + (refundable(t) ? '<button type="button" class="secondary" data-refund>退款</button>' : '') + '<div id="refundBox"></div>';
 }
 function refundFormHTML(t) {
   const accts = acctActive(acctOrdered(state.accounts), t.account).map(a => `<option value="${esc(a.id)}"${String(a.id) === String(t.account) ? ' selected' : ''}>${acctName(a)}</option>`).join('');

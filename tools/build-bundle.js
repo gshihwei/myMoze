@@ -32,7 +32,7 @@ function build() {
   const reminders = read('js/reminders.js');
   const subscriptions = read('js/subscriptions.js');
   const yearly = read('js/yearly.js');
-  const recon = read('js/recon-mode.js') + '\n' + read('js/tx-extra.js');
+  const recon = read('js/recon-mode.js') + '\n' + read('js/tx-extra.js') + '\n' + read('js/tx-post.js');
   const settings = read('js/settings.js');
   const entryAssist = read('js/entry-assist.js');
   const installments = read('js/installments.js');

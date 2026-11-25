@@ -489,3 +489,6 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 /* V26.66 refunds */
 .tx-link{background:none;border:0;color:#6fb8ef;cursor:pointer;padding:0 4px;font:inherit;text-decoration:underline}
 .detail-extra{flex-wrap:wrap}.detail-extra #refundBox{width:100%}.refund-form{margin-top:8px}
+
+/* V26.67 posting mode, deposits */
+.post-box{display:grid;gap:8px;margin-top:10px}.post-box[hidden],.post-box [hidden]{display:none!important}
