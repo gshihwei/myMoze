@@ -30,3 +30,6 @@ __pycache__/
 venv/
 *.old
 *.orig
+
+# release ZIPs are built into 壓縮檔/
+壓縮檔/
