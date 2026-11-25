@@ -95,6 +95,17 @@ function acctToggleGroup(key) {
   const set = new Set(prefs().acctCollapsed || []); if (set.has(key)) set.delete(key); else set.add(key);
   setPref('acctCollapsed', [...set]);
 }
+// Credit-card fields from the account form (both "new" and "manage"); `old` supplies nothing but is kept for symmetry.
+function acctCardSettingsFromForm(f) {
+  const a = {};
+  a.limit = Math.max(0, Number(f.get('alimit') || 0)); a.statement = Math.min(31, Math.max(1, Math.round(Number(f.get('astatement') || 15)))); a.due = Math.min(31, Math.max(1, Math.round(Number(f.get('adue') || 5))));
+  const wk = v => (['next', 'prev'].includes(String(v)) ? String(v) : ''), num = k => { const raw = String(f.get(k) ?? '').trim(), n = Number(raw); return raw !== '' && Number.isFinite(n) && n >= 0 ? n : null; };
+  const put = (k, v) => { if (!(v === null || v === '' || v === false)) a[k] = v; };
+  put('stmtWeekend', wk(f.get('astmtwk'))); put('dueWeekend', wk(f.get('aduewk')));
+  const pf = String(f.get('apayfrom') || ''); put('payFrom', (state.accounts || []).some(x => x.type !== 'card' && String(x.id) === pf) ? pf : '');
+  put('rewardPct', num('areward')); put('fxFeePct', num('afxfee')); put('lowAvail', num('alowavail')); put('offsetBill', !!f.get('aoffset'));
+  return a;
+}
 function acctActive(list, keepId) { return (list || []).filter(a => !a.archived || String(a.id) === String(keepId ?? '')); }
 
 function acctCurrencyField(cur, locked) {
@@ -135,14 +146,7 @@ function acctFromEditForm(f, old) {
   const a = { ...old, name, currency: cur, note: String(f.get('anote') || '').trim(), archived: !!f.get('aarchived') };
   const want = String(f.get('atype') || old.type || 'bank'); a.type = acctTypes().some(([k]) => k === want) ? want : (old.type || 'bank');
   if (a.type !== 'card') for (const k of ['limit', 'statement', 'due', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k];
-  else {
-    a.limit = Math.max(0, Number(f.get('alimit') || 0)); a.statement = Math.min(31, Math.max(1, Math.round(Number(f.get('astatement') || 15)))); a.due = Math.min(31, Math.max(1, Math.round(Number(f.get('adue') || 5))));
-    const wk = v => (['next', 'prev'].includes(String(v)) ? String(v) : ''), num = k => { const raw = String(f.get(k) ?? '').trim(), n = Number(raw); return raw !== '' && Number.isFinite(n) && n >= 0 ? n : null; };
-    const set = (k, v) => { if (v === null || v === '' || v === false) delete a[k]; else a[k] = v; };
-    set('stmtWeekend', wk(f.get('astmtwk'))); set('dueWeekend', wk(f.get('aduewk')));
-    const pf = String(f.get('apayfrom') || ''); set('payFrom', (state.accounts || []).some(x => x.type !== 'card' && String(x.id) === pf) ? pf : '');
-    set('rewardPct', num('areward')); set('fxFeePct', num('afxfee')); set('lowAvail', num('alowavail')); set('offsetBill', !!f.get('aoffset'));
-  }
+  else { for (const k of ['stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k]; Object.assign(a, acctCardSettingsFromForm(f)); }
   if (!a.note) delete a.note;
   if (!a.archived) delete a.archived;
   if (a.type === 'card') delete a.lowBalance;

@@ -99,3 +99,11 @@ test('編輯帳戶頂部顯示餘額與帳單週期；信用卡欄位區塊在�
   assert.match(c, /acct-edit-top/); assert.match(c, /帳單週期/); assert.match(c, /name="astmtwk"/); assert.match(c, /name="apayfrom"/);
   assert.match(c, /data-acct-card-fields\s*>/); assert.match(b, /data-acct-card-fields hidden/); assert.ok(!b.includes('帳單週期'));
 });
+
+test('新增信用卡：表單含完整卡片欄位，acctCardSettingsFromForm 只保留有效設定', () => {
+  const { J } = bundle(mk([{ id: 'bank1', name: '主銀行', type: 'bank', balance: 0 }]));
+  assert.match(J('acctCardFieldsHTML({ limit: 50000 }, true)'), /name="apayfrom"/);
+  const o = J(`acctCardSettingsFromForm(new Map([['alimit','80000'],['astatement','20'],['adue','8'],['apayfrom','bank1'],['areward','1'],['aoffset','on'],['astmtwk','next']]))`);
+  assert.deepEqual(o, { limit: 80000, statement: 20, due: 8, stmtWeekend: 'next', payFrom: 'bank1', rewardPct: 1, offsetBill: true });
+  assert.deepEqual(J(`acctCardSettingsFromForm(new Map([]))`), { limit: 0, statement: 15, due: 5 });
+});
