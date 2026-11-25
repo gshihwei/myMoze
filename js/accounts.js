@@ -345,7 +345,7 @@ function acctCardSettingsFromForm(f) {
 function acctActive(list, keepId) { return (list || []).filter(a => !a.archived || String(a.id) === String(keepId ?? '')); }
 
 function acctCurrencyField(cur, locked) {
-  return `<label>幣別<input name="acur" list="acctCurList" maxlength="3" value="${esc(cur || 'TWD')}" ${locked ? 'readonly' : ''} autocapitalize="characters"><datalist id="acctCurList">${acctCurrencies().map(c => `<option value="${c}"></option>`).join('')}</datalist></label>`;
+  return `<label>幣別<input name="acur" list="acctCurList" maxlength="6" value="${esc(cur || 'TWD')}" ${locked ? 'readonly' : ''} autocapitalize="characters"><datalist id="acctCurList">${acctCurrencies().map(c => `<option value="${c}"></option>`).join('')}</datalist></label>`;
 }
 
 function acctEditFormHTML(a) {
@@ -358,6 +358,7 @@ function acctEditFormHTML(a) {
     <label>類型<select name="atype">${acctTypes().map(([k, l]) => `<option value="${k}" ${(a.type || 'bank') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
     ${acctCurrencyField(acctCur(a), locked)}
   </div>
+  ${acctCustomCurHTML(a)}
   ${acctBankFieldHTML(a, acctUsesBank(a))}
   ${acctCardFieldsHTML(a, card)}
   <p class="hint">更改類型不會變動餘額與交易。信用卡的餘額為負數代表欠款；由一般帳戶改成信用卡時，請確認餘額符號。</p>
@@ -378,7 +379,7 @@ function acctFromEditForm(f, old) {
   const name = String(f.get('aname') || '').trim().slice(0, 30);
   if (!name) return { error: '請輸入帳戶名稱' };
   const cur = String(f.get('acur') || acctCur(old)).trim().toUpperCase();
-  if (!/^[A-Z]{3}$/.test(cur)) return { error: '幣別請輸入 3 個英文字母，例如 TWD、USD' };
+  if (!/^[A-Z]{2,6}$/.test(cur)) return { error: '幣別請輸入 2～6 個英文字母，例如 TWD、USD' };
   if (cur !== acctCur(old) && acctHasTx(old.id)) return { error: '這個帳戶已有交易，幣別不能修改' };
   if ((state.accounts || []).some(a => a !== old && a.name === name && acctCur(a) === cur)) return { error: `已經有「${name}（${cur}）」` };
   const a = { ...old, name, currency: cur, note: String(f.get('anote') || '').trim(), archived: !!f.get('aarchived') };
@@ -388,6 +389,7 @@ function acctFromEditForm(f, old) {
   if (!a.note) delete a.note;
   if (!a.archived) delete a.archived;
   delete a.image; Object.assign(a, acctImageFromForm(f));
+  for (const k of ['curRate', 'curBase', 'curSym', 'curDigits']) delete a[k]; Object.assign(a, acctCustomCurFromForm(f));
   if (a.type === 'card') delete a.lowBalance;
   if (f.get('aexclude')) a.excludeNet = true; else delete a.excludeNet;
   const low = Number(f.get('alow')); if (old.type !== 'card' && String(f.get('alow') ?? '').trim() !== '' && Number.isFinite(low) && low >= 0) a.lowBalance = low; else delete a.lowBalance;

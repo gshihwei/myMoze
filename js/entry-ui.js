@@ -34,7 +34,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const b=e.target.closest('#amountKeypad button[data-key]');if(b){press(b.dataset.key);return;}
     if(e.target.closest('#entryReset')){expr='';applyExpr();return;}
     const rn=e.target.closest('[data-rename-btn]');if(rn){const k=rn.dataset.renameBtn,lab=document.querySelector(`[data-rename=${k}]`),hid=$(k==='fee'?'entryFeeName':'entryDiscountName');const cur=lab?.textContent||'';const nv=prompt('欄位名稱（例如：運費、滿千送百）',cur);if(nv!==null){const dflt=k==='fee'?'手續費':'折扣',t=nv.trim().slice(0,12)||dflt;if(lab)lab.textContent=t;if(hid)hid.value=t===dflt?'':t;}return;}
-    if(e.target.closest('#entryAmountRow'))$('entrySide')?.classList.toggle('open');
+    if(e.target.closest('#entryAmountRow')&&!e.target.closest('select'))$('entrySide')?.classList.toggle('open');
   });
   document.addEventListener('keydown',e=>{
     if(!$('modalBg')?.classList.contains('open')||e.ctrlKey||e.metaKey||e.altKey)return;
@@ -81,7 +81,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     if(isLoanTab()&&!list.some(a=>String(a.id)===String(sel.value))&&list[0])sel.value=list[0].id;
     box.innerHTML=list.map(a=>`<button type="button" class="entry-acct" data-acct="${a.id}"><span class="entry-acct-ico">${svgForAccount(a)}</span><span>${esc(typeof acctName==='function'?acctName(a):a.name)}</span></button>`).join('');
     const a=state.accounts.find(x=>String(x.id)===String(sel.value));
-    if($('entryCur'))$('entryCur').textContent=(a&&typeof acctCur==='function'?acctCur(a):'TWD')||'TWD';
+    if(typeof fxSyncUI==='function')fxSyncUI();
   }
   function sync(){
     const sel=$('formAccount');
@@ -142,7 +142,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const inp=input();expr=inp&&inp.value?String(Number(inp.value)):'';
     const lf=document.querySelector('[data-rename=fee]'),ld=document.querySelector('[data-rename=discount]');if(lf)lf.textContent=(t&&t.feeName)||'手續費';if(ld)ld.textContent=(t&&t.discountName)||'折扣';
     if($('entryFeeName'))$('entryFeeName').value=(t&&t.feeName)||'';if($('entryDiscountName'))$('entryDiscountName').value=(t&&t.discountName)||'';
-    if(t&&t.feeIncluded&&k!=='transfer'){expr=String(entryBaseAmount(t));const fe=f('fee'),de=f('discount');if(fe)fe.value=t.fee||'';if(de)de.value=t.discount||'';}
+    if(t&&t.orig&&k!=='transfer')expr=String(t.orig.amount);if(t&&t.feeIncluded&&k!=='transfer'){if(!t.orig)expr=String(entryBaseAmount(t));const fe=f('fee'),de=f('discount');if(fe)fe.value=t.fee||'';if(de)de.value=t.discount||'';}
     const cs=$('formCategory');if(cs&&t&&t.category!==undefined)cs.dataset.keep=String(t.category);
     const nm=f('name');if(nm)delete nm.dataset.auto;
     const hasHistory=!t&&entrySuggest(state,today(),1).length&&(state.transactions||[]).some(x=>x.kind==='expense'||x.kind==='income');

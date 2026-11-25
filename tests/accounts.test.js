@@ -38,7 +38,7 @@ const form = o => `({get:k=>(${JSON.stringify(o)})[k]??null})`;
 test('acctFromEditForm()：名稱、幣別格式、已有交易不能改幣別、名稱＋幣別不可重複', () => {
   const { J } = bundle(base());
   assert.match(J(`acctFromEditForm(${form({ aname: '' })},state.accounts[0]).error`), /名稱/);
-  assert.match(J(`acctFromEditForm(${form({ aname: 'x', acur: 'US' })},state.accounts[1]).error`), /3 個英文字母/);
+  assert.match(J(`acctFromEditForm(${form({ aname: 'x', acur: 'U1' })},state.accounts[1]).error`), /個英文字母/);
   assert.match(J(`acctFromEditForm(${form({ aname: '錢包', acur: 'USD' })},state.accounts[0]).error`), /不能修改/);
   assert.match(J(`acctFromEditForm(${form({ aname: '錢包', acur: 'TWD' })},state.accounts[1]).error`), /已經有/);
   const ok = J(`acctFromEditForm(${form({ aname: '美金戶', acur: 'usd', atype: 'cash', anote: '末四碼 1234', aarchived: 'on' })},state.accounts[1]).account`);

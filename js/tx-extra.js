@@ -41,6 +41,8 @@ function txLink(t, text) { return `<button type="button" class="tx-link" data-tx
 function txDetailExtra(t) {
   const grid = document.getElementById('detailGrid'); if (!grid) return;
   let h = '';
+  if (t.orig) h += txExtraBox('外幣金額', `${esc(curText(t.orig.amount, t.orig.cur))}　匯率 ${esc(t.orig.rate)}${t.orig.auto ? '（線上）' : ''}`, true);
+  const ff = (state.transactions || []).find(x => x.feeOf === t.id); if (ff) h += txExtraBox('國外手續費', txLink(ff, acctMoney(ff.amount, acct(ff.account)))); if (t.feeOf) { const o = txById(t.feeOf); if (o) h += txExtraBox('所屬記錄', txLink(o, esc(o.name))); }
   if (t.postDate) h += txExtraBox('入帳日', esc(t.postDate));
   const dt = depositText(t); if (dt) { const o = t.depositOf ? txById(t.depositOf) : depositBalance(t); h += txExtraBox(t.depositOf ? '尾款' : '訂金', `${esc(dt)} ${o ? txLink(o, t.depositOf ? '查看訂金' : o.pending ? '查看尾款' : '查看') : ''}`, true); }
   const rs = refundsOf(t);
