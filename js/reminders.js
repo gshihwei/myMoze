@@ -57,6 +57,7 @@ function reminderList(today, lead) {
   }
   for (const a of (state.accounts || [])) if (lowBalanceHit(a)) out.push({ type: 'low', id: String(a.id), title: `${a.name} 餘額不足`, date: '', days: 0, amount: Number(a.balance || 0), limit: Number(a.lowBalance) });
   for (const a of (state.accounts || [])) if (creditLowAvailHit(a)) { const u = creditUsage(a); out.push({ type: 'low', id: String(a.id), title: `${a.name} 可用額度不足`, date: '', days: 0, amount: u.available, limit: Number(a.lowAvail) }); }
+  for (const r of budgetRows(periodKeyOf(isoDate(base)), base)) if (Number(r.budget.alertPct) > 0 && r.limit && r.remaining < r.limit * r.budget.alertPct / 100) out.push({ type: 'low', id: String(r.budget.id), title: `${r.title} 預算${r.remaining < 0 ? '已超支' : '剩餘不足'}`, date: '', days: 0, amount: r.remaining, limit: Math.round(r.limit * r.budget.alertPct / 100) });
   if (typeof autoPayAlerts === 'function') out.push(...autoPayAlerts(base, n));
   for (const r0 of (state.recurring || [])) {
     const r = normRecurring(r0);

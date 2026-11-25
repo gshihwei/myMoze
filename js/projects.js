@@ -9,14 +9,40 @@ var projSelected = null, projShowArchived = false;
 
 function projNorm(p) { if (!p) return p; p.budget = Math.max(0, Number(p.budget) || 0); p.archived = !!p.archived; return p; }
 
-function projTxs(pid) {
-  return (state.transactions || []).filter(t => String(t.project) === String(pid) && !isUnappliedPending(t))
+// V26.76: a project can be statistical (`rules`): transactions belong to it by condition instead of by t.project.
+// rules = { accounts|projects|categories|names|merchants|tags: { mode: 'in'|'ex', list: [] } }
+function projRuleKeys() { return [['accounts', '帳戶'], ['projects', '專案'], ['categories', '類別'], ['names', '名稱'], ['merchants', '商家'], ['tags', '標籤']]; }
+function projRuleHit(k, list, t) {
+  const l = list.map(String), has = v => l.includes(String(v ?? ''));
+  if (k === 'accounts') return has(t.account);
+  if (k === 'projects') return has(t.project);
+  if (k === 'tags') return (t.tags || []).some(has);
+  if (k === 'categories') { const ids = Array.isArray(t.splits) && t.splits.length ? t.splits.map(x => x.category) : [t.category]; return ids.some(c => has(c) || has(anTopCategory(c))); }
+  const v = String((k === 'names' ? t.name : t.merchant) || '').toLowerCase(); return list.some(x => v.includes(String(x).toLowerCase()));
+}
+function projMatch(p, t) {
+  if (!p?.rules) return String(t.project) === String(p?.id);
+  for (const [k] of projRuleKeys()) { const r = p.rules[k]; if (r?.list?.length && projRuleHit(k, r.list, t) !== (r.mode !== 'ex')) return false; }
+  return true;
+}
+// Period shown for a project: cycle month / year = the one containing `today`; range (or start / end dates) = those dates; else everything.
+function projPeriod(p, today) {
+  const t = today || isoDate(new Date());
+  if (p.cycle === 'month') return periodBounds(periodKeyOf(t));
+  if (p.cycle === 'year') return { start: t.slice(0, 4) + '-01-01', end: t.slice(0, 4) + '-12-31' };
+  if (p.rules && (p.start || p.end)) return { start: p.start || '0000-01-01', end: p.end || '9999-12-31' };
+  return null;
+}
+function projEnded(p, today) { return !p.cycle && !!p.end && p.end < (today || isoDate(new Date())); }
+function projTxs(pid, period) {
+  const p = (state.projects || []).find(x => String(x.id) === String(pid)) || { id: pid };
+  return (state.transactions || []).filter(t => projMatch(p, t) && !isUnappliedPending(t) && (!p.rules || t.kind === 'expense' || t.kind === 'income') && (!period || (t.date >= period.start && t.date <= period.end)))
     .sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.time || '').localeCompare(String(a.time || '')));
 }
 
 // Spending summary for one project (TWD; splits keep their own categories).
 function projStats(p) {
-  const txs = projTxs(p.id), byCat = new Map();
+  const txs = projTxs(p.id, projPeriod(p)), byCat = new Map();
   let spent = 0, income = 0;
   for (const t of txs) {
     if (t.kind === 'expense') {
@@ -31,6 +57,7 @@ function projStats(p) {
 
 function projPeriodText(p, s) {
   const d = x => String(x).replace(/-/g, '/');
+  const pp = p.cycle ? projPeriod(p) : null; if (pp) return `${d(pp.start)} – ${d(pp.end)}`;
   if (p.start || p.end) return `${p.start ? d(p.start) : '…'} – ${p.end ? d(p.end) : '…'}`;
   if (s.first) return s.first === s.last ? d(s.first) : `${d(s.first)} – ${d(s.last)}`;
   return '尚無交易';
@@ -40,7 +67,7 @@ function projCardHTML(p) {
   const s = projStats(p), st = budgetStatus(s.spent, p.budget);
   const meter = p.budget ? budgetMeterHTML({ title: p.name, spent: s.spent, limit: p.budget, ratio: s.spent / p.budget, pace: 0, status: st }) : '';
   return `<div class="proj-card ${p.archived ? 'archived' : ''} ${String(projSelected) === String(p.id) ? 'selected' : ''}">
-    <div class="bc-head"><span class="bc-icon">▣</span><b>${esc(p.name)}</b>${p.archived ? '<span class="bc-status none"><i aria-hidden="true">—</i>已封存</span>' : p.budget ? `<span class="bc-status ${st.key}"><i aria-hidden="true">${st.mark}</i>${st.label}</span>` : ''}</div>
+    <div class="bc-head"><span class="bc-icon">▣</span><b>${esc(p.name)}</b>${p.rules ? '<span class="bc-status none">統計</span>' : ''}${projEnded(p) ? '<span class="bc-status none">已結束</span>' : ''}${p.archived ? '<span class="bc-status none"><i aria-hidden="true">—</i>已封存</span>' : p.budget ? `<span class="bc-status ${st.key}"><i aria-hidden="true">${st.mark}</i>${st.label}</span>` : ''}</div>
     <div class="bc-fig"><strong>${money(s.spent)}</strong>${p.budget ? `<span>/ ${money(p.budget)}</span><small>${Math.round(s.spent / p.budget * 100)}%</small>` : '<span>未設預算</span>'}</div>
     ${meter}
     <div class="bc-foot"><span>${projPeriodText(p, s)}</span><span>${s.count} 筆${s.income ? ` · 收入 ${money(s.income)}` : ''}</span></div>
@@ -71,15 +98,38 @@ function renderProjectPage() {
   const tg = document.getElementById('projShowArchived'); if (tg) tg.onchange = () => { projShowArchived = tg.checked; renderProjectPage(); };
 }
 
+function projRulesHTML(rules) {
+  const opts = { accounts: (state.accounts || []).map(a => [a.id, a.name]), projects: (state.projects || []).filter(p => !p.rules).map(p => [p.id, p.name]), categories: catOrdered().map(c => [c.id, (c.parentId ? '└ ' : '') + c.name]) };
+  return projRuleKeys().map(([k, l]) => { const r = rules[k] || { mode: 'in', list: [] }, sel = r.list.map(String);
+    return `<div class="proj-rule"><span>${l}</span><select name="pr_${k}_mode"><option value="in">包含</option><option value="ex"${r.mode === 'ex' ? ' selected' : ''}>排除</option></select>${opts[k] ? `<details><summary>${sel.length ? `已選 ${sel.length}` : '不限'}</summary><div class="mode-checks">${opts[k].map(([v, n]) => `<label><input type="checkbox" name="pr_${k}" value="${esc(v)}"${sel.includes(String(v)) ? ' checked' : ''}> ${esc(n)}</label>`).join('')}</div></details>` : `<input name="pr_${k}" value="${esc(r.list.join('、'))}" placeholder="以、分隔，留空＝不限">`}</div>`; }).join('');
+}
+function projRulesFromForm(f) {
+  const out = {};
+  for (const [k] of projRuleKeys()) { const list = ['accounts', 'projects', 'categories'].includes(k) ? f.getAll('pr_' + k).map(String) : String(f.get('pr_' + k) || '').split(/[、,，\n]+/).map(x => x.trim().replace(k === 'tags' ? /^#/ : /^$/, '')).filter(Boolean); if (list.length) out[k] = { mode: f.get(`pr_${k}_mode`) === 'ex' ? 'ex' : 'in', list }; }
+  return out;
+}
+// Lines under the month calendar: spent on the selected day, and today's budget when the project has a daily one.
+function projHomeHTML(date) {
+  return (state.projects || []).filter(p => p.home && !p.archived).map(p => {
+    const day = projTxs(p.id, { start: date, end: date }), out = Math.round(day.filter(t => t.kind === 'expense').reduce((s, t) => s + anValue(t), 0)), inc = Math.round(day.filter(t => t.kind === 'income').reduce((s, t) => s + anValue(t), 0));
+    const b = (state.budgets || []).map(budgetNorm).find(x => x.scope === 'project' && String(x.project) === String(p.id)), d = b ? budgetDaily(b, date) : null;
+    return `<div class="proj-home"><b>${esc(p.name)}</b><span>${out ? `<i class="expense-text">−${money(out)}</i>` : ''}${inc ? ` <i class="income-text">+${money(inc)}</i>` : ''}${!out && !inc ? '—' : ''}</span>${d ? `<small class="${d.left < 0 ? 'expense-text' : ''}">${d.left < 0 ? `今日超支 ${money(-d.left)}` : `今日可用 ${money(d.left)}`}</small>` : ''}</div>`;
+  }).join('');
+}
+document.addEventListener('change', e => { if (e.target?.name === 'pstat') { const b = document.getElementById('projRules'); if (b) b.hidden = !e.target.checked; } });
+
 function projFormHTML(p) {
   const r = p || {};
   return `<div class="form-grid">
     <label>專案名稱<input name="pname" required maxlength="40" value="${esc(r.name || '')}" placeholder="例如：台南旅行"></label>
     <label>預算（可留空）<input name="pbudget" type="number" min="0" step="any" value="${r.budget ? esc(r.budget) : ''}"></label>
+    <label>週期<select name="pcycle"><option value="">單一區間／不限</option><option value="month"${r.cycle === 'month' ? ' selected' : ''}>每月重複</option><option value="year"${r.cycle === 'year' ? ' selected' : ''}>每年重複</option></select></label>
     <label>開始日期<input name="pstart" type="date" value="${esc(r.start || '')}"></label>
     <label>結束日期<input name="pend" type="date" value="${esc(r.end || '')}"></label>
   </div>
   <div class="form-grid form-grid-1"><label>備註<input name="pnote" maxlength="200" value="${esc(r.note || '')}" placeholder="可留空"></label></div>
+  <label class="proj-archive"><input type="checkbox" name="phome" ${r.home ? 'checked' : ''}> 在首頁月曆下方顯示統計</label>
+  <label class="proj-archive"><input type="checkbox" name="pstat" ${r.rules ? 'checked' : ''}> 統計專案（依條件自動統計，記帳時不必選）</label><div id="projRules" ${r.rules ? '' : 'hidden'}>${projRulesHTML(r.rules || {})}</div>
   ${r.id ? `<label class="proj-archive"><input type="checkbox" name="parchived" ${r.archived ? 'checked' : ''}> 封存（結束的專案；記帳表單不再列出，資料保留）</label>` : ''}`;
 }
 function projFromForm(f, old) {
@@ -90,6 +140,9 @@ function projFromForm(f, old) {
   if (start && end && start > end) return { error: '結束日期不能早於開始日期' };
   const p = { ...(old || { id: id() }), name, budget: Math.max(0, Number(f.get('pbudget') || 0)), start, end, note: String(f.get('pnote') || '').trim() };
   p.archived = !!f.get('parchived');
+  const cy = String(f.get('pcycle') || ''); if (cy === 'month' || cy === 'year') p.cycle = cy; else delete p.cycle;
+  if (f.get('phome')) p.home = true; else delete p.home;
+  if (f.get('pstat')) p.rules = projRulesFromForm(f); else delete p.rules;
   if (!p.start) delete p.start; if (!p.end) delete p.end; if (!p.note) delete p.note;
   return { project: p };
 }
