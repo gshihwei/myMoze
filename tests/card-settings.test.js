@@ -141,3 +141,25 @@ test('所屬銀行下拉：列出銀行類型帳戶，保留目前值，其他�
   const o = J(`acctBankOptions('玉山')`);
   assert.match(o, /<option value="玉山" selected>/); assert.ok(!o.includes('錢包')); assert.ok(!o.includes('券商'));
 });
+
+test('外幣類型：依所屬銀行分組（含 TWD 加總與收合），沒填銀行的單獨一列；改類型會保留／清除銀行', () => {
+  const fx = (id, name, bank, balance, cur) => ({ id, name, type: 'foreign', balance, currency: cur, ...(bank ? { bank } : {}) });
+  const accounts = [fx('f1', '日幣', '玉山', 100, 'TWD'), fx('f2', '英鎊', '玉山', 50, 'TWD'), fx('f3', '美金', '', 30, 'TWD'), { id: 'b', name: '玉山', type: 'bank', balance: 1 }];
+  const { J, run } = bundle(mk(accounts));
+  assert.equal(J(`acctTypeLabel({type:'foreign'})`), '外幣');
+  run(`prefs = () => ({})`);
+  const normal = '[state.accounts[0], state.accounts[1], state.accounts[2], state.accounts[3]]', tiles = `['<i>日</i>', '<i>英</i>', '<i>美</i>', '<i>行</i>']`;
+  const h = J(`acctGroupsHTML([], [], ${normal}, ${tiles})`);
+  assert.match(h, /外幣 \(3\)/); assert.match(h, /2 個外幣帳戶/); assert.match(h, /data-bank-toggle="foreign:玉山"/);
+  assert.ok(h.includes('<i>日</i><i>英</i>')); assert.ok(h.includes('<i>美</i>'));
+  run(`prefs = () => ({ bankCollapsed: ['foreign:玉山'] })`);
+  const shut = J(`acctGroupsHTML([], [], ${normal}, ${tiles})`);
+  assert.ok(!shut.includes('<i>日</i>')); assert.ok(shut.includes('<i>美</i>'));
+  // 表單：外幣顯示所屬銀行欄位；一般銀行帳戶隱藏；改類型保留外幣的銀行，離開外幣就清掉
+  assert.match(J('acctEditFormHTML(state.accounts[0])'), /data-acct-bank-field\s*>/);
+  assert.match(J('acctEditFormHTML(state.accounts[3])'), /data-acct-bank-field hidden/);
+  assert.equal(J(`acctFromEditForm(new Map([['aname','日幣'],['acur','TWD'],['atype','foreign'],['abank','玉山']]), state.accounts[0]).account.bank`), '玉山');
+  assert.equal(run(`acctFromEditForm(new Map([['aname','日幣'],['acur','TWD'],['atype','bank'],['abank','玉山']]), state.accounts[0]).account.bank`), undefined);
+  assert.deepEqual(J(`acctBankFromForm(new Map([['abank',' 富邦 ']]))`), { bank: '富邦' });
+  assert.deepEqual(J(`acctBankFromForm(new Map([]))`), {});
+});

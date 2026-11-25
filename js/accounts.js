@@ -3,10 +3,10 @@
 // acctCur, adjust, isoDate, selectedDate, openEntity, deleteAccount, save, render, id).
 // Function declarations / var only.
 //
-// Account record: { id, name, type: 'cash' | 'bank' | 'ewallet' | 'broker' | 'card', balance, currency?, limit?, statement?, due?, note?, archived? }
+// Account record: { id, name, type: 'cash' | 'bank' | 'ewallet' | 'broker' | 'foreign' | 'card', balance, currency?, limit?, statement?, due?, note?, archived? }
 
 function acctCurrencies() { return ['TWD', 'USD', 'JPY', 'EUR', 'CNY', 'HKD', 'KRW', 'GBP', 'AUD', 'SGD', 'CAD', 'THB']; }
-function acctTypes() { return [['bank', '銀行'], ['cash', '現金'], ['ewallet', '電子支付'], ['broker', '證券戶'], ['card', '信用卡']]; }
+function acctTypes() { return [['bank', '銀行'], ['cash', '現金'], ['ewallet', '電子支付'], ['broker', '證券戶'], ['foreign', '外幣'], ['card', '信用卡']]; }
 function acctTypeLabel(a) { return (acctTypes().find(([k]) => k === a?.type) || [0, '銀行'])[1]; }
 function acctHasTx(aid) { const k = String(aid); return (state.transactions || []).some(t => String(t.account) === k || String(t.toAccount ?? '') === k); }
 // User-defined order (account.order); accounts without one keep their stored order after the ordered ones.
@@ -38,10 +38,13 @@ function acctBankNames(current) {
   return names;
 }
 function acctBankOptions(current) { const cur = String(current || '').trim(); return acctBankNames(cur).map(b => `<option value="${esc(b)}" ${b === cur ? 'selected' : ''}>${esc(b)}</option>`).join(''); }
+function acctBankFieldHTML(a, show) {
+  return `<div class="form-grid form-grid-1" data-acct-bank-field ${show ? '' : 'hidden'}><label>所屬銀行（從銀行帳戶選擇，帳戶頁依銀行分組）<select name="abank"><option value="">不指定</option>${acctBankOptions(a.bank)}</select></label></div>`;
+}
+function acctBankFromForm(f) { const b = String(f.get('abank') ?? '').trim().slice(0, 30); return b ? { bank: b } : {}; }
 function acctCardFieldsHTML(a, card) {
   const sources = (state.accounts || []).filter(x => x.type !== 'card' && String(x.id) !== String(a.id));
   return `<div class="acct-card-fields" data-acct-card-fields ${card ? '' : 'hidden'}><div class="form-grid">
-    <label>所屬銀行（從銀行帳戶選擇，帳戶頁依銀行分組）<select name="abank"><option value="">不指定</option>${acctBankOptions(a.bank)}</select></label>
     <label>信用額度<input name="alimit" type="number" min="0" step="any" value="${esc(a.limit ?? 0)}"></label>
     <label>可用額度不足提醒（低於此金額提醒，留空＝不提醒）<input name="alowavail" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.lowAvail ?? '')}" placeholder="例如 10000"></label>
     <label>結帳日<input name="astatement" type="number" min="1" max="31" value="${esc(a.statement ?? 15)}"></label>
@@ -105,24 +108,30 @@ function acctCardBanks(cards) {
   return out;
 }
 // Account page groups (collapsible, each with its total). Collapsed groups / banks live in prefs() (per device).
+// Credit cards and foreign-currency accounts are shown under their bank (account.bank) with a chevron.
 // cardTiles / tiles are the per-account HTML aligned with cards / normal.
+function acctBankRows(list, tiles, key, unit, bankCollapsed) {
+  let body = '';
+  for (const g of acctCardBanks(list)) {
+    if (!g.bank) { body += tiles[g.idx[0]]; continue; }
+    const sub = g.idx.map(i => list[i]), total = acctGroupTotal(sub), tkey = key === 'card' ? g.bank : `${key}:${g.bank}`, off = bankCollapsed.has(tkey);
+    const amount = key === 'card' ? money(Math.abs(Math.min(0, total))) : `${total < 0 ? '−' : ''}${money(Math.abs(total))}`;
+    body += `<div class="account-tile bank-row"><div class="account-tile-icon">${svg('bank')}</div><div class="account-tile-main"><b>${esc(g.bank)}</b><span>${sub.length} ${unit}</span></div><strong>${amount}</strong><button type="button" class="bank-toggle" data-bank-toggle="${esc(tkey)}" aria-expanded="${off ? 'false' : 'true'}" aria-label="${off ? '展開' : '收合'} ${esc(g.bank)}">${off ? '⌄' : '⌃'}</button></div>`;
+    if (!off) body += `<div class="bank-children">${g.idx.map(i => tiles[i]).join('')}</div>`;
+  }
+  return body;
+}
 function acctGroupsHTML(cards, cardTiles, normal, tiles) {
   const collapsed = new Set(prefs().acctCollapsed || []), bankCollapsed = new Set(prefs().bankCollapsed || []);
   const head = (key, label, list) => `<button type="button" class="acct-group-head" data-acct-group="${key}" aria-expanded="${collapsed.has(key) ? 'false' : 'true'}"><span>${collapsed.has(key) ? '＋' : '−'} ${label} (${list.length})</span><span class="acct-group-total">${acctSignedMoney(acctGroupTotal(list))}</span></button>`;
-  let body = '';
-  for (const g of acctCardBanks(cards)) {
-    if (!g.bank) { body += cardTiles[g.idx[0]]; continue; }
-    const list = g.idx.map(i => cards[i]), off = bankCollapsed.has(g.bank), used = Math.abs(Math.min(0, acctGroupTotal(list)));
-    body += `<div class="account-tile bank-row"><div class="account-tile-icon">${svg('bank')}</div><div class="account-tile-main"><b>${esc(g.bank)}</b><span>${list.length} 張信用卡</span></div><strong>${money(used)}</strong><button type="button" class="bank-toggle" data-bank-toggle="${esc(g.bank)}" aria-expanded="${off ? 'false' : 'true'}" aria-label="${off ? '展開' : '收合'} ${esc(g.bank)}">${off ? '⌄' : '⌃'}</button></div>`;
-    if (!off) body += `<div class="bank-children">${g.idx.map(i => cardTiles[i]).join('')}</div>`;
-  }
-  let html = head('card', '信用卡', cards) + (collapsed.has('card') ? '' : `<div class="credit-list">${cards.length ? body : '<div class="empty">尚無信用卡</div>'}</div>`);
+  let html = head('card', '信用卡', cards) + (collapsed.has('card') ? '' : `<div class="credit-list">${cards.length ? acctBankRows(cards, cardTiles, 'card', '張信用卡', bankCollapsed) : '<div class="empty">尚無信用卡</div>'}</div>`);
   for (const [key, label] of acctTypes().filter(([k]) => k !== 'card')) {
     const idx = normal.map((a, i) => [a, i]).filter(([a]) => (a.type || 'bank') === key).map(([, i]) => i);
     if (!idx.length) continue;
-    html += head(key, label, idx.map(i => normal[i])) + (collapsed.has(key) ? '' : `<div class="normal-accounts">${idx.map(i => tiles[i]).join('')}</div>`);
+    const list = idx.map(i => normal[i]), ts = idx.map(i => tiles[i]);
+    html += head(key, label, list) + (collapsed.has(key) ? '' : `<div class="normal-accounts">${key === 'foreign' ? acctBankRows(list, ts, 'foreign', '個外幣帳戶', bankCollapsed) : ts.join('')}</div>`);
   }
-  if (!normal.length) html += '<div class="empty">尚無一般帳戶</div>';
+  if (!normal.length && !cards.length) html += '<div class="empty">尚無帳戶</div>';
   return html;
 }
 function acctToggleBank(name) {
@@ -159,6 +168,7 @@ function acctEditFormHTML(a) {
     <label>類型<select name="atype">${acctTypes().map(([k, l]) => `<option value="${k}" ${(a.type || 'bank') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
     ${acctCurrencyField(acctCur(a), locked)}
   </div>
+  ${acctBankFieldHTML(a, card || a.type === 'foreign')}
   ${acctCardFieldsHTML(a, card)}
   <p class="hint">更改類型不會變動餘額與交易。信用卡的餘額為負數代表欠款；由一般帳戶改成信用卡時，請確認餘額符號。</p>
   <div class="form-grid form-grid-1"><label>備註<input name="anote" maxlength="100" value="${esc(a.note || '')}" placeholder="可留空，例如帳號末四碼"></label></div>
@@ -183,7 +193,7 @@ function acctFromEditForm(f, old) {
   if ((state.accounts || []).some(a => a !== old && a.name === name && acctCur(a) === cur)) return { error: `已經有「${name}（${cur}）」` };
   const a = { ...old, name, currency: cur, note: String(f.get('anote') || '').trim(), archived: !!f.get('aarchived') };
   const want = String(f.get('atype') || old.type || 'bank'); a.type = acctTypes().some(([k]) => k === want) ? want : (old.type || 'bank');
-  if (a.type !== 'card') for (const k of ['limit', 'statement', 'due', 'bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k];
+  if (a.type !== 'card') { for (const k of ['limit', 'statement', 'due', 'bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k]; if (a.type === 'foreign') Object.assign(a, acctBankFromForm(f)); }
   else { for (const k of ['bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k]; Object.assign(a, acctCardSettingsFromForm(f)); }
   if (!a.note) delete a.note;
   if (!a.archived) delete a.archived;
@@ -233,7 +243,7 @@ function updateTransferFx() {
 }
 document.addEventListener('change', e => { if (e.target?.closest?.('#txForm') && ['account', 'toAccount', 'kind'].includes(e.target.name)) updateTransferFx(); });
 
-document.addEventListener('change', e => { const s = e.target; if (s?.name === 'atype' && s.closest?.('#entityForm')) { const box = s.closest('#entityForm').querySelector('[data-acct-card-fields]'); if (box) box.hidden = s.value !== 'card'; } });
+document.addEventListener('change', e => { const s = e.target; if ((s?.name === 'atype' || s?.name === 'accountType') && s.closest?.('#entityForm')) { const form = s.closest('#entityForm'), box = form.querySelector('[data-acct-card-fields]'), bank = form.querySelector('[data-acct-bank-field]'); if (box && s.name === 'atype') box.hidden = s.value !== 'card'; if (bank) bank.hidden = !(s.value === 'card' || s.value === 'foreign'); } });
 document.addEventListener('click', async e => {
   const bk = e.target.closest?.('[data-bank-toggle]'); if (bk) { acctToggleBank(bk.dataset.bankToggle); renderAccounts(); return; }
   const grp = e.target.closest?.('[data-acct-group]'); if (grp) { acctToggleGroup(grp.dataset.acctGroup); renderAccounts(); return; }
