@@ -128,6 +128,17 @@ function acctApplyImages(map, accounts, overwrite) {
   }
   return { applied, kept, unmatched: [...by.keys()].filter(k => !used.has(k)).length };
 }
+// Accounts that carry their own picture AND whose name matches a built-in icon (these would switch to the default).
+function acctResettableImages(accounts) { return (accounts || []).filter(a => a && a.image && acctDefaultIcon(a.name)); }
+function acctResetImages(accounts) { const list = acctResettableImages(accounts); for (const a of list) delete a.image; return list.length; }
+document.addEventListener('click', async e => {
+  if (!e.target.closest?.('#resetAcctImages')) return;
+  const n = acctResettableImages(state.accounts).length;
+  if (!n) { alert('沒有需要清除的帳戶：目前沒有「自己設定圖片、名稱又對得到預設圖示」的帳戶。'); return; }
+  if (!confirm(`有 ${n} 個帳戶設定了自己的圖片，而且名稱對得到內建預設圖示。\n要清除這些自訂圖片、改用預設圖示嗎？\n（名稱對不到預設圖示的帳戶不受影響）`)) return;
+  acctResetImages(state.accounts); await save(); render();
+  alert(`已有 ${n} 個帳戶改用預設圖示。`);
+});
 document.addEventListener('click', e => { if (e.target.closest?.('#importAcctImages')) document.getElementById('acctImagesFile')?.click(); });
 document.addEventListener('change', async e => {
   const inp = e.target; if (inp?.id !== 'acctImagesFile' || !inp.files?.[0]) return;

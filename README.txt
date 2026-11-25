@@ -1,4 +1,4 @@
-帳小簿 V26.60（原 MOZE PWA）
+帳小簿 V26.61（原 MOZE PWA）
 
 本版本新增完整「借還款」頁面：
 - 應收／應付／已完成分頁
@@ -93,3 +93,4 @@ V26.57：預設圖示加入 Open Possible、飛狗（Richart 卡面）、NPC；�
 V26.58：預設圖示改由 images/<銀行>/<名稱>.png 管理（銀行圖示＝與資料夾同名，其餘為該銀行的信用卡），執行 python tools/build-icons.py 產生。
 V26.59：預設圖示換成你下載的高解析 logo／卡面（30 張，含 cube、Line Pay、uniopen、傳說對決卡）。
 V26.60：tools/build-icons.py 只轉換新增或變更的圖片（--list 列出未轉換、--all 全部重轉）；新增 Daway 卡面。
+V26.61：設定→資料新增「帳戶圖片改用預設」：一次清除名稱對得到預設圖示的帳戶的自訂圖片。
