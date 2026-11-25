@@ -10,7 +10,7 @@ const m = src.match(/const ACCT_BRANDS[\s\S]*?function acctDefaultBrand[^\n]*\n/
 const brand = vm.runInNewContext(m + ';acctDefaultBrand');
 test('名稱關鍵字對應品牌', () => {
   assert.equal(brand('玉山 Pi'), 'esun'); assert.equal(brand('國泰 Koko'), 'cathay'); assert.equal(brand('Line Bank'), 'linebank');
-  assert.equal(brand('飛狗'), 'taishin'); assert.equal(brand('聯邦全國聯名卡'), 'ubot'); assert.equal(brand('Open  Possible'), 'twm');
+  assert.equal(brand('飛狗'), 'flygo'); assert.equal(brand('台新 gogo'), 'taishin'); assert.equal(brand('聯邦全國聯名卡'), 'ubot'); assert.equal(brand('Open  Possible'), 'twm');
 });
 test('比對不到回傳空字串', () => { assert.equal(brand('錢包'), ''); assert.equal(brand(''), ''); });
 test('每個品牌都有對應圖檔，且列入 sw.js 快取', () => {
