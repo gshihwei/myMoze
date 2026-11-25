@@ -3,7 +3,7 @@
 // A transaction's `amount` is always in its account's currency; `orig` = { cur, amount, rate, auto } keeps the foreign amount.
 // Custom currencies (points, miles…) live on the account: curRate (1 unit = curRate curBase), curBase, curSym, curDigits.
 
-function customCur(cur) { cur = String(cur || '').toUpperCase(); return (state?.accounts || []).find(a => Number(a.curRate) > 0 && acctCur(a) === cur) || null; }
+function customCur(cur) { cur = String(cur || '').toUpperCase(); return (state?.accounts || []).find(a => Number(a.curRate) > 0 && acctCur(a) === cur) || (c => c ? { currency: c.code, curRate: c.rate, curBase: c.base, curSym: c.sym, curDigits: c.digits } : null)(curCustoms().find(x => x.code === cur)); }
 function customCurRate(cur) { // units per 1 TWD, or null
   const a = customCur(cur); if (!a) return null;
   const base = String(a.curBase || 'TWD').toUpperCase(); if (base === String(cur).toUpperCase() || (base !== 'TWD' && customCur(base))) return null;
@@ -14,7 +14,7 @@ function curText(n, cur) {
   const num = Number(n || 0).toLocaleString('zh-TW', { maximumFractionDigits: d });
   return c ? (c.curSym ? `${num.startsWith('-') ? '-' : ''}${c.curSym}${num.replace('-', '')}` : `${cur} ${num}`) : acctMoney(n, { currency: cur });
 }
-function curDigits(cur) { const c = customCur(cur); if (c) return Number.isFinite(Number(c.curDigits)) ? Number(c.curDigits) : 2; return ['TWD', 'JPY', 'KRW'].includes(cur) ? 0 : 2; }
+function curDigits(cur) { const c = customCur(cur); if (c) return Number.isFinite(Number(c.curDigits)) ? Number(c.curDigits) : 2; const g = curCfg(cur); if (g.dg !== undefined) return Number(g.dg); return ['TWD', 'JPY', 'KRW', 'VND'].includes(cur) ? 0 : curCryptos().includes(cur) ? 8 : 2; }
 function curRound(n, cur) { const p = 10 ** curDigits(cur); return Math.round(Number(n || 0) * p) / p; }
 // 1 unit of `from` = fxPair() units of `to`; null when a rate is missing.
 function fxPair(from, to) { const a = fxRate(from), b = fxRate(to); return a && b ? b / a : null; }
@@ -37,8 +37,8 @@ function fxFeeCreate(t) {
   state.transactions.push(x); adjust(x, 1); return x;
 }
 function fxCurOptions(sel) {
-  const fav = Array.isArray(prefs().favCur) ? prefs().favCur : [];
-  return [...new Set([sel, 'TWD', ...fav, ...(state.accounts || []).map(acctCur), ...acctCurrencies()])].filter(Boolean).map(c => `<option value="${esc(c)}"${c === sel ? ' selected' : ''}>${esc(c)}</option>`).join('');
+  const fav = [...curFav(), ...curCustoms().map(x => x.code)];
+  return [...new Set([sel, 'TWD', ...fav, ...(state.accounts || []).map(acctCur)])].filter(Boolean).map(c => `<option value="${esc(c)}"${c === sel ? ' selected' : ''}>${esc(c)}</option>`).join('');
 }
 // keeps the entry form's currency widgets in step; `t` is given once when the form opens
 function fxSyncUI(t) {
@@ -48,7 +48,7 @@ function fxSyncUI(t) {
   if (t !== undefined) { sel.dataset.cur = t?.orig?.cur || ''; el.convAuto.checked = t?.orig ? !!t.orig.auto : true; el.convAmount.value = t?.orig ? entryBaseAmount(t) : ''; el.fxFeeOn.dataset.set = ''; }
   const cur = ok && sel.dataset.cur ? sel.dataset.cur : ac;
   sel.innerHTML = fxCurOptions(cur); sel.value = cur; sel.disabled = !ok;
-  const foreign = cur !== ac, row = document.getElementById('fxRow'); if (row) row.hidden = !foreign;
+  curBtnSync(); const foreign = cur !== ac, row = document.getElementById('fxRow'); if (row) row.hidden = !foreign;
   const lab = document.getElementById('fxLabel'); if (lab) lab.textContent = `轉換成 ${ac}`;
   const n = Number(el.amount?.value || 0);
   if (foreign && el.convAuto.checked) { const v = n ? fxConvert(n, cur, ac) : ''; el.convAmount.value = v === null ? '' : v; }
@@ -72,7 +72,7 @@ function acctCustomCurFromForm(f) {
 }
 document.addEventListener('change', e => {
   const t = e.target; if (!t?.closest?.('#txForm')) return;
-  if (t.id === 'entryCurSel') { t.dataset.cur = t.value; const fav = [t.value, ...(prefs().favCur || [])]; setPref('favCur', [...new Set(fav)].filter(c => c !== 'TWD').slice(0, 5)); txForm.elements.convAuto.checked = true; }
+  if (t.id === 'entryCurSel') { t.dataset.cur = t.value; txForm.elements.convAuto.checked = true; }
   if (t.name === 'fxFeeOn') t.dataset.set = '1';
   if (['entryCurSel'].includes(t.id) || ['account', 'convAuto', 'convAmount', 'kind', 'fxFeeOn'].includes(t.name)) fxSyncUI();
 });

@@ -4,7 +4,7 @@
 // `categories` ({ id: '__prefs__', kind: 'prefs', hidden: true, data, at }). catMains / catOrdered skip kind 'prefs'.
 // Device-only things (theme, font, lock, privacy, carrier, current mode, search history) are never shared.
 
-function prefSyncKeys() { return ['templates', 'modes', 'reports', 'compares', 'quickAccess', 'favCur', 'fx', 'weekStart', 'monthStart', 'hiddenPanels', 'jumpToTxDate', 'remindOn', 'remindDays', 'colorSwap', 'dayOrder', 'keypad', 'copyTime', 'finishTime', 'suggest', 'rewardSuggest', 'similar', 'hideRewards', 'dailyRemind', 'dateFmt', 'bigUnit', 'noAnim']; }
+function prefSyncKeys() { return ['templates', 'modes', 'reports', 'compares', 'quickAccess', 'favCur', 'curCfg', 'curCustom', 'fx', 'weekStart', 'monthStart', 'hiddenPanels', 'jumpToTxDate', 'remindOn', 'remindDays', 'colorSwap', 'dayOrder', 'keypad', 'copyTime', 'finishTime', 'suggest', 'rewardSuggest', 'similar', 'hideRewards', 'dailyRemind', 'dateFmt', 'bigUnit', 'noAnim']; }
 function prefSyncUser() { try { return String(localStorage.getItem('moze-sync-last-user-v25') || ''); } catch { return ''; } }
 // tied to the signed-in account, so another person's account on the same device never receives these preferences
 function prefSyncOn() { return !!prefs().prefSync && String(prefs().prefSyncOwner ?? prefSyncUser()) === prefSyncUser(); }

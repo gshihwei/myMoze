@@ -732,3 +732,13 @@ button.account-detail-row{width:100%;background:none;border:0;border-bottom:1px 
 .recon-head>span{display:flex;gap:2px;align-items:center}
 
 .fc-month{position:relative;cursor:pointer}.fc-month input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+
+/* V26.101 popups and currencies */
+.ask-bg{position:fixed;inset:0;z-index:900;background:#000a;display:grid;place-items:center;padding:20px}.ask-card{width:min(300px,100%);max-height:86vh;overflow:visible;background:#1c2f43;border-radius:16px;padding:36px 18px 18px;display:grid;gap:10px;position:relative;text-align:center;color:#eef4fa}.ask-ico{position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:50%;border:3px solid #fff;background:#1c2f43;display:grid;place-items:center;font-size:24px}
+.ask-card h3{margin:0;font-size:17px}.ask-card p{margin:0;color:#c6d2de;line-height:1.6;font-size:14px}.ask-card button{border:0;border-radius:10px;background:#31506d;color:#eef4fa;padding:12px;font:inherit;cursor:pointer}.ask-card button.expense-text{color:#ff8fa0}
+.cur-head{display:grid;grid-template-columns:40px 1fr 40px;align-items:center}.cur-head h3{grid-column:2;margin:0;text-align:center}.cur-head .ghost{font-size:22px}
+.cur-pick{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:12px;border-bottom:1px solid #2a4054;padding:10px 0}.cur-list{max-height:170px;overflow:auto;display:grid;gap:4px}.cur-list button{background:none;border:0;color:#8aa0b4;font:inherit;font-size:17px;padding:7px;cursor:pointer;border-radius:8px}.cur-list .on{color:#4fb3e6;background:#16273a}.cur-pick b{font-size:30px;text-align:right;word-break:break-all}
+#curSheet #fxRow{border:0;padding:6px 0;background:none}.cur-r{display:flex;gap:8px;align-items:center}
+.fxfee-chip{display:inline-flex;margin-top:8px}.fxfee-chip[hidden]{display:none}.fxfee-chip label{background:#6a4fa0;color:#fff;border-radius:10px;padding:6px 10px;margin:0}
+.dc-fx{border:1px solid #8ea0b2;border-radius:50%;width:30px;height:30px;background:none;color:inherit;cursor:pointer}.ef-bar{white-space:pre-line}
+button.entry-cur{border:0;color:#eef4fa;font:inherit;font-weight:700;cursor:pointer}

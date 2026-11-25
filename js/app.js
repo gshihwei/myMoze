@@ -73,7 +73,7 @@ function netWorth(accounts){
   return {total:Math.round(total),conv,missing};
 }
 function fxDateLabel(){if(!fxCache?.fetchedAt)return '';const d=new Date(fxCache.fetchedAt);return `${d.getMonth()+1}/${d.getDate()}`}
-const acctMoney=(n,a)=>{const cur=acctCur(a);if(cur==='TWD')return money(n);if(typeof privacyOn==='function'&&privacyOn())return cur+' ••••';if(typeof customCur==='function'&&customCur(cur))return curText(n,cur);try{return new Intl.NumberFormat('zh-TW',{style:'currency',currency:cur,maximumFractionDigits:2}).format(n)}catch{return `${cur} ${Number(n||0).toLocaleString('zh-TW',{maximumFractionDigits:2})}`}};
+const acctMoney=(n,a)=>{const cur=acctCur(a);if(cur==='TWD')return money(n);if(typeof privacyOn==='function'&&privacyOn())return cur+' ••••';if(typeof customCur==='function'&&customCur(cur))return curText(n,cur);if(typeof curCfgText==='function'){const x=curCfgText(n,cur);if(x)return x}try{return new Intl.NumberFormat('zh-TW',{style:'currency',currency:cur,maximumFractionDigits:2}).format(n)}catch{return `${cur} ${Number(n||0).toLocaleString('zh-TW',{maximumFractionDigits:2})}`}};
 const cat=id=>state.categories.find(x=>String(x.id)===String(id))||{name:'未分類',icon:'•'}; const acct=id=>state.accounts.find(x=>String(x.id)===String(id))||{name:'未知帳戶'};
 function monthKey(d=calendarMonth){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
 function monthTx(){const key=monthKey();return state.transactions.filter(t=>t.date.startsWith(key))}

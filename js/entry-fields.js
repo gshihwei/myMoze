@@ -48,7 +48,11 @@ function efBarText() {
   const dep = document.getElementById('depositSum')?.textContent; if (el.depOn?.checked && dep) return dep;
   const t = editId ? txById(editId) : null; if (t?.depositOf) { const d = txById(t.depositOf); if (d) return `含訂金 ${money(d.amount)}，交易總計 ${money(Number(d.amount) + n)}`; }
   const rw = [...document.querySelectorAll('#rewardPick input:checked')].map(i => i.closest('label')?.querySelector('em')?.textContent.replace('約 ', '')).filter(Boolean);
-  return rw.length ? `預計可獲得回饋：${rw.join(' / ')}` : '';
+  const out = [], fx = document.getElementById('fxRow'); if (fx && !fx.hidden && Number(el.convAmount?.value) > 0) out.push('約 ' + acctMoney(Number(el.convAmount.value), acct(el.account.value)));
+  if (rw.length) out.push('預計可獲得回饋：' + rw.join(' / '));
+  if (el.fxFeeOn?.checked) { const v = fxFeeAmount(acct(el.account.value), fx && !fx.hidden && Number(el.convAmount?.value) ? Number(el.convAmount.value) : n); if (v) out.push('國外交易手續費：' + money(v)); }
+  if (el.postMode?.value === 'remind' && el.postOn?.value) out.push(`這筆記錄將會在 ${fmtDate(el.postOn.value)} 詢問你是否完成入帳`);
+  return out.join('\n');
 }
 // ---- mirror everything ----
 function efSync() {

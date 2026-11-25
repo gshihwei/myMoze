@@ -72,7 +72,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const b=e.target.closest('#amountKeypad button[data-key]');if(b){press(b.dataset.key);return;}
     if(e.target.closest('#entryReset')){expr='';applyExpr();return;}
     const rn=e.target.closest('[data-rename-btn]');if(rn){const k=rn.dataset.renameBtn,lab=document.querySelector(`[data-rename=${k}]`),hid=$(k==='fee'?'entryFeeName':'entryDiscountName');const cur=lab?.textContent||'';const nv=prompt('欄位名稱（例如：運費、滿千送百）',cur);if(nv!==null){const dflt=k==='fee'?'手續費':'折扣',t=nv.trim().slice(0,12)||dflt;if(lab)lab.textContent=t;if(hid)hid.value=t===dflt?'':t;}return;}
-    if(e.target.closest('#entryAmountRow')&&!e.target.closest('select')&&!e.target.closest('#efFeeBtn'))$('entrySide')?.classList.add('open');
+    if(e.target.closest('#entryAmountRow')&&!e.target.closest('select')&&!e.target.closest('#efFeeBtn')&&!e.target.closest('#entryCurBtn'))$('entrySide')?.classList.add('open');
   });
   document.addEventListener('keydown',e=>{
     if(!$('modalBg')?.classList.contains('open')||e.ctrlKey||e.metaKey||e.altKey)return;
