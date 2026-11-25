@@ -128,6 +128,16 @@ test('所屬銀行欄位：存取、去空白、離開信用卡時清除', () =>
   const { J, run } = bundle(mk([card({ id: 'c1', name: 'X', bank: '舊銀行' })]));
   assert.equal(J(`acctCardSettingsFromForm(new Map([['abank','  玉山  ']])).bank`), '玉山');
   assert.equal(run(`acctCardSettingsFromForm(new Map([['abank','']])).bank`), undefined);
-  assert.match(J('acctEditFormHTML(state.accounts[0])'), /name="abank"[^>]*value="舊銀行"/);
+  const h = J('acctEditFormHTML(state.accounts[0])');
+  assert.match(h, /<select name="abank">/); assert.match(h, /<option value="舊銀行" selected>/);
   assert.equal(run(`acctFromEditForm(new Map([['aname','X'],['acur','TWD'],['atype','bank']]), state.accounts[0]).account.bank`), undefined);
+});
+
+test('所屬銀行下拉：列出銀行類型帳戶，保留目前值，其他類型不列入', () => {
+  const { J } = bundle(mk([card({ id: 'c1', bank: '玉山' }), { id: 'b1', name: '富邦', type: 'bank', balance: 0 }, { id: 'b2', name: '玉山', type: 'bank', balance: 0 }, { id: 'b3', name: '富邦', type: 'bank', balance: 0 },
+    { id: 'w', name: '錢包', type: 'cash', balance: 0 }, { id: 'k', name: '券商', type: 'broker', balance: 0 }]));
+  assert.deepEqual(J(`acctBankNames('')`), ['富邦', '玉山']);
+  assert.deepEqual(J(`acctBankNames('已刪除銀行')`), ['富邦', '玉山', '已刪除銀行']);
+  const o = J(`acctBankOptions('玉山')`);
+  assert.match(o, /<option value="玉山" selected>/); assert.ok(!o.includes('錢包')); assert.ok(!o.includes('券商'));
 });

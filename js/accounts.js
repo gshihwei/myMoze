@@ -31,10 +31,17 @@ function acctOptionsFromForm(f, type) {
 }
 // ---- V26.40 credit-card account settings (MOZE-style) ----
 function acctWeekendOptions(cur) { return [['keep', '依原日期'], ['next', '順延到下週一'], ['prev', '提前到週五']].map(([k, l]) => `<option value="${k}" ${(cur || 'keep') === k ? 'selected' : ''}>${l}</option>`).join(''); }
+// Bank choices for a credit card: names of the bank-type accounts, plus the card's current value so it is never lost.
+function acctBankNames(current) {
+  const names = [...new Set((state.accounts || []).filter(x => x.type === 'bank').map(x => String(x.name || '').trim()).filter(Boolean))];
+  const cur = String(current || '').trim(); if (cur && !names.includes(cur)) names.push(cur);
+  return names;
+}
+function acctBankOptions(current) { const cur = String(current || '').trim(); return acctBankNames(cur).map(b => `<option value="${esc(b)}" ${b === cur ? 'selected' : ''}>${esc(b)}</option>`).join(''); }
 function acctCardFieldsHTML(a, card) {
   const sources = (state.accounts || []).filter(x => x.type !== 'card' && String(x.id) !== String(a.id));
   return `<div class="acct-card-fields" data-acct-card-fields ${card ? '' : 'hidden'}><div class="form-grid">
-    <label>所屬銀行（帳戶頁依銀行分組，留空＝不分組）<input name="abank" list="acctBankList" maxlength="30" value="${esc(a.bank ?? '')}" placeholder="例如 富邦"><datalist id="acctBankList">${[...new Set((state.accounts || []).map(x => String(x.bank || '').trim()).filter(Boolean))].map(b => `<option value="${esc(b)}"></option>`).join('')}</datalist></label>
+    <label>所屬銀行（從銀行帳戶選擇，帳戶頁依銀行分組）<select name="abank"><option value="">不指定</option>${acctBankOptions(a.bank)}</select></label>
     <label>信用額度<input name="alimit" type="number" min="0" step="any" value="${esc(a.limit ?? 0)}"></label>
     <label>可用額度不足提醒（低於此金額提醒，留空＝不提醒）<input name="alowavail" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.lowAvail ?? '')}" placeholder="例如 10000"></label>
     <label>結帳日<input name="astatement" type="number" min="1" max="31" value="${esc(a.statement ?? 15)}"></label>
