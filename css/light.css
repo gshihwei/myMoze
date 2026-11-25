@@ -486,6 +486,24 @@ html[data-theme="light"],:root[data-theme="light"] body{background:#f7f8fa !impo
 :root[data-theme="light"] .attach-full{background:rgba(255,255,255,0.867)}
 :root[data-theme="light"] .carrier-code{background:#141414;color:#f9f9f9}
 :root[data-theme="light"] .carrier-code .ghost{color:#ebeff3}
+:root[data-theme="light"] .notice-btn{border:1px solid #ecf0f4;background:#f0f3f6;color:#141b22}
+:root[data-theme="light"] .notice-btn i{background:#ff6875;color:#141414}
+:root[data-theme="light"] .notice-h{color:#465c71}
+:root[data-theme="light"] .notice-row{border-bottom:1px solid #eef2f5;color:#141b22}
+:root[data-theme="light"] .notice-row.overdue .day-main small:last-child{color:#cc0012}
+:root[data-theme="light"] .notice-ico{background:#ecf0f3}
+:root[data-theme="light"] .notice-ico svg{stroke:#283443}
+:root[data-theme="light"] .notice-total{color:#465c71}
+:root[data-theme="light"] .fc-head{color:#586b7e}
+:root[data-theme="light"] .fc-day{border:1px solid #eef2f5;background:#f1f4f7;color:#141b22}
+:root[data-theme="light"] .fc-day.today{border-color:#2094d4}
+:root[data-theme="light"] .fc-day.sel{outline:2px solid #b8a6ff}
+:root[data-theme="light"] .fc-unpaid{background:#f4ecee}
+:root[data-theme="light"] .fc-off b{color:#cc0013}
+:root[data-theme="light"] .fc-hol{color:#cc0013}
+:root[data-theme="light"] .fc-card{background:#ecf0f3}
+:root[data-theme="light"] .fc-card svg{stroke:#283443}
+:root[data-theme="light"] #fcMode,:root[data-theme="light"] #fcMonth{background:#eff2f5;border:1px solid #ecf0f4;color:#141b22}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}

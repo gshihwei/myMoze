@@ -1,7 +1,7 @@
 {
   "name": "帳小簿",
   "short_name": "帳小簿",
-  "description": "帳小簿 個人記帳 PWA V26.70：手機、桌面、逐筆雲端同步與借還款追蹤",
+  "description": "帳小簿 個人記帳 PWA V26.71：手機、桌面、逐筆雲端同步與借還款追蹤",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b121c",
