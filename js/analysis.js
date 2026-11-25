@@ -256,6 +256,7 @@ function renderAnalysis() {
       <span class="an-custom" ${st.range === 'custom' ? '' : 'hidden'}><input type="date" id="anFrom" value="${esc(st.from || R.start)}" aria-label="開始日期"> – <input type="date" id="anTo" value="${esc(st.to || R.end)}" aria-label="結束日期"></span>
       <div class="seg an-kind"><label><input type="radio" name="anKind" value="expense" ${st.kind === 'expense' ? 'checked' : ''}>支出</label><label><input type="radio" name="anKind" value="income" ${st.kind === 'income' ? 'checked' : ''}>收入</label></div>
       <select id="anAccount" aria-label="帳戶">${accOpts}</select>
+      <button type="button" class="secondary" id="openReports">統計報表</button><button type="button" class="secondary" id="openCompare">比較報表</button>
       <span class="hint an-period">${R.start.replace(/-/g, '/')} – ${R.end.replace(/-/g, '/')}</span>
     </div>
     <div class="metrics an-kpis">
