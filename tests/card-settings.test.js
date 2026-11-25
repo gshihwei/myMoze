@@ -163,3 +163,21 @@ test('外幣類型：依所屬銀行分組（含 TWD 加總與收合），沒填
   assert.deepEqual(J(`acctBankFromForm(new Map([['abank',' 富邦 ']]))`), { bank: '富邦' });
   assert.deepEqual(J(`acctBankFromForm(new Map([]))`), {});
 });
+
+test('自動依幣別歸組：非 TWD 的帳戶（任何類型）歸到外幣組，信用卡不受影響；可設所屬銀行', () => {
+  const accounts = [{ id: 'a', name: '日幣', type: 'bank', balance: 100, currency: 'JPY', bank: '玉山' }, { id: 'b', name: '台幣戶', type: 'bank', balance: 5 },
+    { id: 'c', name: '美金現金', type: 'cash', balance: 3, currency: 'USD' }, { id: 'd', name: '外幣卡', type: 'card', balance: -10, currency: 'USD', limit: 1000 }, { id: 'e', name: '手動外幣', type: 'foreign', balance: 1 }];
+  const { J, run } = bundle(mk(accounts));
+  assert.deepEqual(J('state.accounts.map(acctGroupKey)'), ['foreign', 'bank', 'foreign', 'card', 'foreign']);
+  assert.equal(J('acctUsesBank(state.accounts[0])'), true); assert.equal(J('acctUsesBank(state.accounts[1])'), false); assert.equal(J('acctUsesBank(state.accounts[3])'), true);
+  run(`prefs = () => ({})`);
+  const normal = '[state.accounts[0], state.accounts[1], state.accounts[2], state.accounts[4]]';
+  const h = J(`acctGroupsHTML([state.accounts[3]], ['<i>卡</i>'], ${normal}, ['<i>日</i>', '<i>台</i>', '<i>美</i>', '<i>外</i>'])`);
+  assert.match(h, /外幣 \(3\)/); assert.match(h, /銀行 \(1\)/); assert.ok(h.includes('<i>日</i>')); assert.ok(h.includes('<i>卡</i>'));
+  // 表單：外幣幣別的銀行帳戶顯示所屬銀行欄位並可儲存；改回 TWD 就清除
+  assert.match(J('acctEditFormHTML(state.accounts[0])'), /data-acct-bank-field\s*>/);
+  assert.match(J('acctEditFormHTML(state.accounts[1])'), /data-acct-bank-field hidden/);
+  assert.equal(J(`acctFromEditForm(new Map([['aname','日幣'],['acur','JPY'],['atype','bank'],['abank','富邦']]), state.accounts[0]).account.bank`), '富邦');
+  run(`state.accounts[1].bank = '舊'`);
+  assert.equal(run(`acctFromEditForm(new Map([['aname','台幣戶'],['acur','TWD'],['atype','bank'],['abank','舊']]), state.accounts[1]).account.bank`), undefined);
+});

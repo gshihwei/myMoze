@@ -95,6 +95,14 @@ function acctGroupTotal(list) {
   for (const a of (list || [])) { const cur = acctCur(a), v = Number(a.balance || 0), tw = cur === 'TWD' ? v : toTWD(v, cur); if (tw !== null && tw !== undefined && Number.isFinite(tw)) t += tw; }
   return Math.round(t);
 }
+// Which account-page group an account belongs to: cards stay cards; any other account whose currency is not TWD
+// (or whose type is 外幣) goes to the 外幣 group automatically; the rest follow their type.
+function acctGroupKey(a) {
+  if (a?.type === 'card') return 'card';
+  if (a?.type === 'foreign' || acctCur(a) !== 'TWD') return 'foreign';
+  return a?.type || 'bank';
+}
+function acctUsesBank(a) { return a?.type === 'card' || a?.type === 'foreign' || acctCur(a) !== 'TWD'; }
 function acctSignedMoney(n) { return `${n < 0 ? '−' : '+'}${money(Math.abs(n))}`; }
 // Banks of credit cards in first-seen order: [{ bank, idx: [indexes into cards] }]; cards without a bank stay single.
 function acctCardBanks(cards) {
@@ -126,7 +134,7 @@ function acctGroupsHTML(cards, cardTiles, normal, tiles) {
   const head = (key, label, list) => `<button type="button" class="acct-group-head" data-acct-group="${key}" aria-expanded="${collapsed.has(key) ? 'false' : 'true'}"><span>${collapsed.has(key) ? '＋' : '−'} ${label} (${list.length})</span><span class="acct-group-total">${acctSignedMoney(acctGroupTotal(list))}</span></button>`;
   let html = head('card', '信用卡', cards) + (collapsed.has('card') ? '' : `<div class="credit-list">${cards.length ? acctBankRows(cards, cardTiles, 'card', '張信用卡', bankCollapsed) : '<div class="empty">尚無信用卡</div>'}</div>`);
   for (const [key, label] of acctTypes().filter(([k]) => k !== 'card')) {
-    const idx = normal.map((a, i) => [a, i]).filter(([a]) => (a.type || 'bank') === key).map(([, i]) => i);
+    const idx = normal.map((a, i) => [a, i]).filter(([a]) => acctGroupKey(a) === key).map(([, i]) => i);
     if (!idx.length) continue;
     const list = idx.map(i => normal[i]), ts = idx.map(i => tiles[i]);
     html += head(key, label, list) + (collapsed.has(key) ? '' : `<div class="normal-accounts">${key === 'foreign' ? acctBankRows(list, ts, 'foreign', '個外幣帳戶', bankCollapsed) : ts.join('')}</div>`);
@@ -168,7 +176,7 @@ function acctEditFormHTML(a) {
     <label>類型<select name="atype">${acctTypes().map(([k, l]) => `<option value="${k}" ${(a.type || 'bank') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
     ${acctCurrencyField(acctCur(a), locked)}
   </div>
-  ${acctBankFieldHTML(a, card || a.type === 'foreign')}
+  ${acctBankFieldHTML(a, acctUsesBank(a))}
   ${acctCardFieldsHTML(a, card)}
   <p class="hint">更改類型不會變動餘額與交易。信用卡的餘額為負數代表欠款；由一般帳戶改成信用卡時，請確認餘額符號。</p>
   <div class="form-grid form-grid-1"><label>備註<input name="anote" maxlength="100" value="${esc(a.note || '')}" placeholder="可留空，例如帳號末四碼"></label></div>
@@ -193,7 +201,7 @@ function acctFromEditForm(f, old) {
   if ((state.accounts || []).some(a => a !== old && a.name === name && acctCur(a) === cur)) return { error: `已經有「${name}（${cur}）」` };
   const a = { ...old, name, currency: cur, note: String(f.get('anote') || '').trim(), archived: !!f.get('aarchived') };
   const want = String(f.get('atype') || old.type || 'bank'); a.type = acctTypes().some(([k]) => k === want) ? want : (old.type || 'bank');
-  if (a.type !== 'card') { for (const k of ['limit', 'statement', 'due', 'bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k]; if (a.type === 'foreign') Object.assign(a, acctBankFromForm(f)); }
+  if (a.type !== 'card') { for (const k of ['limit', 'statement', 'due', 'bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k]; if (a.type === 'foreign' || cur !== 'TWD') Object.assign(a, acctBankFromForm(f)); }
   else { for (const k of ['bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k]; Object.assign(a, acctCardSettingsFromForm(f)); }
   if (!a.note) delete a.note;
   if (!a.archived) delete a.archived;
@@ -243,7 +251,13 @@ function updateTransferFx() {
 }
 document.addEventListener('change', e => { if (e.target?.closest?.('#txForm') && ['account', 'toAccount', 'kind'].includes(e.target.name)) updateTransferFx(); });
 
-document.addEventListener('change', e => { const s = e.target; if ((s?.name === 'atype' || s?.name === 'accountType') && s.closest?.('#entityForm')) { const form = s.closest('#entityForm'), box = form.querySelector('[data-acct-card-fields]'), bank = form.querySelector('[data-acct-bank-field]'); if (box && s.name === 'atype') box.hidden = s.value !== 'card'; if (bank) bank.hidden = !(s.value === 'card' || s.value === 'foreign'); } });
+function acctSyncBankField(form) {
+  const bank = form?.querySelector?.('[data-acct-bank-field]'); if (!bank) return;
+  const type = form.querySelector('[name=atype],[name=accountType]')?.value || '', cur = String(form.querySelector('[name=acur]')?.value || 'TWD').trim().toUpperCase();
+  bank.hidden = !(type === 'card' || type === 'foreign' || (cur && cur !== 'TWD'));
+}
+document.addEventListener('change', e => { const s = e.target; if ((s?.name === 'atype' || s?.name === 'accountType') && s.closest?.('#entityForm')) { const form = s.closest('#entityForm'), box = form.querySelector('[data-acct-card-fields]'); if (box && s.name === 'atype') box.hidden = s.value !== 'card'; acctSyncBankField(form); } });
+document.addEventListener('input', e => { if (e.target?.name === 'acur' && e.target.closest?.('#entityForm')) acctSyncBankField(e.target.closest('#entityForm')); });
 document.addEventListener('click', async e => {
   const bk = e.target.closest?.('[data-bank-toggle]'); if (bk) { acctToggleBank(bk.dataset.bankToggle); renderAccounts(); return; }
   const grp = e.target.closest?.('[data-acct-group]'); if (grp) { acctToggleGroup(grp.dataset.acctGroup); renderAccounts(); return; }
