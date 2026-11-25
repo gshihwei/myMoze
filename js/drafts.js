@@ -3,7 +3,7 @@
 // Everything here is parsed on this device by rules (no AI, nothing is uploaded) and stays on this device until you save a record.
 
 function draftDb() { if (!window.__drafts) { let d = {}; try { d = JSON.parse(localStorage.getItem('moze-drafts-v1') || '{}') || {}; } catch { } window.__drafts = { list: Array.isArray(d.list) ? d.list : [], recent: Array.isArray(d.recent) ? d.recent : [], rules: d.rules || {}, accts: d.accts || {}, seq: Number(d.seq) || 0 }; } return window.__drafts; }
-function draftStore() { const d = draftDb(); d.list = d.list.slice(0, 200); d.recent = d.recent.slice(0, 100); try { localStorage.setItem('moze-drafts-v1', JSON.stringify(d)); } catch { } }
+function draftStore() { const d = draftDb(); d.list = d.list.slice(0, 200); d.recent = d.recent.slice(0, 100); try { localStorage.setItem('moze-drafts-v1', JSON.stringify(d)); } catch { } if (typeof inboxTouch === 'function') inboxTouch(); }
 // ---- parsing one notification ----
 function draftParse(text, now) {
   const s = String(text || '').replace(/\s+/g, ' ').trim(), n = now || new Date(), out = { text: s };
@@ -46,7 +46,7 @@ function draftAdd(text, now) {
   const same = db.recent.find(x => x.text === d.text && Math.abs(x.at - d.at) < 6e5 && d.status === '未記帳'); if (same) d.status = '重複';
   db.recent.unshift(d); if (d.status === '未記帳') db.list.unshift(d); draftStore(); return d.status === '未記帳' ? d : { ...d, error: d.status === '無金額' ? '文字裡找不到金額，沒有建立草稿。' : d.status === '重複' ? '同一則通知剛剛已經建立過。' : '這則看起來不是交易通知，沒有建立草稿。' };
 }
-function draftDone(id, status) { const db = draftDb(); db.list = db.list.filter(x => x.id !== id); const r = db.recent.find(x => x.id === id); if (r) r.status = status; draftStore(); }
+function draftDone(id, status) { const db = draftDb(), gx = db.list.find(x => x.id === id); if (gx && typeof inboxGone === 'function') inboxGone(gx); db.list = db.list.filter(x => x.id !== id); const r = db.recent.find(x => x.id === id); if (r) r.status = status; draftStore(); }
 // Candidates to link: two months before … one month after the notification; same amount first.
 function draftLinkList(d, q) { const b = new Date(d.date + 'T00:00:00'), lo = isoDate(new Date(b.getFullYear(), b.getMonth() - 2, b.getDate())), hi = isoDate(new Date(b.getFullYear(), b.getMonth() + 1, b.getDate())), s = String(q || '').toLowerCase(); return (state.transactions || []).filter(t => t.date >= lo && t.date <= hi && (!s || `${t.name} ${t.merchant || ''} ${t.amount}`.toLowerCase().includes(s))).sort((x, y) => (Number(y.amount) === d.amount) - (Number(x.amount) === d.amount) || y.date.localeCompare(x.date)).slice(0, 60); }
 // Two drafts (转出 + 轉入, within 30 minutes) → one transfer. Same currency: the difference becomes a fee / discount of the paying side.

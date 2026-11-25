@@ -1,0 +1,21 @@
+// 搜尋、報表週期、收件匣同步 tests (V26.105)
+'use strict';
+const { bundle, test, assert } = require('./_bundle.js');
+const st = () => ({ accounts: [{ id: 'a', name: '玉山', type: 'bank', balance: 0 }], categories: [{ id: 'f', name: '飲食', kind: 'expense' }], projects: [{ id: 'p', name: '東京' }], budgets: [], loans: [], recurring: [], transactions: [{ id: 1, kind: 'expense', amount: 400, category: 'f', account: 'a', project: 'p', date: '2026-05-15', name: '冰淇淋', note: '忍野', tags: ['甜'], merchant: 'M' }, { id: 2, kind: 'income', amount: 40, category: 'x', account: 'a', date: '2026-06-01', name: '薪', note: '冰', postDate: '2026-06-05' }] });
+const mk = () => { const b = bundle(st()); b.run("localStorage={setItem(){},getItem(){return null}}"); return b; };
+test('搜尋：各欄位筆數、條件、排序', () => {
+  const b = mk(), R = o => b.J(`fvRun({q:'冰',field:'all',f:fvReset(),...${JSON.stringify(o || {})}})`); const r = R(); assert.deepEqual([r.counts.all, r.counts.name, r.counts.note, r.counts.category], [2, 1, 1, 0]); assert.equal(r.total, -360); assert.equal(R({ field: 'note' }).list.length, 1); assert.equal(R({ q: '東京' }).counts.project, 1); assert.equal(R({ q: '玉山' }).counts.account, 2); assert.equal(R({ q: '40' }).counts.amount, 2);
+  const f = o => b.J(`fvRun({q:'',field:'all',f:{...fvReset(),...${JSON.stringify(o)}}}).list.map(t=>t.id)`); assert.deepEqual(f({ types: ['收入'] }), [2]); assert.deepEqual(f({ exec: ['postpone'] }), [2]); assert.deepEqual(f({ min: '100' }), [1]); assert.deepEqual(f({ from: '2026-01-01', sort: 'amountAsc' }), [2, 1]); assert.deepEqual(b.J("fvRun({q:'',field:'all',f:fvReset()}).list"), []);
+});
+test('報表週期：起始日、間隔、截至今天', () => {
+  const b = mk(), C = (d, o) => b.J(`rptCycle(${JSON.stringify(d)},'2026-11-03',${o || 0})`); assert.deepEqual(C({ unit: 'month', startDay: 5 }), { start: '2026-10-05', end: '2026-11-04' }); assert.deepEqual(C({ unit: 'month', startDay: 1, every: 3 }), { start: '2026-10-01', end: '2026-12-31' }); assert.deepEqual(C({ unit: 'month', startDay: 1, every: 3 }, -1), { start: '2026-07-01', end: '2026-09-30' }); assert.deepEqual(C({ unit: 'year', startMonth: 4 }), { start: '2026-04-01', end: '2027-03-31' }); assert.deepEqual(C({ unit: 'week', startDay: 3 }), { start: '2026-10-28', end: '2026-11-03' });
+  const a = C({ unit: 'day', every: 10 }), n = C({ unit: 'day', every: 10 }, 1); assert.ok(a.start <= '2026-11-03' && a.end >= '2026-11-03'); assert.equal(b.run(`addDaysIso('${a.end}',1)`), n.start); const w = C({ unit: 'week', startDay: 1, every: 2 }), w2 = C({ unit: 'week', startDay: 1, every: 2 }, 1); assert.ok(w.start <= '2026-11-03' && w.end >= '2026-11-03'); assert.equal(b.run(`addDaysIso('${w.end}',1)`), w2.start);
+  assert.deepEqual(b.J("rptLast({unit:'month',last:1},'2026-11-03')"), { start: '2026-10-04', end: '2026-11-03' }); assert.deepEqual(b.J("rptPeriod({type:'today',unit:'day',last:7},0,'2026-11-03')"), { start: '2026-10-28', end: '2026-11-03' });
+});
+test('隱藏的報表不列出但保留', () => { const b = mk(); b.run("prefsCache={...prefsDefaults(),reports:[{id:1,name:'a'},{id:2,name:'b',hidden:true}]}"); assert.deepEqual(b.J('[rptList().length,rptAll().length]'), [1, 2]); });
+test('收件匣合併：聯集並排除已處理', () => {
+  const b = mk(); const m = b.J("inboxMerge({drafts:[{at:1,text:'a'},{at:2,text:'b'}],invoices:[{no:'X',at:1}],rules:{k:1},accts:{},win:{},gone:['d1|a']},{drafts:[{at:1,text:'a'},{at:3,text:'c'}],invoices:[{no:'Y',at:2},{no:'X',at:1}],rules:{j:2},accts:{},win:{w:1},gone:['iY']})"); assert.deepEqual(m.drafts.map(x => x.text), ['c', 'b']); assert.deepEqual(m.invoices.map(x => x.no), ['X']); assert.deepEqual(m.rules, { k: 1, j: 2 }); assert.deepEqual(m.gone, ['d1|a', 'iY']);
+});
+test('收件匣：推送後另一台取得', () => {
+  const b = mk(); b.run("prefsCache={...prefsDefaults(),prefSync:true,prefSyncOwner:''};window.__drafts={list:[],recent:[],rules:{},accts:{},seq:0};window.__inv={list:[{no:'AB00000001',at:1,total:5,date:'2026-11-01',items:[]}],win:{}}"); assert.equal(b.run('inboxPush()'), true); assert.equal(b.run('inboxPush()'), false); b.run("window.__inv={list:[],win:{}};prefs().inboxAt=0"); assert.equal(b.run('inboxPull()'), true); assert.equal(b.run('invDb().list[0].no'), 'AB00000001'); assert.deepEqual(b.J('catOrdered().map(c=>c.id)'), ['f']); b.run("prefs().prefSync=false;prefs().inboxAt=0"); assert.equal(b.run('inboxPull()'), false);
+});

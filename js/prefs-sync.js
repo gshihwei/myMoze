@@ -33,7 +33,7 @@ function prefSyncEnable() {
     if (Array.isArray(a) && Array.isArray(b) && ['templates', 'modes', 'reports', 'compares'].includes(k)) { const ids = new Set(b.map(x => String(x?.id))); prefs()[k] = [...JSON.parse(JSON.stringify(b)), ...a.filter(x => !ids.has(String(x?.id)))]; }
     else prefs()[k] = JSON.parse(JSON.stringify(b));
   }
-  prefSyncPush(); setPref('prefSync', true);
+  prefSyncPush(); if (typeof inboxPull === 'function') { inboxPull(); inboxPush(); } setPref('prefSync', true);
 }
 function prefSyncTouch(k) {
   if (!prefSyncOn() || !prefSyncKeys().includes(k)) return;

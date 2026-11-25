@@ -30,12 +30,13 @@ function rptUnit(unit, today, off) {
 function rptPeriod(def, off, today) {
   const t = today || isoDate(new Date());
   if (def.type === 'range') return { start: def.from || '0000-01-01', end: def.to || '9999-12-31' };
-  if (def.type === 'today') return { start: def.from || rptUnit(def.unit || 'month', t, 0).start, end: t };
+  if (def.type === 'today') return def.last ? rptLast(def, t) : { start: def.from || rptUnit(def.unit || 'month', t, 0).start, end: t };
+  if (Number(def.every) > 1 || def.startDay !== undefined || def.startMonth) return rptCycle(def, t, off || 0);
   return rptUnit(def.unit || 'month', t, off || 0);
 }
 function rptTxs(def, off, today) { const p = rptPeriod(def, off, today); return (state.transactions || []).filter(t => t.date >= p.start && t.date <= p.end && rptMatch(def.filter, t)); }
 function rptDefaults() { return [{ id: 'w', name: '每週報表', type: 'cycle', unit: 'week', filter: {} }, { id: 'm', name: '每月報表', type: 'cycle', unit: 'month', filter: {} }, { id: 'y', name: '年度報表', type: 'cycle', unit: 'year', filter: {} }]; }
-function rptList() { return Array.isArray(prefs().reports) && prefs().reports.length ? prefs().reports : rptDefaults(); }
+function rptList() { const l = rptAll().filter(r => !r.hidden); return l.length ? l : rptAll(); }
 function rptTabs() { return [['ov', '總覽'], ['tx', '明細'], ['cat', '類別'], ['rank', '排行'], ['acct', '帳戶'], ['proj', '專案'], ['grp', '帳戶分組'], ['name', '名稱'], ['mer', '商家'], ['tag', '標籤'], ['per', '對象']]; }
 function rptGroup(txs, kind, keyOf, limit) { const map = new Map(); for (const t of txs) if (t.kind === kind) for (const k of keyOf(t)) if (k) anAdd(map, k, { id: k, name: k }, anValue(t)); return anRank(map, limit || 30); }
 function rptCats(txs, kind, drill) {
@@ -59,9 +60,6 @@ function rptFilterFromForm(f) {
   for (const k of ['min', 'max']) { const v = String(f.get('pr_' + k) ?? '').trim(); if (v !== '' && Number(v) >= 0) out[k] = Number(v); } return out;
 }
 function rptUnitOpts(cur) { return [['day', '每日'], ['week', '每週'], ['month', '每月'], ['year', '每年']].map(([v, l]) => `<option value="${v}"${cur === v ? ' selected' : ''}>${l}</option>`).join(''); }
-function rptFormHTML(d) {
-  return `<form id="rptForm"><div class="form-grid"><label>名稱<input name="name" required maxlength="20" value="${esc(d.name || '')}"></label><label>週期類型<select name="type"><option value="cycle">重複循環</option><option value="range"${d.type === 'range' ? ' selected' : ''}>單一區間</option><option value="today"${d.type === 'today' ? ' selected' : ''}>截至今天</option></select></label><label>結算週期<select name="unit">${rptUnitOpts(d.unit || 'month')}</select></label><label>起始日期（單一區間／截至今天）<input type="date" name="from" value="${esc(d.from || '')}"></label><label>結束日期（單一區間）<input type="date" name="to" value="${esc(d.to || '')}"></label></div><h3 class="notice-h">篩選條件</h3>${rptFilterHTML(d.filter || {})}<div class="form-actions"><button type="button" class="secondary" data-rpt-cancel>取消</button><button class="primary">儲存</button></div></form>`;
-}
 function renderReport() {
   const el = document.getElementById('rptBg'); if (!el || el.hidden) return;
   const s = rptSt(), l = rptList(), def = l.find(x => x.id === s.id) || l[0]; s.id = def.id;
@@ -71,7 +69,7 @@ function renderReport() {
 
 // ---- 比較報表 ----
 function cmpDefaults() { return [{ id: 'k', name: '記錄類型', by: 'kind', unit: 'month', count: 12, filter: {} }, { id: 'e', name: '支出類別', by: 'expense', unit: 'month', count: 12, filter: {} }, { id: 'i', name: '收入類別', by: 'income', unit: 'month', count: 12, filter: {} }, { id: 's', name: '所有支出子類別', by: 'sub', unit: 'month', count: 12, filter: {} }]; }
-function cmpList() { return Array.isArray(prefs().compares) && prefs().compares.length ? prefs().compares : cmpDefaults(); }
+function cmpList() { const l = cmpAll().filter(r => !r.hidden); return l.length ? l : cmpAll(); }
 function cmpByLabel() { return [['kind', '記錄類型'], ['expense', '支出類別'], ['income', '收入類別'], ['sub', '支出子類別'], ['project', '專案（支出）'], ['group', '帳戶分組（支出）'], ['account', '帳戶（支出）'], ['merchant', '商家（支出）'], ['tag', '標籤（支出）']]; }
 // [[column key, column name, amount]] of one transaction.
 function cmpCells(by, t) {
@@ -141,7 +139,7 @@ document.addEventListener('click', e => {
   if ((b = c('[data-rpt-asc]'))) return go(() => { R.asc = !R.asc; });
   if ((b = c('#rptBg [data-an-drill]')) || (b = c('[data-rpt-drill]'))) return go(() => { R.drill = b.dataset.anDrill || b.dataset.rptDrill || null; });
   if ((b = c('[data-rpt-act]'))) {
-    const a = b.dataset.rptAct, l = rptList(), i = l.findIndex(x => x.id === R.id), d = l[i]; R.menu = false;
+    const a = b.dataset.rptAct, l = rptAll(), i = l.findIndex(x => x.id === R.id), d = l[i]; R.menu = false;
     if (a === 'new') R.edit = { filter: {} }; else if (a === 'edit') R.edit = d; else if (a === 'copy') { const n = { ...JSON.parse(JSON.stringify(d)), id: id(), name: `${d.name} 複製`.slice(0, 20) }; setPref('reports', [...l, n]); R.id = n.id; }
     else if (a === 'up' && i > 0) { const x = [...l]; [x[i - 1], x[i]] = [x[i], x[i - 1]]; setPref('reports', x); }
     else if (a === 'del') { if (l.length < 2) alert('至少要保留一個報表'); else if (confirm(`刪除「${d.name}」？`)) { setPref('reports', l.filter(x => x !== d)); R.id = ''; } }
@@ -156,7 +154,7 @@ document.addEventListener('click', e => {
   if ((b = c('[data-cmp-cell]'))) return g2(() => { C.view = 'tx'; C.cell = { row: Number(b.dataset.cmpCell), key: b.dataset.key }; });
   if ((b = c('[data-cmp-bar]'))) return g2(() => { C.cell = { row: Number(b.dataset.cmpBar) }; });
   if ((b = c('[data-cmp-act]'))) return g2(() => {
-    const a = b.dataset.cmpAct, l = cmpList(), d = l.find(x => x.id === C.id); C.menu = false;
+    const a = b.dataset.cmpAct, l = cmpAll(), d = l.find(x => x.id === C.id); C.menu = false;
     if (a === 'new') C.edit = { by: 'kind', filter: {} }; else if (a === 'edit') C.edit = d; else if (a === 'all') C.cols = cmpBuild(d).cols.map(x => x.key); else if (a === 'none') { C.rows = []; C.cols = []; }
     else if (a === 'del') { if (l.length < 2) alert('至少要保留一個報表'); else if (confirm(`刪除「${d.name}」？`)) { setPref('compares', l.filter(x => x !== d)); C.id = ''; } }
   });
@@ -167,7 +165,7 @@ document.addEventListener('change', e => {
   if (t?.id === 'cmpPick') { C.id = t.value; C.rows = []; C.cols = []; C.cell = null; C.view = 'table'; renderCompare(); } if (t?.id === 'cmpSort') { C.sort = t.value; renderCompare(); } if (t?.id === 'cmpCum') { C.cum = t.checked; renderCompare(); }
 });
 document.addEventListener('submit', e => {
-  if (e.target?.id === 'rptForm') { e.preventDefault(); const f = new FormData(e.target), R = rptSt(), l = rptList(), d = { id: R.edit.id || id(), name: String(f.get('name')).trim(), type: f.get('type'), unit: f.get('unit'), from: f.get('from') || '', to: f.get('to') || '', filter: rptFilterFromForm(f) }; if (d.type === 'range' && !(d.from && d.to && d.from <= d.to)) { alert('請輸入正確的起訖日期'); return; } setPref('reports', R.edit.id ? l.map(x => x.id === d.id ? d : x) : [...l, d]); R.id = d.id; R.off = 0; R.edit = null; renderReport(); }
-  if (e.target?.id === 'cmpForm') { e.preventDefault(); const f = new FormData(e.target), C = cmpSt(), l = cmpList(), d = { id: C.edit.id || id(), name: String(f.get('name')).trim(), by: f.get('by'), unit: f.get('unit'), count: Number(f.get('count')) || 12, filter: rptFilterFromForm(f) }; setPref('compares', C.edit.id ? l.map(x => x.id === d.id ? d : x) : [...l, d]); C.id = d.id; C.rows = []; C.cols = []; C.edit = null; C.view = 'table'; renderCompare(); }
+  if (e.target?.id === 'rptForm') { e.preventDefault(); const RS = rptSt(), l = rptAll(), r = rptFromForm(new FormData(e.target), RS.edit); if (r.error) { alert(r.error); return; } setPref('reports', RS.edit.id ? l.map(x => x.id === r.def.id ? r.def : x) : [...l, r.def]); RS.id = r.def.id; RS.off = 0; RS.edit = null; renderReport(); }
+  if (e.target?.id === 'cmpForm') { e.preventDefault(); const f = new FormData(e.target), C = cmpSt(), l = cmpAll(), d = { id: C.edit.id || id(), name: String(f.get('name')).trim(), by: f.get('by'), unit: f.get('unit'), count: Number(f.get('count')) || 12, filter: rptFilterFromForm(f) }; setPref('compares', C.edit.id ? l.map(x => x.id === d.id ? d : x) : [...l, d]); C.id = d.id; C.rows = []; C.cols = []; C.edit = null; C.view = 'table'; renderCompare(); }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.querySelector('.modal-bg.open')) for (const i of ['rptBg', 'cmpBg']) { const el = document.getElementById(i); if (el) el.hidden = true; } });

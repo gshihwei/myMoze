@@ -112,14 +112,14 @@ function efPickHTML(kind) {
   const el = txForm.elements, row = (idv, ico, name, side, cls, on) => `<button type="button" class="ef-row${on ? ' on' : ''}" data-ef-pick="${esc(idv)}"><span class="entry-acct-ico">${ico}</span><span class="ef-name">${esc(name)}</span><b class="${cls || ''}">${side}</b></button>`;
   if (kind === 'account' || kind === 'toAccount') {
     const ok = new Set([...el[kind].options].map(o => o.value)), g = new Map();
-    for (const a of acctOrdered(state.accounts || [])) if (ok.has(String(a.id)) && modeAllows('accounts', a.id) && !(efTab() === 'payable' && a.type === 'card')) { const k = a.group || acctTypeLabel(a); if (!g.has(k)) g.set(k, []); g.get(k).push(a); }
+    for (const a of acctOrdered(state.accounts || [])) if (ok.has(String(a.id)) && (window.__efAll || modeAllows('accounts', a.id)) && !(efTab() === 'payable' && a.type === 'card')) { const k = a.group || acctTypeLabel(a); if (!g.has(k)) g.set(k, []); g.get(k).push(a); }
     return [...g].map(([k, l]) => `<h4>— ${esc(k)}</h4>${l.map(a => row(a.id, svgForAccount(a), a.name, acctMoney(a.balance, a), a.balance < 0 ? 'expense-text' : 'income-text', String(el[kind].value) === String(a.id))).join('')}`).join('');
   }
-  const t0 = isoDate(new Date()), list = (state.projects || []).filter(p => !p.archived && !p.rules && modeAllows('projects', p.id)), later = p => !p.cycle && p.start && p.start > t0, side = p => { if (!p.budget) return ['無預算', 'hint']; const s = projStats(p).spent, v = p.budget - s; return [money(v), v < 0 ? 'expense-text' : 'income-text']; };
+  const t0 = isoDate(new Date()), list = (state.projects || []).filter(p => !p.archived && !p.rules && (window.__efAll || modeAllows('projects', p.id))), later = p => !p.cycle && p.start && p.start > t0, side = p => { if (!p.budget) return ['無預算', 'hint']; const s = projStats(p).spent, v = p.budget - s; return [money(v), v < 0 ? 'expense-text' : 'income-text']; };
   const sec = (h, l) => l.length ? `<h4>— ${h}</h4>${l.map(p => { const [v, c] = side(p); return row(p.id, projIconHTML(p), p.name, v, c, String(el.project.value) === String(p.id)); }).join('')}` : '';
   return `<h4>— 進行中</h4>${row('', '⊖', '無專案', '', '', !el.project.value)}${list.filter(p => !later(p) && !projEnded(p)).map(p => { const [v, c] = side(p); return row(p.id, projIconHTML(p), p.name, v, c, String(el.project.value) === String(p.id)); }).join('')}${sec('未開始', list.filter(later))}${sec('已結束', list.filter(p => !later(p) && projEnded(p)))}`;
 }
-function efPick(kind) { const el = sheetEl('efPickBg'); el.style.zIndex = 400; el.dataset.kind = kind; el.hidden = false; el.innerHTML = `<div class="recon-sheet">${sheetHead(kind === 'account' ? (efTab() === 'transfer' ? '轉出帳戶' : '帳戶') : kind === 'toAccount' ? '轉入帳戶' : '專案')}<div class="recon-list ef-list">${efPickHTML(kind)}</div></div>`; }
+function efPick(kind) { const el = sheetEl('efPickBg'); el.style.zIndex = 400; el.dataset.kind = kind; el.hidden = false; el.innerHTML = `<div class="recon-sheet">${sheetHead(kind === 'account' ? (efTab() === 'transfer' ? '轉出帳戶' : '帳戶') : kind === 'toAccount' ? '轉入帳戶' : '專案')}<div class="recon-list ef-list">${modeActive() && (modeActive()[kind === 'project' ? 'projects' : 'accounts'] || []).length ? `<div class="fv-chips"><button type="button" data-ef-all="1" class="${window.__efAll ? 'on' : ''}">全部</button><button type="button" data-ef-all="" class="${window.__efAll ? '' : 'on'}">${esc(modeActive().name)}</button></div>` : ''}${efPickHTML(kind)}</div></div>`; }
 // ---- tags ----
 function efTagList() { return parseTags(efEl('tags')?.value || ''); }
 function efTagSet(l) { const e = efEl('tags'); if (e) { e.value = l.join(' '); e.dispatchEvent(new Event('change', { bubbles: true })); } efTagsRender(); }
@@ -147,6 +147,7 @@ document.addEventListener('click', e => {
   if (c('#entryTabs [data-etab-btn]') || c('#entryBack')) { setTimeout(() => { if (efEl('evType')?.value !== 'single') efAdvTab(efEl('evType').value); efSync(); }, 40); return; }
   if (c('#efAccount')) { if (!(efLoanTab() && efEl('loanExisting')?.checked)) efPick('account'); return; }
   if (c('#efProject')) { efPick('project'); return; }
+  if ((b = c('[data-ef-all]'))) { window.__efAll = !!b.dataset.efAll; efPick(document.getElementById('efPickBg').dataset.kind); return; }
   if ((b = c('[data-ef-pick]'))) { const bg = document.getElementById('efPickBg'), s = efEl(bg.dataset.kind); if (efTab() === 'transfer' && bg.dataset.kind !== 'project') { window.entryTfSet(bg.dataset.kind === 'toAccount' ? 'in' : 'out', b.dataset.efPick); bg.hidden = true; efSync(); return; } if (s) { s.value = b.dataset.efPick; s.dataset.userSet = '1'; s.dispatchEvent(new Event('change', { bubbles: true })); } bg.hidden = true; efSync(); return; }
   if (c('#efAdv,#efAccount,#efProject,[data-tf-pick],#categoryChoices,#entryPresets,.ef-pick-native,#attachBox')) document.getElementById('entrySide')?.classList.remove('open');
   if (c('#efAdv')) { efAdvTab(efEl('evType').value); offsetSyncUI(); instFormHint(); txPostSyncUI(); window.__advKeep = new FormData(txForm); document.getElementById('advSheet').hidden = false; return; }

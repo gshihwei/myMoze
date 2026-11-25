@@ -100,7 +100,8 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const mains=ordered.filter(c=>!c.parentId&&(c.kind||'expense')===kind);
     const cur=ordered.find(c=>String(c.id)===String($('formCategory')?.value));
     const cm=drill&&tab!=='suggest'?mains.find(c=>String(c.id)===String(drill)):null,kids=cm?ordered.filter(c=>String(c.parentId)===String(cm.id)&&catVisible(c)):[];
-    const list=(tab==='suggest'?entrySuggest(state,today(),20).filter(c=>c.parentId||!state.categories.some(k=>String(k.parentId)===String(c.id)&&catVisible(k))).slice(0,10):mains).filter(c=>catVisible(c)&&modeAllows('categories',c.parentId||c.id));
+    const mc=tab==='suggest'?modeCats(undefined).filter(c=>(c.kind||'expense')==='expense'||(c.kind||'')==='income'):[],sb=document.querySelector('[data-etab-btn=suggest]');if(sb)sb.textContent=modeCats().length?'自訂':'建議';
+    const list=mc.length?mc:(tab==='suggest'?entrySuggest(state,today(),20).filter(c=>c.parentId||!state.categories.some(k=>String(k.parentId)===String(c.id)&&catVisible(k))).slice(0,10):mains).filter(c=>catVisible(c));
     const chip=(c,small)=>{const on=cur&&String(cur.id)===String(c.id);return `<button type="button" class="entry-cat${on?' active':''}${small?' small':''}" data-cat="${c.id}"><span class="entry-bubble" style="background:${colorFor(c,mains,c.kind||kind)}">${iconHTML(c)}</span><span class="entry-cat-name">${esc(c.name)}</span></button>`;};
     if(cm&&kids.length){cc.innerHTML=`<button type="button" class="entry-cat" data-cat-back aria-label="返回主類別"><span class="entry-bubble ef-add">‹</span><span class="entry-cat-name">返回</span></button>`+kids.map(c=>chip(c)).join('');if(sub)sub.innerHTML='';return;}
     cc.innerHTML=list.map(c=>chip(c)).join('');if(sub)sub.innerHTML='';return;
@@ -274,7 +275,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const cs=$('formCategory');if(cs&&t&&t.category!==undefined)cs.dataset.keep=String(t.category);
     const nm=f('name');if(nm)delete nm.dataset.auto;
     const hasHistory=!t&&prefOn('suggest')&&entrySuggest(state,today(),1).length&&(state.transactions||[]).some(x=>x.kind==='expense'||x.kind==='income');
-    tab=(k==='income'||k==='transfer')?k:(hasHistory?'suggest':'expense');
+    tab=(k==='income'||k==='transfer')?k:(hasHistory||(!t&&modeCats().length)?'suggest':'expense');
     preset='';exprIn='';inTouched=false;side='out';pick='out';keepCat={};tfKeep=null;prevTab='expense';drill=t?cat(t.category).parentId||null:null;if(tab==='transfer'){if(t){preset=cat(t.category).name;if(t.toAmount!==undefined){exprIn=String(t.toAmount);inTouched=true;}if($('formToProject'))$('formToProject').value=t.toProject||'';}else{tab='';setTab('transfer');prevTab='expense';}}if($('entrySideTitle'))$('entrySideTitle').textContent=tab==='transfer'?'轉出金額':'金額';if($('entryAcctTitle')&&tab!=='transfer')$('entryAcctTitle').textContent='常用帳戶';if(bg)bg.dataset.etab=tab;
     if(tab==='suggest')setKind('expense');
     $('entrySide')?.classList.remove('open');

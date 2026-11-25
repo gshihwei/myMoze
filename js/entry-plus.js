@@ -29,13 +29,13 @@ function entryModeApply() {
 function modeFormHTML(m) {
   const opt = (l, cur, none) => `<option value="">${none}</option>` + l.map(x => `<option value="${esc(x.id)}"${String(x.id) === String(cur || '') ? ' selected' : ''}>${esc(x.name)}</option>`).join('');
   const checks = (k, l) => `<details><summary>${k === 'accounts' ? '可選帳戶' : k === 'projects' ? '可選專案' : '可選類別'}（不勾＝全部）</summary><div class="mode-checks">${l.map(x => `<label><input type="checkbox" data-mode-list="${k}" value="${esc(x.id)}"${(m?.[k] || []).map(String).includes(String(x.id)) ? ' checked' : ''}> ${esc(x.name)}</label>`).join('')}</div></details>`;
-  const cats = catOrdered().filter(c => !c.parentId);
+  const cats = catOrdered().filter(c => !catSpecialKind(c.kind)).map(c => ({ id: c.id, name: (c.parentId ? '　└ ' : '') + c.name }));
   return `<div class="mode-form" data-mode-id="${esc(m?.id || '')}"><div class="form-grid"><label>模式名稱<input id="modeName" maxlength="12" value="${esc(m?.name || '')}" placeholder="例如：日本旅遊"></label><label>預設幣種<input id="modeCur" maxlength="6" value="${esc(m?.cur || '')}" placeholder="留空＝帳戶幣別"></label><label>預設帳戶<select id="modeAccount">${opt(acctActive(acctOrdered(state.accounts)), m?.account, '不指定')}</select></label><label>預設專案<select id="modeProject">${opt(state.projects || [], m?.project, '不指定')}</select></label><label>預設類別<select id="modeCategory">${opt(catOrdered(), m?.category, '不指定')}</select></label></div>${checks('accounts', acctActive(acctOrdered(state.accounts)))}${checks('projects', state.projects || [])}${checks('categories', cats)}<div class="form-actions"><button type="button" class="secondary" data-mode-cancel>取消</button><button type="button" class="primary" data-mode-save>儲存模式</button></div></div>`;
 }
 function renderModes(editing) {
   const box = document.getElementById('modeSettings'); if (!box) return;
   const l = modeList();
-  box.innerHTML = `${l.map(m => `<div class="setting"><label><input type="radio" name="modeActive" value="${esc(m.id)}"${m.id === prefs().modeId ? ' checked' : ''}> ${esc(m.name)}</label><span><button type="button" class="ghost" data-mode-edit="${esc(m.id)}">編輯</button><button type="button" class="ghost" data-mode-del="${esc(m.id)}">刪除</button></span></div>`).join('')}${l.length ? `<div class="setting"><label><input type="radio" name="modeActive" value=""${prefs().modeId ? '' : ' checked'}> 一般模式</label></div>` : ''}<button type="button" class="secondary" data-mode-edit="">＋ 新增模式</button>${editing !== undefined ? modeFormHTML(l.find(m => m.id === editing)) : ''}`;
+  box.innerHTML = `${l.map(m => `<div class="setting"><label><input type="radio" name="modeActive" value="${esc(m.id)}"${m.id === prefs().modeId ? ' checked' : ''}> ${esc(m.name)}<small class="hint">　${esc(modeSummary(m))}</small></label><span><button type="button" class="ghost" data-mode-up="${esc(m.id)}" aria-label="上移">↑</button><button type="button" class="ghost" data-mode-edit="${esc(m.id)}">編輯</button><button type="button" class="ghost" data-mode-del="${esc(m.id)}">刪除</button></span></div>`).join('')}${l.length ? `<div class="setting"><label><input type="radio" name="modeActive" value=""${prefs().modeId ? '' : ' checked'}> 一般模式</label></div>` : ''}<button type="button" class="secondary" data-mode-edit="">＋ 新增模式</button>${editing !== undefined ? modeFormHTML(l.find(m => m.id === editing)) : ''}`;
 }
 function tplMove(tid, dir) {
   const l = [...tplList()], i = l.findIndex(x => String(x.id) === String(tid)), j = i + dir; if (i < 0 || j < 0 || j >= l.length) return false;
@@ -66,6 +66,7 @@ document.addEventListener('click', e => {
   const mv = c('[data-tpl-up]'); if (mv) { tplMove(mv.dataset.tplUp, -1); renderTemplates(); return; }
   const ed = c('[data-mode-edit]'); if (ed) { renderModes(ed.dataset.modeEdit || 'new'); return; }
   if (c('[data-mode-cancel]')) { renderModes(); return; }
+  const mu = c('[data-mode-up]'); if (mu) { const l = [...modeList()], i = l.findIndex(m => m.id === mu.dataset.modeUp); if (i > 0) { [l[i - 1], l[i]] = [l[i], l[i - 1]]; setPref('modes', l); } renderModes(); return; }
   const md = c('[data-mode-del]'); if (md) { if (confirm('刪除這個記帳模式？')) { modeRemove(md.dataset.modeDel); renderModes(); } return; }
   if (c('[data-mode-save]')) {
     const v = i => String(document.getElementById(i)?.value || '').trim(), root = document.querySelector('.mode-form'); if (!v('modeName')) { alert('請輸入模式名稱'); return; }

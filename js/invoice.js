@@ -3,7 +3,7 @@
 // t.invoices = [{ no, code, date, total, seller, items: [[name, qty, price]] }]; invoices not linked yet wait on this device.
 
 function invDb() { if (!window.__inv) { let d = {}; try { d = JSON.parse(localStorage.getItem('moze-invoices-v1') || '{}') || {}; } catch { } window.__inv = { list: Array.isArray(d.list) ? d.list : [], win: d.win || {} }; } return window.__inv; }
-function invStore() { const d = invDb(); d.list = d.list.slice(0, 500); try { localStorage.setItem('moze-invoices-v1', JSON.stringify(d)); } catch { } }
+function invStore() { const d = invDb(); d.list = d.list.slice(0, 500); try { localStorage.setItem('moze-invoices-v1', JSON.stringify(d)); } catch { } if (typeof inboxTouch === 'function') inboxTouch(); }
 // Left QR of a Taiwanese e-invoice (77 fixed characters, then ":" fields); the right one starts with "**".
 function invParse(raw) {
   const s = String(raw || ''); if (s.startsWith('**')) return { right: true, items: invItems(s.slice(2).split(':')) };
@@ -26,14 +26,14 @@ function invAdd(p) {
   const db = invDb(); if (!p) return { error: '這不是電子發票的 QRCode（請掃左邊那一個）' };
   if (p.right) { const last = db.list[0]; if (last && last.items.length < (last.count || 99) && !last.rightDone) { last.items.push(...p.items.filter(x => !last.items.some(y => y[0] === x[0] && y[2] === x[2]))); last.rightDone = true; invStore(); return last; } return { error: '先掃左邊的 QRCode' }; }
   if (db.list.some(x => x.no === p.no)) return { ...db.list.find(x => x.no === p.no), dup: true }; const t = invKnown(p.no); if (t) return { error: `發票 ${p.no} 已歸在「${t.name}」` };
-  const i = { no: p.no, code: p.code, date: p.date, total: p.total, seller: p.seller || '', count: p.count || 0, items: p.items || [], at: Date.now() }; db.list.unshift(i); invStore(); return i;
+  const i = { no: p.no, code: p.code, date: p.date, total: p.total, seller: p.seller || '', count: p.count || 0, items: p.items || [], at: Date.now() }; prefs().inboxGone = (prefs().inboxGone || []).filter(k => k !== 'i' + i.no); db.list.unshift(i); invStore(); return i;
 }
 function invLink(inv, t, note) {
   const i = { no: inv.no, code: inv.code, date: inv.date, total: inv.total, seller: inv.seller, items: (inv.items || []).slice(0, 40) }; t.invoices = [...invOfTx(t).filter(x => x.no !== i.no), i]; if (!t.invoiceNo) { t.invoiceNo = i.no; t.invoiceCode = i.code; } else t.invoices = t.invoices.filter(x => x.items || x.no !== t.invoiceNo);
   const n = invNote(inv); if (n && note === 'append') t.note = [t.note, n].filter(Boolean).join('\n'); else if (n && note === 'replace') t.note = n;
-  const db = invDb(); db.list = db.list.filter(x => x.no !== inv.no); invStore(); return t;
+  const db = invDb(); db.list = db.list.filter(x => x.no !== inv.no); inboxGone(inv); invStore(); return t;
 }
-function invUnlink(t, no) { const l = invOfTx(t), i = l.find(x => x.no === no); t.invoices = l.filter(x => x.no !== no && x.items); if (!t.invoices.length) delete t.invoices; if (t.invoiceNo === no) { const n = t.invoices?.[0]; if (n) { t.invoiceNo = n.no; t.invoiceCode = n.code; } else { delete t.invoiceNo; delete t.invoiceCode; } } if (i?.items) { invDb().list.unshift(i); invStore(); } }
+function invUnlink(t, no) { const l = invOfTx(t), i = l.find(x => x.no === no); t.invoices = l.filter(x => x.no !== no && x.items); if (!t.invoices.length) delete t.invoices; if (t.invoiceNo === no) { const n = t.invoices?.[0]; if (n) { t.invoiceNo = n.no; t.invoiceCode = n.code; } else { delete t.invoiceNo; delete t.invoiceCode; } } if (i?.items) { prefs().inboxGone = (prefs().inboxGone || []).filter(k => k !== 'i' + i.no); invDb().list.unshift(i); invStore(); } }
 // Category last used with this seller / these items.
 function invCategory(inv, name) { const l = (state.transactions || []).filter(t => t.kind === 'expense' && (invOfTx(t).some(i => i.seller && i.seller === inv.seller) || (name && t.name === name))); return l[l.length - 1]; }
 function invSellerName(inv) { const t = (state.transactions || []).filter(x => x.merchant && invOfTx(x).some(i => i.seller && i.seller === inv.seller)); return t.length ? t[t.length - 1].merchant : ''; }
@@ -89,7 +89,7 @@ document.addEventListener('click', async e => {
   if (c('#efScan')) { openInvoices(); invScan(); return; } if (!c('#invBg')) return;
   if (c('[data-inv-scan]')) { invScan(); return; } if ((b = c('[data-inv-off]'))) { const [y, m] = s.period.split('-').map(Number), d = new Date(y, m - 1 + Number(b.dataset.invOff), 1); s.period = invPeriod(isoDate(d)); re(); return; }
   if ((b = c('[data-inv-tab]'))) { s.tab = b.dataset.invTab; re(); return; } if ((b = c('[data-inv-row]'))) { s.open = s.open === b.dataset.invRow ? null : b.dataset.invRow; re(); return; }
-  if ((b = c('[data-inv-del]'))) { if (confirm('刪除這張發票？')) { db.list = db.list.filter(x => x.no !== b.dataset.invDel); invStore(); re(); } return; }
+  if ((b = c('[data-inv-del]'))) { if (confirm('刪除這張發票？')) { inboxGone({ no: b.dataset.invDel }); db.list = db.list.filter(x => x.no !== b.dataset.invDel); invStore(); re(); } return; }
   if ((b = c('[data-inv-golink]'))) { s.link = b.dataset.invGolink; s.q = ''; re(); return; } if (c('[data-inv-back]')) { s.link = null; re(); return; }
   if ((b = c('[data-inv-link]'))) { const inv = find(s.link), t = txById(b.dataset.invLink); s.link = null; if (inv && t) { const note = !inv.items.length ? '' : !t.note ? 'replace' : prefs().invNote || await uiAsk({ icon: '!', title: '提醒', text: '原本記錄已有備註，要覆蓋原本備註還是直接附加在備註後面？', options: [['replace', '覆蓋'], ['append', '附加'], ['keep', '忽略']], cancel: false }); invLink(inv, t, note); await save(); render(); } re(); return; }
   if ((b = c('[data-inv-unlink]'))) { const x = invAll().find(y => y.inv.no === b.dataset.invUnlink && y.t); if (x && confirm('取消這張發票與記錄的連結？')) { invUnlink(x.t, b.dataset.invUnlink); await save(); render(); } re(); return; }
