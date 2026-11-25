@@ -296,3 +296,10 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 
 /* V26.42 account icons were drawn as solid black blobs (svg paths are stroke icons) */
 .account-tile-icon svg,.account-detail-icon svg,.cc-mini-icon svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;color:#b9c6d6}
+
+/* V26.44 group totals + bank rows */
+.acct-group-head{display:flex;justify-content:space-between;align-items:center}
+.acct-group-total{opacity:.75;font-weight:500}
+.bank-row{position:relative}
+.bank-toggle{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:inherit;cursor:pointer;font-size:14px}
+.bank-children{margin:2px 0 6px 22px;padding-left:12px;border-left:1px solid rgba(255,255,255,.12)}

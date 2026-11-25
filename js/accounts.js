@@ -34,6 +34,7 @@ function acctWeekendOptions(cur) { return [['keep', '依原日期'], ['next', '�
 function acctCardFieldsHTML(a, card) {
   const sources = (state.accounts || []).filter(x => x.type !== 'card' && String(x.id) !== String(a.id));
   return `<div class="acct-card-fields" data-acct-card-fields ${card ? '' : 'hidden'}><div class="form-grid">
+    <label>所屬銀行（帳戶頁依銀行分組，留空＝不分組）<input name="abank" list="acctBankList" maxlength="30" value="${esc(a.bank ?? '')}" placeholder="例如 富邦"><datalist id="acctBankList">${[...new Set((state.accounts || []).map(x => String(x.bank || '').trim()).filter(Boolean))].map(b => `<option value="${esc(b)}"></option>`).join('')}</datalist></label>
     <label>信用額度<input name="alimit" type="number" min="0" step="any" value="${esc(a.limit ?? 0)}"></label>
     <label>可用額度不足提醒（低於此金額提醒，留空＝不提醒）<input name="alowavail" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.lowAvail ?? '')}" placeholder="例如 10000"></label>
     <label>結帳日<input name="astatement" type="number" min="1" max="31" value="${esc(a.statement ?? 15)}"></label>
@@ -78,18 +79,48 @@ function creditRewardHTML(card, spend, due) {
   if (fx > 0 && acctCur(card) !== 'TWD') parts.push(`預估國外手續費 ${money(Math.round(spend * fx / 100))}（${fx}%）`);
   return parts.length ? `<div class="credit-reward hint">${parts.join(' · ')}</div>` : '';
 }
-// Account page groups (collapsible). Collapsed keys live in prefs().acctCollapsed (per device).
-function acctGroupsHTML(cards, cardHtml, normal, tiles) {
-  const collapsed = new Set(prefs().acctCollapsed || []);
-  const head = (key, label, n) => `<button type="button" class="acct-group-head" data-acct-group="${key}" aria-expanded="${collapsed.has(key) ? 'false' : 'true'}">${collapsed.has(key) ? '＋' : '−'} ${label} (${n})</button>`;
-  let html = head('card', '信用卡', cards.length) + (collapsed.has('card') ? '' : `<div class="credit-list">${cards.length ? cardHtml : '<div class="empty">尚無信用卡</div>'}</div>`);
+// Sum of the balances in TWD (foreign currency at the current rate; accounts without a rate are skipped).
+function acctGroupTotal(list) {
+  let t = 0;
+  for (const a of (list || [])) { const cur = acctCur(a), v = Number(a.balance || 0), tw = cur === 'TWD' ? v : toTWD(v, cur); if (tw !== null && tw !== undefined && Number.isFinite(tw)) t += tw; }
+  return Math.round(t);
+}
+function acctSignedMoney(n) { return `${n < 0 ? '−' : '+'}${money(Math.abs(n))}`; }
+// Banks of credit cards in first-seen order: [{ bank, idx: [indexes into cards] }]; cards without a bank stay single.
+function acctCardBanks(cards) {
+  const out = [], seen = new Map();
+  cards.forEach((c, i) => {
+    const b = String(c.bank || '').trim();
+    if (!b) { out.push({ bank: '', idx: [i] }); return; }
+    if (!seen.has(b)) { seen.set(b, { bank: b, idx: [] }); out.push(seen.get(b)); }
+    seen.get(b).idx.push(i);
+  });
+  return out;
+}
+// Account page groups (collapsible, each with its total). Collapsed groups / banks live in prefs() (per device).
+// cardTiles / tiles are the per-account HTML aligned with cards / normal.
+function acctGroupsHTML(cards, cardTiles, normal, tiles) {
+  const collapsed = new Set(prefs().acctCollapsed || []), bankCollapsed = new Set(prefs().bankCollapsed || []);
+  const head = (key, label, list) => `<button type="button" class="acct-group-head" data-acct-group="${key}" aria-expanded="${collapsed.has(key) ? 'false' : 'true'}"><span>${collapsed.has(key) ? '＋' : '−'} ${label} (${list.length})</span><span class="acct-group-total">${acctSignedMoney(acctGroupTotal(list))}</span></button>`;
+  let body = '';
+  for (const g of acctCardBanks(cards)) {
+    if (!g.bank) { body += cardTiles[g.idx[0]]; continue; }
+    const list = g.idx.map(i => cards[i]), off = bankCollapsed.has(g.bank), used = Math.abs(Math.min(0, acctGroupTotal(list)));
+    body += `<div class="account-tile bank-row"><div class="account-tile-icon">${svg('bank')}</div><div class="account-tile-main"><b>${esc(g.bank)}</b><span>${list.length} 張信用卡</span></div><strong>${money(used)}</strong><button type="button" class="bank-toggle" data-bank-toggle="${esc(g.bank)}" aria-expanded="${off ? 'false' : 'true'}" aria-label="${off ? '展開' : '收合'} ${esc(g.bank)}">${off ? '⌄' : '⌃'}</button></div>`;
+    if (!off) body += `<div class="bank-children">${g.idx.map(i => cardTiles[i]).join('')}</div>`;
+  }
+  let html = head('card', '信用卡', cards) + (collapsed.has('card') ? '' : `<div class="credit-list">${cards.length ? body : '<div class="empty">尚無信用卡</div>'}</div>`);
   for (const [key, label] of acctTypes().filter(([k]) => k !== 'card')) {
     const idx = normal.map((a, i) => [a, i]).filter(([a]) => (a.type || 'bank') === key).map(([, i]) => i);
     if (!idx.length) continue;
-    html += head(key, label, idx.length) + (collapsed.has(key) ? '' : `<div class="normal-accounts">${idx.map(i => tiles[i]).join('')}</div>`);
+    html += head(key, label, idx.map(i => normal[i])) + (collapsed.has(key) ? '' : `<div class="normal-accounts">${idx.map(i => tiles[i]).join('')}</div>`);
   }
   if (!normal.length) html += '<div class="empty">尚無一般帳戶</div>';
   return html;
+}
+function acctToggleBank(name) {
+  const set = new Set(prefs().bankCollapsed || []); if (set.has(name)) set.delete(name); else set.add(name);
+  setPref('bankCollapsed', [...set]);
 }
 function acctToggleGroup(key) {
   const set = new Set(prefs().acctCollapsed || []); if (set.has(key)) set.delete(key); else set.add(key);
@@ -101,7 +132,7 @@ function acctCardSettingsFromForm(f) {
   a.limit = Math.max(0, Number(f.get('alimit') || 0)); a.statement = Math.min(31, Math.max(1, Math.round(Number(f.get('astatement') || 15)))); a.due = Math.min(31, Math.max(1, Math.round(Number(f.get('adue') || 5))));
   const wk = v => (['next', 'prev'].includes(String(v)) ? String(v) : ''), num = k => { const raw = String(f.get(k) ?? '').trim(), n = Number(raw); return raw !== '' && Number.isFinite(n) && n >= 0 ? n : null; };
   const put = (k, v) => { if (!(v === null || v === '' || v === false)) a[k] = v; };
-  put('stmtWeekend', wk(f.get('astmtwk'))); put('dueWeekend', wk(f.get('aduewk')));
+  put('bank', String(f.get('abank') ?? '').trim().slice(0, 30)); put('stmtWeekend', wk(f.get('astmtwk'))); put('dueWeekend', wk(f.get('aduewk')));
   const pf = String(f.get('apayfrom') || ''); put('payFrom', (state.accounts || []).some(x => x.type !== 'card' && String(x.id) === pf) ? pf : '');
   put('rewardPct', num('areward')); put('fxFeePct', num('afxfee')); put('lowAvail', num('alowavail')); put('offsetBill', !!f.get('aoffset'));
   return a;
@@ -145,8 +176,8 @@ function acctFromEditForm(f, old) {
   if ((state.accounts || []).some(a => a !== old && a.name === name && acctCur(a) === cur)) return { error: `已經有「${name}（${cur}）」` };
   const a = { ...old, name, currency: cur, note: String(f.get('anote') || '').trim(), archived: !!f.get('aarchived') };
   const want = String(f.get('atype') || old.type || 'bank'); a.type = acctTypes().some(([k]) => k === want) ? want : (old.type || 'bank');
-  if (a.type !== 'card') for (const k of ['limit', 'statement', 'due', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k];
-  else { for (const k of ['stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k]; Object.assign(a, acctCardSettingsFromForm(f)); }
+  if (a.type !== 'card') for (const k of ['limit', 'statement', 'due', 'bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k];
+  else { for (const k of ['bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k]; Object.assign(a, acctCardSettingsFromForm(f)); }
   if (!a.note) delete a.note;
   if (!a.archived) delete a.archived;
   if (a.type === 'card') delete a.lowBalance;
@@ -197,6 +228,7 @@ document.addEventListener('change', e => { if (e.target?.closest?.('#txForm') &&
 
 document.addEventListener('change', e => { const s = e.target; if (s?.name === 'atype' && s.closest?.('#entityForm')) { const box = s.closest('#entityForm').querySelector('[data-acct-card-fields]'); if (box) box.hidden = s.value !== 'card'; } });
 document.addEventListener('click', async e => {
+  const bk = e.target.closest?.('[data-bank-toggle]'); if (bk) { acctToggleBank(bk.dataset.bankToggle); renderAccounts(); return; }
   const grp = e.target.closest?.('[data-acct-group]'); if (grp) { acctToggleGroup(grp.dataset.acctGroup); renderAccounts(); return; }
   const find = v => (state.accounts || []).find(a => String(a.id) === String(v));
   const mg = e.target.closest?.('[data-acct-manage]'); if (mg) { e.preventDefault(); e.stopPropagation(); const a = find(mg.dataset.acctManage); if (a) openEntity('accountEdit', a); return; }

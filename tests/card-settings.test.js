@@ -87,7 +87,7 @@ test('紅利回饋與帳單折抵、國外手續費估算只顯示、不改餘�
 test('帳戶頁分組：依類型分組、可摺疊、顯示數量', () => {
   const { J, run } = bundle(mk([card(), { id: 'b', name: '銀行', type: 'bank', balance: 1 }, { id: 'e', name: '街口', type: 'ewallet', balance: 2 }]));
   run(`prefs = () => ({ acctCollapsed: ['bank'] })`);
-  const h = J(`acctGroupsHTML([state.accounts[0]], '<i>卡</i>', [state.accounts[1], state.accounts[2]], ['<i>銀</i>', '<i>街</i>'])`);
+  const h = J(`acctGroupsHTML([state.accounts[0]], ['<i>卡</i>'], [state.accounts[1], state.accounts[2]], ['<i>銀</i>', '<i>街</i>'])`);
   assert.match(h, /信用卡 \(1\)/); assert.match(h, /銀行 \(1\)/); assert.match(h, /電子支付 \(1\)/);
   assert.match(h, /data-acct-group="bank" aria-expanded="false"/);
   assert.ok(!h.includes('<i>銀</i>')); assert.ok(h.includes('<i>街</i>')); assert.ok(h.includes('<i>卡</i>'));
@@ -106,4 +106,28 @@ test('新增信用卡：表單含完整卡片欄位，acctCardSettingsFromForm �
   const o = J(`acctCardSettingsFromForm(new Map([['alimit','80000'],['astatement','20'],['adue','8'],['apayfrom','bank1'],['areward','1'],['aoffset','on'],['astmtwk','next']]))`);
   assert.deepEqual(o, { limit: 80000, statement: 20, due: 8, stmtWeekend: 'next', payFrom: 'bank1', rewardPct: 1, offsetBill: true });
   assert.deepEqual(J(`acctCardSettingsFromForm(new Map([]))`), { limit: 0, statement: 15, due: 5 });
+});
+
+test('群組標題顯示加總；信用卡依「所屬銀行」分組，可收合並顯示張數與已使用合計', () => {
+  const cards = [card({ id: 'c1', name: 'OP', bank: '富邦', balance: -100 }), card({ id: 'c2', name: 'JP', bank: '富邦', balance: -250 }), card({ id: 'c3', name: '單張', balance: -40 })];
+  const { J, run } = bundle(mk([...cards, { id: 'b', name: '銀行', type: 'bank', balance: 1000 }, { id: 'u', name: '美金', type: 'bank', balance: 10, currency: 'ZZZ' }]));
+  assert.equal(J('acctGroupTotal([state.accounts[3], state.accounts[4]])'), 1000);
+  assert.equal(J('acctGroupTotal(state.accounts.slice(0, 3))'), -390);
+  assert.equal(J('acctSignedMoney(-5)').startsWith('−'), true);
+  const order = J('acctCardBanks(state.accounts.slice(0, 3))');
+  assert.deepEqual(order, [{ bank: '富邦', idx: [0, 1] }, { bank: '', idx: [2] }]);
+  run(`prefs = () => ({})`);
+  const open = J(`acctGroupsHTML(state.accounts.slice(0, 3), ['<i>1</i>', '<i>2</i>', '<i>3</i>'], [state.accounts[3]], ['<i>b</i>'])`);
+  assert.match(open, /2 張信用卡/); assert.match(open, /bank-children/); assert.match(open, /−\$390|−\$?390/); assert.ok(open.includes('<i>1</i><i>2</i>')); assert.ok(open.includes('<i>3</i>'));
+  run(`prefs = () => ({ bankCollapsed: ['富邦'] })`);
+  const shut = J(`acctGroupsHTML(state.accounts.slice(0, 3), ['<i>1</i>', '<i>2</i>', '<i>3</i>'], [], [])`);
+  assert.ok(!shut.includes('<i>1</i>')); assert.ok(shut.includes('<i>3</i>')); assert.match(shut, /data-bank-toggle="富邦" aria-expanded="false"/);
+});
+
+test('所屬銀行欄位：存取、去空白、離開信用卡時清除', () => {
+  const { J, run } = bundle(mk([card({ id: 'c1', name: 'X', bank: '舊銀行' })]));
+  assert.equal(J(`acctCardSettingsFromForm(new Map([['abank','  玉山  ']])).bank`), '玉山');
+  assert.equal(run(`acctCardSettingsFromForm(new Map([['abank','']])).bank`), undefined);
+  assert.match(J('acctEditFormHTML(state.accounts[0])'), /name="abank"[^>]*value="舊銀行"/);
+  assert.equal(run(`acctFromEditForm(new Map([['aname','X'],['acur','TWD'],['atype','bank']]), state.accounts[0]).account.bank`), undefined);
 });
