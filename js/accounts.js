@@ -180,7 +180,7 @@ function acctCardFieldsHTML(a, card) {
     <label>繳款日遇非工作日<select name="aduewk">${acctWeekendOptions(a.dueWeekend)}</select></label>
     <label>主帳戶（繳款時預設的扣款帳戶）<select name="apayfrom"><option value="">不指定</option>${sources.map(x => `<option value="${esc(x.id)}" ${String(a.payFrom ?? '') === String(x.id) ? 'selected' : ''}>${esc(acctName(x))}</option>`).join('')}</select></label>
     <label>紅利回饋 %<input name="areward" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.rewardPct ?? '')}" placeholder="例如 1"></label>
-    <label>國外交易手續費 %（外幣卡，僅估算顯示）<input name="afxfee" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.fxFeePct ?? '')}" placeholder="例如 1.5"></label></div>
+    <label>國外交易手續費 %（外幣卡，僅估算顯示）<input name="afxfee" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.fxFeePct ?? '')}" placeholder="例如 1.5"></label><label>手續費計算方式<select name="afxround">${[['', '四捨五入'], ['floor', '無條件捨去'], ['ceil', '無條件進位']].map(([v, l]) => `<option value="${v}"${(a.fxFeeRound || '') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label><label>退款時手續費<select name="afxrefund"><option value="">不退</option><option value="1"${a.fxFeeRefund ? ' selected' : ''}>按比例一起退</option></select></label></div>
     <label class="proj-archive"><input type="checkbox" name="aoffset" ${a.offsetBill ? 'checked' : ''}> 帳單折抵（建議繳款金額先扣掉預估回饋）</label><label class="proj-archive"><input type="checkbox" name="aholiday" ${a.useHoliday ? 'checked' : ''}> 非工作日依台灣國定假日（內建 2026、2027；不勾只看週末）</label>${acctCardPlusHTML(a)}</div>`;
 }
 // Non-working days for statement / due dates: weekends, plus the built-in Taiwan holidays when the card has useHoliday.
@@ -363,7 +363,7 @@ function acctCardSettingsFromForm(f, old) {
   const put = (k, v) => { if (!(v === null || v === '' || v === false)) a[k] = v; };
   put('bank', String(f.get('abank') ?? '').trim().slice(0, 30)); put('stmtWeekend', wk(f.get('astmtwk'))); put('dueWeekend', wk(f.get('aduewk')));
   const pf = String(f.get('apayfrom') || ''); put('payFrom', (state.accounts || []).some(x => x.type !== 'card' && String(x.id) === pf) ? pf : '');
-  put('rewardPct', num('areward')); put('fxFeePct', num('afxfee')); put('lowAvail', num('alowavail')); put('offsetBill', !!f.get('aoffset')); put('useHoliday', !!f.get('aholiday')); put('dueAfter', num('adueafter') || null); Object.assign(a, acctCardPlusFromForm(f, old));
+  put('rewardPct', num('areward')); put('fxFeePct', num('afxfee')); put('fxFeeRound', ['floor', 'ceil'].includes(f.get('afxround')) ? f.get('afxround') : ''); put('fxFeeRefund', f.get('afxrefund') === '1'); put('lowAvail', num('alowavail')); put('offsetBill', !!f.get('aoffset')); put('useHoliday', !!f.get('aholiday')); put('dueAfter', num('adueafter') || null); Object.assign(a, acctCardPlusFromForm(f, old));
   return a;
 }
 function acctActive(list, keepId) { return (list || []).filter(a => !a.archived || String(a.id) === String(keepId ?? '')); }
@@ -410,8 +410,8 @@ function acctFromEditForm(f, old) {
   if ((state.accounts || []).some(a => a !== old && a.name === name && acctCur(a) === cur)) return { error: `已經有「${name}（${cur}）」` };
   const a = { ...old, name, currency: cur, note: String(f.get('anote') || '').trim(), archived: !!f.get('aarchived') };
   const want = String(f.get('atype') || old.type || 'bank'); a.type = acctTypes().some(([k]) => k === want) ? want : (old.type || 'bank');
-  if (a.type !== 'card') { for (const k of ['limit', 'statement', 'due', 'bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill', 'shareLimit', 'autoPay', 'autoPaySince', 'useHoliday', 'dueAfter', 'stmtOverride']) delete a[k]; if (a.type === 'foreign' || cur !== 'TWD') Object.assign(a, acctBankFromForm(f)); }
-  else { for (const k of ['bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill', 'shareLimit', 'autoPay', 'autoPaySince', 'useHoliday', 'dueAfter']) delete a[k]; Object.assign(a, acctCardSettingsFromForm(f, old)); if (a.statement !== old.statement || (a.stmtWeekend || '') !== (old.stmtWeekend || '')) delete a.stmtOverride; }
+  if (a.type !== 'card') { for (const k of ['limit', 'statement', 'due', 'bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'fxFeeRound', 'fxFeeRefund', 'lowAvail', 'offsetBill', 'shareLimit', 'autoPay', 'autoPaySince', 'useHoliday', 'dueAfter', 'stmtOverride']) delete a[k]; if (a.type === 'foreign' || cur !== 'TWD') Object.assign(a, acctBankFromForm(f)); }
+  else { for (const k of ['bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'fxFeeRound', 'fxFeeRefund', 'lowAvail', 'offsetBill', 'shareLimit', 'autoPay', 'autoPaySince', 'useHoliday', 'dueAfter']) delete a[k]; Object.assign(a, acctCardSettingsFromForm(f, old)); if (a.statement !== old.statement || (a.stmtWeekend || '') !== (old.stmtWeekend || '')) delete a.stmtOverride; }
   if (!a.note) delete a.note;
   if (!a.archived) delete a.archived;
   delete a.image; Object.assign(a, acctImageFromForm(f));

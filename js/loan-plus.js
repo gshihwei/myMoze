@@ -42,9 +42,10 @@ function loanWriteOff(loan, o) {
   const t = { id: id(), date: o.date, time: '', kind: 'expense', amount: out, account: a.id, category: o.category || entryEnsureCategory(state, '其他', 'expense').id, project: o.project || '', name: String(o.name || '').trim() || `呆帳 · ${loan.person}`, merchant: '', person: loan.person, note: '', tags: [] };
   state.transactions.push(t); adjust(t, 1); return { tx: t };
 }
-function loanPayMany(ids, amount, account, date) {
+function loanPayMany(ids, amount, account, date, under) {
   let left = Math.abs(Number(amount || 0)), n = 0; const l = ids.map(loanFind).filter(x => x && loanOutstanding(x) > 0);
   for (const x of l) { if (!(left > 0)) break; const v = Math.min(left, loanOutstanding(x)); loanPay(x, v, account, date, ''); left = Math.round((left - v) * 100) / 100; n++; }
+  if (under === 'settle' && n) for (const x of l) if (loanOutstanding(x) > 0) x.status = 'stopped';
   return { n, left };
 }
 function personRename(from, to) {
@@ -81,19 +82,19 @@ function loanInstHTML(loan) {
 }
 function loanExtraHTML(loan) {
   const rec = loanDirection(loan) === 'receivable', out = loanOutstanding(loan), opts = (state.accounts || []).filter(a => a.type !== 'card' && !a.archived).map(a => `<option value="${esc(a.id)}"${String(a.id) === String(loan.account) ? ' selected' : ''}>${acctName(a)}</option>`).join('');
-  return `${loan.existing ? `<p class="hint">${rec ? '既有應收' : '既有欠款'}：只登記剩餘金額，最初那一筆不影響帳戶。</p>` : ''}${loanInstHTML(loan)}${rec && out > 0 ? `<details class="stmt-adjust"><summary>轉成支出（呆帳）</summary><p class="hint">剩餘 ${money(out)} 視為已收回，並記一筆同額支出，帳戶餘額不變。</p><div class="form-grid"><label>帳戶<select id="lwAccount">${opts}</select></label><label>名稱<input id="lwName" placeholder="呆帳 · ${esc(loan.person)}"></label><label>類別<select id="lwCat">${catOptionsHTML('', '')}</select></label></div><button type="button" class="secondary" data-loan-writeoff="${esc(loan.id)}">轉成支出</button></details>` : ''}<label class="proj-archive"><input type="checkbox" data-loan-exclude="${esc(loan.id)}"${loan.excludeNet ? ' checked' : ''}> 不納入借還款總額</label>`;
+  return `${loanMoreHTML(loan)}${loan.existing ? `<p class="hint">${rec ? '既有應收' : '既有欠款'}：只登記剩餘金額，最初那一筆不影響帳戶。</p>` : ''}${loanInstHTML(loan)}${rec && out > 0 ? `<details class="stmt-adjust"><summary>轉成支出（呆帳）</summary><p class="hint">剩餘 ${money(out)} 視為已收回，並記一筆同額支出，帳戶餘額不變。</p><div class="form-grid"><label>帳戶<select id="lwAccount">${opts}</select></label><label>名稱<input id="lwName" placeholder="呆帳 · ${esc(loan.person)}"></label><label>類別<select id="lwCat">${catOptionsHTML('', '')}</select></label></div><button type="button" class="secondary" data-loan-writeoff="${esc(loan.id)}">轉成支出</button></details>` : ''}<label class="proj-archive"><input type="checkbox" data-loan-exclude="${esc(loan.id)}"${loan.excludeNet ? ' checked' : ''}> 不納入借還款總額</label>`;
 }
 function loanBulkHTML() {
   const ids = [...(window.__loanSel || [])].map(loanFind).filter(l => l && loanOutstanding(l) > 0); if (!ids.length) return '';
   const dirs = new Set(ids.map(loanDirection)), sum = ids.reduce((s, l) => s + loanOutstanding(l), 0);
-  return dirs.size > 1 ? '<div class="loan-bulk">請選同一種類（應收或應付）的款項</div>' : `<div class="loan-bulk"><b>${ids.length} 筆 · ${money(sum)}</b><input id="lbAmount" type="number" min="0" step="any" value="${sum}" aria-label="金額"><select id="lbAccount" aria-label="帳戶">${(state.accounts || []).filter(a => a.type !== 'card' && !a.archived).map(a => `<option value="${esc(a.id)}">${acctName(a)}</option>`).join('')}</select><button type="button" class="primary" data-loan-bulk>${loanActionLabel([...dirs][0])}</button></div>`;
+  return dirs.size > 1 ? '<div class="loan-bulk">請選同一種類（應收或應付）的款項</div>' : `<div class="loan-bulk"><b>${ids.length} 筆 · ${money(sum)}</b><input id="lbAmount" type="number" min="0" step="any" value="${sum}" aria-label="金額"><select id="lbAccount" aria-label="帳戶">${(state.accounts || []).filter(a => a.type !== 'card' && !a.archived).map(a => `<option value="${esc(a.id)}">${acctName(a)}</option>`).join('')}</select><select id="lbUnder" aria-label="不足時"><option value="track">不足：繼續追蹤</option><option value="settle">不足：視為結清</option></select><button type="button" class="primary" data-loan-bulk>${loanActionLabel([...dirs][0])}</button></div>`;
 }
 function renderLoanBulk() { let el = document.getElementById('loanBulkBar'); const g = document.getElementById('loanGrid'); if (!g) return; if (!el) { el = document.createElement('div'); el.id = 'loanBulkBar'; g.before(el); } el.innerHTML = loanBulkHTML(); }
 document.addEventListener('click', async e => {
   const c = s => e.target.closest?.(s), v = i => document.getElementById(i)?.value, today = isoDate(new Date());
   let b;
   if ((b = c('[data-loan-check]'))) { e.stopPropagation(); const s = window.__loanSel || (window.__loanSel = new Set()), k = b.dataset.loanCheck; if (s.has(k)) s.delete(k); else s.add(k); b.classList.toggle('on', s.has(k)); renderLoanBulk(); return; }
-  if (c('[data-loan-bulk]')) { const r = loanPayMany([...window.__loanSel], v('lbAmount'), v('lbAccount'), today); if (!r.n) { alert('請輸入有效金額'); return; } if (r.left > 0) alert(`金額多出 ${money(r.left)}，只沖銷到剩餘款項。`); window.__loanSel.clear(); await save(); render(); return; }
+  if (c('[data-loan-bulk]')) { const r = loanPayMany([...window.__loanSel], v('lbAmount'), v('lbAccount'), today, v('lbUnder')); if (!r.n) { alert('請輸入有效金額'); return; } if (r.left > 0) alert(`金額多出 ${money(r.left)}，只沖銷到剩餘款項。`); window.__loanSel.clear(); await save(); render(); return; }
   if ((b = c('[data-loan-writeoff]'))) { const l = loanFind(b.dataset.loanWriteoff); if (!confirm(`把剩餘 ${money(loanOutstanding(l))} 轉成支出？`)) return; const r = loanWriteOff(l, { account: v('lwAccount'), name: v('lwName'), category: v('lwCat'), date: today }); if (r.error) { alert(r.error); return; } await save(); render(); return; }
   if ((b = c('[data-loan-inst-set]'))) { const l = loanFind(b.dataset.loanInstSet), r = loanInstSet(l, { n: v('liN'), startNo: v('liStart'), rate: v('liRate'), method: v('liMethod'), next: v('liNext'), grace: v('liGrace') }); if (r.error) { alert(r.error); return; } await save(); render(); return; }
   if ((b = c('[data-loan-inst-del]'))) { if (!confirm('取消分期設定？已完成的期數記錄保留。')) return; delete loanFind(b.dataset.loanInstDel).inst; await save(); render(); return; }

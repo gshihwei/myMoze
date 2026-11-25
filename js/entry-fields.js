@@ -85,13 +85,15 @@ function efOpen(t) {
   efPicked(!!t); setTimeout(efSync, 30); setTimeout(efSync, 250);
 }
 // ---- 進階設定 ----
-function efAdvTabs() { const k = document.querySelector('input[name=kind]:checked')?.value, t = editId ? txById(editId) : null; if (efLoanTab()) return ['single']; if (editId) return instEditable(t) ? ['single', 'inst'] : ['single']; return k === 'expense' ? ['single', 'recurring', 'inst'] : ['single', 'recurring']; }
+function efAdvTabs() { const k = document.querySelector('input[name=kind]:checked')?.value, t = editId ? txById(editId) : null; if (efLoanTab()) return editId ? ['single'] : ['single', 'recurring', 'inst']; if (editId) return instEditable(t) ? ['single', 'inst'] : ['single']; return k === 'expense' ? ['single', 'recurring', 'inst'] : ['single', 'recurring']; }
 function efAdvTab(k) {
   const el = txForm?.elements; if (!el?.evType) return; if (!efAdvTabs().includes(k)) k = 'single';
   if (k !== 'single' && el.depOn?.checked) { alert('訂金尾款追蹤開著時不能改成週期或分期'); k = 'single'; }
   el.evType.value = k; if (el.instOn && el.instOn.checked !== (k === 'inst')) { el.instOn.checked = k === 'inst'; el.instOn.dispatchEvent(new Event('change', { bubbles: true })); }
   document.querySelectorAll('[data-adv-tab]').forEach(b => { b.classList.toggle('active', b.dataset.advTab === k); b.hidden = !efAdvTabs().includes(b.dataset.advTab); });
   document.querySelectorAll('[data-adv-pane]').forEach(x => { x.hidden = x.dataset.advPane !== k; });
+  const box = document.getElementById('installmentBox'), cnt = document.getElementById('instCountField'), ln = document.getElementById('loanInstBox'); if (efLoanTab() && k === 'inst' && box && cnt) { box.hidden = false; cnt.hidden = false; } if (ln) ln.hidden = !efLoanTab();
+  const ty = efEl('loanInstType'); if (ty) ty.parentNode.hidden = efTab() !== 'receivable';
   efRecUI();
 }
 function efRecUI() {

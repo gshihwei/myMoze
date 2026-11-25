@@ -27,7 +27,7 @@ function fxFromForm(amount, o) {
   if (!(conv > 0)) return { error: auto ? `目前沒有 ${cur} 的匯率，請關閉「採用線上匯率」並輸入換算後的 ${acc} 金額` : `請輸入換算後的 ${acc} 金額` };
   return { amount: conv, orig: { cur, amount, rate: Math.round(conv / amount * 1e6) / 1e6, auto } };
 }
-function fxFeeAmount(card, amount) { const p = Number(card?.fxFeePct || 0); return card?.type === 'card' && p > 0 ? curRound(Math.abs(amount) * p / 100, acctCur(card)) : 0; }
+function fxFeeAmount(card, amount) { const p = Number(card?.fxFeePct || 0); if (!(card?.type === 'card' && p > 0)) return 0; const v = Math.abs(amount) * p / 100, k = 10 ** curDigits(acctCur(card)); return card.fxFeeRound === 'floor' ? Math.floor(v * k + 1e-9) / k : card.fxFeeRound === 'ceil' ? Math.ceil(v * k - 1e-9) / k : curRound(v, acctCur(card)); }
 // 國外交易手續費: a linked 手續費 expense on the same card and date.
 function fxFeeCreate(t) {
   const fee = fxFeeAmount(acct(t.account), t.installment ? t.installment.amount : t.amount); if (!(fee > 0) || t.kind !== 'expense') return null;
