@@ -17,7 +17,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
 
   // ---- amount / calculator ----
   function feeVal(){return Math.max(0,Number($('entryFee')?.value||0));}
-  function discVal(){return curKind()==='transfer'||isLoanTab()?0:Math.max(0,Number($('entryDiscount')?.value||0));}
+  function discVal(){return isLoanTab()?0:Math.max(0,Number($('entryDiscount')?.value||0));}
   function applyExpr(){
     const v=entryCalcEval(expr),ok=v!==null&&v>0,inp=input();
     if(inp){inp.value=ok?String(v):'';inp.dispatchEvent(new Event('input',{bubbles:true}));}

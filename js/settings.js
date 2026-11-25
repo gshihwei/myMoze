@@ -3,7 +3,7 @@
 // ledgerEffects, isUnappliedPending, render, renderCalendar). Function declarations / var only.
 
 // ---------- app version (keep in step with sw.js CACHE, index.html and manifest.json) ----------
-function appVersion() { return 'V26.84'; }
+function appVersion() { return 'V26.85'; }
 function appReleaseDate() { return '2026-11-25'; }
 function appVersionLabel() { const [y, m, d] = appReleaseDate().split('-').map(Number); return { version: appVersion(), date: `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')}` }; }
 // newest app shell cache ('moze-v26.26-shell-v1' → 'V26.26'), compared numerically so V26.26 beats V26.9
@@ -129,8 +129,8 @@ function mozeRows(st = state) {
     const fee = Math.abs(Number(t.fee || 0)), disc = Math.abs(Number(t.discount || 0)), amt = t.feeIncluded ? Math.abs(entryBaseAmount(t)) : Math.abs(Number(t.amount || 0));
     if (t.kind === 'transfer') {
       const to = accName(t.toAccount);
-      out.push(row(a, '轉出', '轉帳', '轉帳', -amt, { ...base, fee }));
-      out.push(row(to, '轉入', '轉帳', '轉帳', Math.abs(Number(t.toAmount ?? amt)), base));
+      out.push(row(a, '轉出', '轉帳', '轉帳', -amt, { ...base, fee, discount: disc }));
+      out.push(row(to, '轉入', '轉帳', '轉帳', Math.abs(Number(t.toAmount ?? amt)), { ...base, fee: Math.abs(Number(t.toFee || 0)), discount: Math.abs(Number(t.toDiscount || 0)) }));
     } else if (t.kind === 'expense' || t.kind === 'income') {
       const sign = t.kind === 'expense' ? -1 : 1, type = t.recordType && ['支出', '收入', '退款'].includes(t.recordType) ? t.recordType : (t.kind === 'expense' ? '支出' : '收入');
       if (Array.isArray(t.splits) && t.splits.length) {

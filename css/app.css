@@ -390,7 +390,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .entry-lbl{color:#8194a7;flex:none;white-space:nowrap}
 .entry-ico{opacity:.7}
 .entry-note textarea{text-align:left;min-height:64px}
-.entry-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.entry-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
 .entry-amount-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#1b2e41;border:1px solid #2a4054;border-radius:13px;padding:0 14px;min-height:54px;cursor:pointer}
 .entry-cur{background:#2a4258;border-radius:10px;padding:6px 12px;font-weight:700}
 .entry-amount-mirror{font-size:22px;color:#7d8ea0}.entry-amount-mirror.filled{color:#fff;font-weight:800}
@@ -484,7 +484,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 /* V26.65 fee / discount rows in the entry side panel */
 .entry-calc-row .entry-rename{background:none;border:0;color:#7f93a6;cursor:pointer;padding:0 2px}
 .entry-calc-row i{font-style:normal}
-#modalBg[data-etab=transfer] .entry-disc-row,#modalBg[data-etab=receivable] .entry-disc-row,#modalBg[data-etab=payable] .entry-disc-row,#modalBg[data-etab=receivable] .entry-fee-row,#modalBg[data-etab=payable] .entry-fee-row{display:none}
+#modalBg[data-etab=receivable] .entry-disc-row,#modalBg[data-etab=payable] .entry-disc-row,#modalBg[data-etab=receivable] .entry-fee-row,#modalBg[data-etab=payable] .entry-fee-row{display:none}
 
 /* V26.66 refunds */
 .tx-link{background:none;border:0;color:#6fb8ef;cursor:pointer;padding:0 4px;font:inherit;text-decoration:underline}
@@ -584,3 +584,5 @@ html[data-keypad=phone] #amountKeypad [data-key=enter]{order:6}html[data-keypad=
 .sync-offline{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:10px 0}
 
 .split-more{grid-column:1/-1;font-size:13px}.split-more summary{cursor:pointer;color:var(--muted)}.split-more-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;align-items:center}
+
+.entry-pair input[type=date],.entry-pair input[type=time]{font-size:14px;letter-spacing:-.3px}

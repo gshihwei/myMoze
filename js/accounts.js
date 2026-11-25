@@ -5,7 +5,7 @@
 //
 // Account record: { id, name, type: 'cash' | 'bank' | 'ewallet' | 'broker' | 'foreign' | 'card', balance, currency?, limit?, statement?, due?, note?, archived? }
 
-function acctCurrencies() { return ['TWD', 'USD', 'JPY', 'EUR', 'CNY', 'HKD', 'KRW', 'GBP', 'AUD', 'SGD', 'CAD', 'THB']; }
+function acctCurrencies() { return ['TWD', 'USD', 'JPY', 'EUR', 'CNY', 'HKD', 'KRW', 'GBP', 'AUD', 'SGD', 'CAD', 'THB', 'MYR', 'VND', 'PHP', 'IDR', 'INR', 'CHF', 'NZD', 'MOP', 'BTC', 'ETH', 'USDT', 'USDC', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA']; }
 function acctTypes() { return [['bank', '銀行'], ['cash', '現金'], ['ewallet', '電子支付'], ['broker', '證券戶'], ['foreign', '外幣'], ['card', '信用卡']]; }
 function acctTypeLabel(a) { return (acctTypes().find(([k]) => k === a?.type) || [0, '銀行'])[1]; }
 function acctHasTx(aid) { const k = String(aid); return (state.transactions || []).some(t => String(t.account) === k || String(t.toAccount ?? '') === k); }
@@ -413,16 +413,30 @@ function acctAdjustFormHTML(a) {
   return `<p>「${acctName(a)}」目前餘額 <b>${acctMoney(a.balance, a)}</b>。輸入實際餘額後，會建立一筆「餘額調整」交易補上差額，帳戶對帳也會一致。</p>
   <div class="form-grid">
     <label>實際餘額${a.type === 'card' ? '（欠款請輸入負數）' : ''}<input name="abalance" type="number" step="any" required value="${esc(a.balance)}"></label>
-    <label>日期<input name="adate" type="date" required value="${esc(selectedDate || isoDate(new Date()))}"></label>
+    <label>日期<input name="adate" type="date" required max="${isoDate(new Date())}" value="${isoDate(new Date())}"></label>
   </div>
-  <div class="form-grid form-grid-1"><label>備註<input name="anote" maxlength="100" placeholder="例如：對帳後修正"></label></div>`;
+  <div class="form-grid form-grid-1"><label>備註<input name="anote" maxlength="100" placeholder="例如：對帳後修正"></label></div><p class="hint">選過去的日期時，填那一天結束時的實際餘額。之後在這個時間點之前補記或刪除記錄，都不會改變這個時間點的餘額。</p>`;
 }
 
+// V26.85 A pinned adjustment fixes the balance at its moment: adding / deleting an earlier record moves the adjustment's amount
+// instead of the balances after it. Called by adjust() before the effect of `t` is applied; the effect itself is cancelled there.
+function pinKey(t) { return (t.date || '') + ' ' + (t.time || '00:00'); }
+function pinAbsorb(t, sign) {
+  if (t.pinned) return;
+  for (const [aid, v] of ledgerEffects(t)) {
+    if (!v) continue; let best = null;
+    for (const p of (state.transactions || [])) if (p.pinned && p !== t && p.id !== t.id && String(p.account) === String(aid) && pinKey(p) > pinKey(t) && (!best || pinKey(p) < pinKey(best))) best = p;
+    if (!best) continue;
+    best.amount = Math.round((Number(best.amount || 0) - sign * v) * 100) / 100; acct(aid).balance = Math.round((Number(acct(aid).balance || 0) - sign * v) * 1e4) / 1e4;
+  }
+}
+function pinBalanceAt(a, date) { let b = Number(a.balance || 0); for (const t of (state.transactions || [])) if (t.date > date) for (const [k, v] of ledgerEffects(t)) if (String(k) === String(a.id)) b -= v; return Math.round(b * 100) / 100; }
 // Adjust to an absolute balance by recording the difference as a balance_adjustment transaction.
 function acctAdjustTo(a, target, date, note) {
-  const diff = Math.round((Number(target) - Number(a.balance || 0)) * 100) / 100;
+  const today = isoDate(new Date()), past = date && date < today;
+  const now = past ? pinBalanceAt(a, date) : Number(a.balance || 0), diff = Math.round((Number(target) - now) * 100) / 100;
   if (!Number.isFinite(diff) || Math.abs(diff) < 0.005) return null;
-  const t = { id: id(), date: date || isoDate(new Date()), time: '', name: '餘額調整', amount: diff, kind: 'balance_adjustment', category: '', account: a.id, note: note || '', tags: [], balanceAdjustment: true };
+  const t = { id: id(), date: date || today, time: past ? '23:59' : nowTime(), name: '餘額調整', amount: diff, kind: 'balance_adjustment', category: '', account: a.id, note: note || '', tags: [], balanceAdjustment: true, pinned: true };
   state.transactions.push(t); adjust(t, 1);
   return t;
 }
@@ -431,13 +445,18 @@ function acctAdjustTo(a, target, date, note) {
 function transferNeedsFx(fromId, toId) { const a = acct(fromId), b = acct(toId); return !!(a?.id && b?.id && acctCur(a) !== acctCur(b)); }
 // Balance effects of a manual transfer: source pays amount + fee; destination receives toAmount
 // (its own currency) when the currencies differ, otherwise the same amount.
-function transferFields(amount, fromId, toId, toAmountRaw, feeRaw) {
+// V26.85 o = { discount, toFee, toDiscount }: source pays amount + fee − discount, destination gets amount − toFee + toDiscount.
+function transferFields(amount, fromId, toId, toAmountRaw, feeRaw, o) {
   const fee = Math.max(0, Number(feeRaw) || 0), fx = transferNeedsFx(fromId, toId), toAmount = Number(toAmountRaw);
   if (String(fromId) === String(toId)) return { error: '轉出與轉入帳戶不能相同' };
   if (fx && !(toAmount > 0)) return { error: `兩個帳戶幣別不同，請輸入轉入金額（${acctCur(acct(toId))}）` };
-  const out = { fee: fee || undefined, balanceEffect: fee ? -(Math.abs(amount) + fee) : undefined };
+  const pos = v => Math.max(0, Number(v) || 0), disc = pos(o?.discount), tf = pos(o?.toFee), td = pos(o?.toDiscount), rd = v => Math.round(v * 1e4) / 1e4;
+  if (Math.abs(amount) + fee - disc < 0) return { error: '轉出折扣不能大於金額加手續費' };
+  if ((fx ? toAmount : Math.abs(amount)) - tf + td < 0) return { error: '轉入手續費不能大於轉入金額' };
+  const out = { fee: fee || undefined, discount: disc || undefined, toFee: tf || undefined, toDiscount: td || undefined, balanceEffect: fee || disc ? -rd(Math.abs(amount) + fee - disc) : undefined };
   if (fx) { out.toAmount = toAmount; out.toBalanceEffect = toAmount; out.toCurrency = acctCur(acct(toId)); }
   else { out.toAmount = undefined; out.toBalanceEffect = undefined; out.toCurrency = undefined; }
+  if (tf || td) out.toBalanceEffect = rd((fx ? toAmount : Math.abs(amount)) - tf + td);
   return out;
 }
 function updateTransferFx() {

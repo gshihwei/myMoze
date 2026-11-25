@@ -41,6 +41,7 @@ function txLink(t, text) { return `<button type="button" class="tx-link" data-tx
 function txDetailExtra(t) {
   const grid = document.getElementById('detailGrid'); if (!grid) return;
   let h = '';
+  if (t.kind === 'transfer') { const src = acct(t.account), dst = acct(t.toAccount), fx = (f, d, a) => [f ? `手續費 ${acctMoney(f, a)}` : '', d ? `折扣 ${acctMoney(d, a)}` : ''].filter(Boolean).join('、'); if (t.toFee || t.toDiscount) h += txExtraBox('實際入帳', `${acctName(dst)} ${acctMoney(Number(t.toBalanceEffect ?? t.toAmount ?? t.amount), dst)}`); const o = fx(t.fee, t.discount, src), i = fx(t.toFee, t.toDiscount, dst); if (o && t.discount) h += txExtraBox('轉出費用／折扣', o); if (i) h += txExtraBox('轉入費用／折扣', i); }
   if (t.orig) h += txExtraBox('外幣金額', `${esc(curText(t.orig.amount, t.orig.cur))}　匯率 ${esc(t.orig.rate)}${t.orig.auto ? '（線上）' : ''}`, true);
   const ff = (state.transactions || []).find(x => x.feeOf === t.id); if (ff) h += txExtraBox('國外手續費', txLink(ff, acctMoney(ff.amount, acct(ff.account)))); if (t.feeOf) { const o = txById(t.feeOf); if (o) h += txExtraBox('所屬記錄', txLink(o, esc(o.name))); }
   if (t.postDate) h += txExtraBox('入帳日', esc(t.postDate));

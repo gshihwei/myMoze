@@ -47,7 +47,7 @@ function bulkSetAccount(ids, aid) {
   }
   return { changed, skipped };
 }
-function bulkSetField(ids, k, v) { let changed = 0, skipped = 0; v = String(v || '').trim(); for (const t of bulkPick(ids)) { if (!bulkEditable(t) || t.stmtInst || (k !== 'merchant' && !v)) { skipped++; continue; } t[k] = v; changed++; } return { changed, skipped }; }
+function bulkSetField(ids, k, v) { let changed = 0, skipped = 0; v = String(v || '').trim(); for (const t of bulkPick(ids)) { if (!bulkEditable(t) || t.stmtInst || (k !== 'merchant' && !v)) { skipped++; continue; } if (k === 'date') { adjust(t, -1); t[k] = v; adjust(t, 1); } else t[k] = v; changed++; } return { changed, skipped }; }
 // ---- hidden categories ----
 function catVisible(c) { if (!c || c.hidden) return false; const p = c.parentId ? (state.categories || []).find(x => String(x.id) === String(c.parentId)) : null; return !(p && p.hidden); }
 document.addEventListener('change', e => {
