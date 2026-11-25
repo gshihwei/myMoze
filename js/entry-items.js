@@ -12,7 +12,7 @@ function itemsTotal(list) { return Math.round(list.reduce((s, it) => s + itemTWD
 // True when every line can live in one transaction (only the category / amount / fee differ).
 function itemsUniform(list) {
   const a = list[0]; if (!a || itemLoan(a)) return false;
-  return list.every(x => !itemLoan(x) && !x.locked && x.kind === a.kind && String(x.account) === String(a.account) && String(x.project || '') === String(a.project || '') && (x.cur || '') === (a.cur || '') && (!x.name || x.name === (a.name || x.name)) && JSON.stringify(x.rewards || []) === JSON.stringify(a.rewards || [])) && !list.slice(1).some(x => (x.name && x.name !== a.name) || (x.invoiceNo && x.invoiceNo !== a.invoiceNo));
+  return list.every(x => !itemLoan(x) && !x.locked && x.kind === a.kind && String(x.account) === String(a.account) && String(x.project || '') === String(a.project || '') && (x.cur || '') === (a.cur || '') && (x.merchant || '') === (a.merchant || '') && (!x.name || x.name === (a.name || x.name)) && JSON.stringify(x.rewards || []) === JSON.stringify(a.rewards || [])) && !list.slice(1).some(x => (x.name && x.name !== a.name) || (x.invoiceNo && x.invoiceNo !== a.invoiceNo));
 }
 function itemsCheck(list) {
   for (let i = 0; i < list.length; i++) { const it = list[i]; if (it.locked) continue; if (it.tab === 'transfer' || it.kind === 'transfer') return { error: '多類別不能包含轉帳', i }; if (!(itemBase(it) > 0)) return { error: `第 ${i + 1} 項還沒有金額`, i }; if (!(itemNet(it) > 0)) return { error: `第 ${i + 1} 項的折扣不能大於金額`, i }; if (it.tab === 'payable' && acct(it.account).type === 'card') return { error: '應付款項請選擇現金或銀行帳戶', i }; }
@@ -21,7 +21,7 @@ function itemsCheck(list) {
 // Items of a saved record: its split group, its inner splits, or null for a plain record.
 function itemsOfTx(t) {
   if (!t || t.kind === 'transfer') return null;
-  const base = x => ({ kind: x.kind === 'income' ? 'income' : 'expense', tab: isLoanTx(x) ? (x.direction === 'payable' ? 'payable' : 'receivable') : x.kind === 'income' ? 'income' : 'expense', category: x.category, account: x.account, project: x.project || '', person: x.person || '', name: x.name || '', note: x.note || '', rewards: x.rewards || [], cur: x.orig?.cur || '', invoiceNo: x.invoiceNo || '', invoiceCode: x.invoiceCode || '' });
+  const base = x => ({ kind: x.kind === 'income' ? 'income' : 'expense', tab: isLoanTx(x) ? (x.direction === 'payable' ? 'payable' : 'receivable') : x.kind === 'income' ? 'income' : 'expense', category: x.category, account: x.account, project: x.project || '', person: x.person || '', merchant: x.merchant || '', name: x.name || '', note: x.note || '', rewards: x.rewards || [], cur: x.orig?.cur || '', invoiceNo: x.invoiceNo || '', invoiceCode: x.invoiceCode || '' });
   const g = t.id ? splitGroupOf(t) : [];
   if (g.length > 1) return g.map(x => ({ ...base(x), id: x.id, expr: String(x.orig ? x.orig.amount : entryBaseAmount(x)), fee: x.feeIncluded ? x.fee : 0, discount: x.feeIncluded ? x.discount : 0, conv: x.orig ? { auto: !!x.orig.auto, amount: entryBaseAmount(x) } : null, locked: isLoanTx(x) }));
   if (!Array.isArray(t.splits) || t.splits.length < 2) return null;

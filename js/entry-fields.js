@@ -42,7 +42,7 @@ function recurringFromTx(t, o) {
 function recurringPostDate(r, date) { return r.adjust ? isoDate(cardAdjustDate({ useHoliday: true }, new Date(date + 'T00:00:00'), r.adjust)) : date; }
 function efRecOptions(f) { return { freq: f.get('rcFreq'), interval: f.get('rcInterval'), days: f.getAll ? f.getAll('rcDays') : [], startNo: f.get('rcStartNo'), endType: f.get('rcEndType'), endValue: f.get('rcEndType') === 'date' ? f.get('rcEndDate') : f.get('rcEndCount'), auto: f.get('rcPost') !== 'remind', adjust: f.get('rcAdjust') }; }
 function efBarText() {
-  const el = txForm?.elements; if (!el) return ''; const ev = el.evType?.value, n = Number(el.amount?.value || 0);
+  const el = txForm?.elements; if (!el) return ''; const rfb = window.__refund ? refundBarText() : ''; if (rfb) return rfb; const ev = el.evType?.value, n = Number(el.amount?.value || 0);
   if (ev === 'recurring') { const no = Math.max(1, Number(el.rcStartNo.value) || 1), k = el.rcEndType.value, tot = k === 'count' ? (Number(el.rcEndCount.value) || 0) + no - 1 : k === 'date' ? `至 ${el.rcEndDate.value || '—'}` : '無限期'; return `週期：#${no} / ${tot}（${freqText(normRecurring({ freq: el.rcFreq.value, interval: el.rcInterval.value, start: el.date.value, days: [...txForm.querySelectorAll('[name=rcDays]:checked')].map(x => Number(x.value)), end: { type: 'never' } }))}）`; }
   if (ev === 'inst') return instBarText(n);
   const dep = document.getElementById('depositSum')?.textContent; if (el.depOn?.checked && dep) return dep;
@@ -138,7 +138,7 @@ document.addEventListener('click', e => {
   if (c('[data-item-add]')) { window.entryItems?.add(); return; }
   if ((b = c('[data-item-del]'))) { window.entryItems?.remove(Number(b.dataset.itemDel)); return; }
   if ((b = c('[data-item]'))) { const i = Number(b.dataset.item); if (b.classList.contains('active')) { if (!window.entryItems.state().items[i].locked) efPicked(false); } else window.entryItems.go(i); return; }
-  if (c('[data-item-all]')) { const S = window.entryItems.state(); alert(`共 ${S.items.length} 項，合計 ${money(Math.abs(itemsTotal(S.items)))}\n\n${S.items.map((it, k) => `${k + 1}. ${it.preset || cat(it.category).name} ${itemSign(it) > 0 ? '+' : '−'}${itemNet(it)}${it.name ? ` ${it.name}` : ''}（${acct(it.account).name}）`).join('\n')}`); return; }
+  if (c('[data-item-all]')) { multiMenu(); return; }
   if (c('[data-ef-change]')) { efPicked(false); document.querySelector('.entry-scroll')?.scrollTo?.(0, 0); return; }
   if ((b = c('#categoryChoices [data-cat],#categorySubs [data-cat],#entryPresets [data-preset]'))) {
     const x = b.dataset.cat ? state.categories.find(k => String(k.id) === b.dataset.cat) : null, subs = x && !x.parentId && efTab() !== 'suggest' && !document.querySelector('[data-cat-back]') && state.categories.some(k => String(k.parentId) === String(x.id) && catVisible(k));

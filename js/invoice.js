@@ -91,7 +91,7 @@ document.addEventListener('click', async e => {
   if ((b = c('[data-inv-tab]'))) { s.tab = b.dataset.invTab; re(); return; } if ((b = c('[data-inv-row]'))) { s.open = s.open === b.dataset.invRow ? null : b.dataset.invRow; re(); return; }
   if ((b = c('[data-inv-del]'))) { if (confirm('刪除這張發票？')) { db.list = db.list.filter(x => x.no !== b.dataset.invDel); invStore(); re(); } return; }
   if ((b = c('[data-inv-golink]'))) { s.link = b.dataset.invGolink; s.q = ''; re(); return; } if (c('[data-inv-back]')) { s.link = null; re(); return; }
-  if ((b = c('[data-inv-link]'))) { const inv = find(s.link), t = txById(b.dataset.invLink); s.link = null; if (inv && t) { const note = inv.items.length ? (t.note ? (confirm('把發票明細加到備註？') ? 'append' : '') : 'replace') : ''; invLink(inv, t, note); await save(); render(); } re(); return; }
+  if ((b = c('[data-inv-link]'))) { const inv = find(s.link), t = txById(b.dataset.invLink); s.link = null; if (inv && t) { const note = !inv.items.length ? '' : !t.note ? 'replace' : prefs().invNote || await uiAsk({ icon: '!', title: '提醒', text: '原本記錄已有備註，要覆蓋原本備註還是直接附加在備註後面？', options: [['replace', '覆蓋'], ['append', '附加'], ['keep', '忽略']], cancel: false }); invLink(inv, t, note); await save(); render(); } re(); return; }
   if ((b = c('[data-inv-unlink]'))) { const x = invAll().find(y => y.inv.no === b.dataset.invUnlink && y.t); if (x && confirm('取消這張發票與記錄的連結？')) { invUnlink(x.t, b.dataset.invUnlink); await save(); render(); } re(); return; }
   if ((b = c('[data-inv-new]'))) { invRecord(find(b.dataset.invNew), false); return; } if ((b = c('[data-inv-multi]'))) { invRecord(find(b.dataset.invMulti), true); return; }
   if (c('[data-tx-open]')) { document.getElementById('invBg').hidden = true; return; }

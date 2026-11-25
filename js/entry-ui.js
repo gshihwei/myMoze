@@ -184,14 +184,14 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   // ---- 多類別 items (pure parts in js/entry-items.js) ----
   function snap(){
     const v=n=>f(n)?.value||'',it=items[ci]||{};
-    return {...it,tab:tab==='suggest'?(curKind()==='income'?'income':'expense'):tab,kind:curKind(),category:v('category'),preset,expr,fee:Number(v('fee'))||0,discount:Number(v('discount'))||0,feeName:$('entryFeeName')?.value||'',discountName:$('entryDiscountName')?.value||'',account:v('account'),project:v('project'),person:v('person'),name:f('name')?.dataset.auto==='1'?'':v('name'),invoiceNo:v('invoiceNo'),invoiceCode:v('invoiceCode'),cur:$('entryCurSel')&&$('entryCurSel').value!==acctCur(acct(v('account')))?$('entryCurSel').value:'',conv:f('convAuto')?{auto:f('convAuto').checked,amount:Number(v('convAmount'))||0}:null,rewards:[...document.querySelectorAll('#rewardPick input:checked')].map(i=>i.value)};
+    return {...it,tab:tab==='suggest'?(curKind()==='income'?'income':'expense'):tab,kind:curKind(),category:v('category'),preset,expr,fee:Number(v('fee'))||0,discount:Number(v('discount'))||0,feeName:$('entryFeeName')?.value||'',discountName:$('entryDiscountName')?.value||'',account:v('account'),project:v('project'),person:v('person'),merchant:v('merchant'),name:f('name')?.dataset.auto==='1'?'':v('name'),invoiceNo:v('invoiceNo'),invoiceCode:v('invoiceCode'),cur:$('entryCurSel')&&$('entryCurSel').value!==acctCur(acct(v('account')))?$('entryCurSel').value:'',conv:f('convAuto')?{auto:f('convAuto').checked,amount:Number(v('convAmount'))||0}:null,rewards:[...document.querySelectorAll('#rewardPick input:checked')].map(i=>i.value)};
   }
   function loadItem(it){
     tab=it.tab==='suggest'?'expense':it.tab;preset=it.preset||'';expr=String(it.expr||'');
     const bg=$('modalBg');if(bg)bg.dataset.etab=tab;
     setKind(it.kind||'expense');fillCategorySelect(it.category);
     const set=(n,v)=>{const e=f(n);if(e)e.value=v??'';};
-    set('account',it.account);set('project',it.project);set('person',it.person);set('name',it.name);set('fee',it.fee||'');set('discount',it.discount||'');set('invoiceNo',it.invoiceNo);set('invoiceCode',it.invoiceCode);
+    set('account',it.account);set('project',it.project);set('person',it.person);if(it.merchant!==undefined)set('merchant',it.merchant);set('name',it.name);set('fee',it.fee||'');set('discount',it.discount||'');set('invoiceNo',it.invoiceNo);set('invoiceCode',it.invoiceCode);
     if($('entryFeeName'))$('entryFeeName').value=it.feeName||'';if($('entryDiscountName'))$('entryDiscountName').value=it.discountName||'';
     if(f('name'))delete f('name').dataset.auto;
     const cs=$('entryCurSel');if(cs)cs.dataset.cur=it.cur||'';if(f('convAuto')){f('convAuto').checked=it.conv?it.conv.auto:true;f('convAmount').value=it.conv?it.conv.amount||'':'';}
@@ -204,13 +204,14 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     add(){
       if(isTf()){alert('多類別不能包含轉帳');return;}
       if(!items.length)items=[snap()];else if(!items[ci].locked)items[ci]=snap();
-      const b=items[ci];items.push({tab:b.locked?'expense':b.tab==='receivable'||b.tab==='payable'?'expense':b.tab,kind:b.kind||'expense',category:b.category,expr:'',account:b.account,project:b.project||'',person:b.person||'',name:'',cur:'',rewards:[]});
+      const b=items[ci];items.push({tab:b.locked?'expense':b.tab==='receivable'||b.tab==='payable'?'expense':b.tab,kind:b.kind||'expense',category:b.category,expr:'',account:b.account,project:b.project||'',person:b.person||'',merchant:b.merchant||'',name:'',cur:'',rewards:[]});
       ci=items.length-1;loadItem(items[ci]);$('modalBg')?.classList.remove('item-locked');efPicked(false);for(const k of ['account','project'])if(f(k))f(k).dataset.userSet='1';efSync();
     },
     remove(i){
       if(items.length<2||items[i]?.locked){if(items[i]?.locked)alert('應收應付款項請到借還款頁處理');return;}
       items.splice(i,1);ci=Math.min(i,items.length-1);const one=items[ci];if(items.length===1&&!oldIds.length)items=[];loadItem(one);efPicked(true);efSync();
     },
+    setAll(fn){if(!items[ci]?.locked)items[ci]=snap();items=items.map((x,i)=>x.locked?x:fn(x,i));loadItem(items[ci]);efSync();},
     load(l){items=l;ci=0;oldIds=[];loadItem(items[0]);efPicked(true);},
     reset(t){
       items=[];ci=0;oldIds=[];$('modalBg')?.classList.remove('item-locked');const l=itemsOfTx(t);if(!l)return;

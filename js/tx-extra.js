@@ -22,8 +22,7 @@ function refundCreate(t, o) {
   const tx = { id: id(), date: o.date, time: o.time || '', kind: 'income', amount, account: a.id, category: c.id, name: `退款：${t.name}`, merchant: t.merchant || '', project: t.project || '', person: '', tags: [], note: o.note || '', refundOf: t.id };
   if (split !== undefined) tx.refundSplit = split; offsetApply(tx);
   state.transactions.push(tx); adjust(tx, 1);
-  const fee = acct(t.account).fxFeeRefund ? (state.transactions || []).find(x => x.feeOf === t.id) : null, back = fee ? Math.min(refundLeft(fee), curRound(Number(fee.amount) * amount / Math.abs(Number(t.amount || 1)), acctCur(acct(fee.account)))) : 0;
-  if (back > 0) { const r = { ...tx, id: id(), amount: back, account: fee.account, name: `退款：${fee.name}`, refundOf: fee.id, note: '' }; delete r.refundSplit; state.transactions.push(r); adjust(r, 1); }
+  refundFee(t, amount, tx);
   return { tx };
 }
 // 分期退款. 'one' = this period only; 'all' = every period up to this one, and later periods are removed.
@@ -63,7 +62,7 @@ function txDetailExtra(t) {
   let bar = document.getElementById('detailExtraBar');
   if (!bar) { bar = document.createElement('div'); bar.id = 'detailExtraBar'; bar.className = 'form-actions detail-extra'; grid.after(bar); }
   const bt = depositBalance(t);
-  bar.innerHTML = loanDetailBtn(t) + seriesButtons(t) + (t.pending && pendingVisible(t) && !isLoanTx(t) ? `<button type="button" class="primary" data-finish-pending="${esc(t.id)}">✓ 完成入帳</button>` : '') + (bt?.pending && pendingVisible(bt) ? `<button type="button" class="primary" data-finish-pending="${esc(bt.id)}">補尾款</button>` : '') + (refundable(t) ? '<button type="button" class="secondary" data-refund>退款</button>' : '') + '<div id="refundBox"></div>';
+  bar.innerHTML = loanDetailBtn(t) + `<span hidden>${seriesButtons(t)}</span>` + (t.pending && pendingVisible(t) && !isLoanTx(t) ? `<button type="button" class="primary" data-finish-pending="${esc(t.id)}">✓ 完成入帳</button>` : '') + (bt?.pending && pendingVisible(bt) ? `<button type="button" class="primary" data-finish-pending="${esc(bt.id)}">補尾款</button>` : '') + (refundable(t) ? '<button type="button" class="secondary" data-refund>退款</button>' : '') + '<div id="refundBox"></div>';
 }
 function refundFormHTML(t) {
   const accts = acctActive(acctOrdered(state.accounts), t.account).map(a => `<option value="${esc(a.id)}"${String(a.id) === String(t.account) ? ' selected' : ''}>${acctName(a)}</option>`).join('');
@@ -73,7 +72,7 @@ function refundFormHTML(t) {
 }
 document.addEventListener('click', async e => {
   const ln = e.target.closest?.('[data-tx-open]'); if (ln) { openDetail(ln.dataset.txOpen); return; }
-  if (e.target.closest?.('[data-refund]')) { const t = txById(window.detailId), b = document.getElementById('refundBox'); if (t && b) b.innerHTML = refundFormHTML(t); return; }
+  if (e.target.closest?.('[data-refund]')) { const t = txById(window.detailId); if (t) refundOpen(t); return; }
   if (e.target.closest?.('[data-refund-save]')) {
     const t = txById(window.detailId), v = i => document.getElementById(i)?.value; if (!t) return;
     const o = { amount: v('rfAmount'), account: v('rfAccount'), date: v('rfDate') || isoDate(new Date()), time: nowTime(), split: v('rfSplit') !== undefined ? Number(v('rfSplit')) : undefined };
