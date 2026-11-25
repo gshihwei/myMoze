@@ -122,7 +122,7 @@ document.addEventListener('click', async e => {
   const cl = c('[data-sheet-close]'); if (cl) { const bg = cl.closest('.recon-bg'); if (bg) bg.hidden = true; return; }
   const nt = c('[data-notice-tab]'); if (nt) { noticeSt().tab = nt.dataset.noticeTab; renderNotice(); return; }
   const br = c('[data-bill-recon]'); if (br) { sheetEl('noticeBg').hidden = true; gotoBill(br.dataset.billRecon, Number(br.dataset.off)); openReconMode(br.dataset.billRecon); return; }
-  const bp = c('[data-bill-pay]'); if (bp) { sheetEl('noticeBg').hidden = true; gotoBill(bp.dataset.billPay, Number(bp.dataset.off)); setTimeout(() => { const b = document.querySelector('[data-inline-payment]'); if (b && !b.disabled) { b.click(); document.getElementById('creditPaymentForm')?.scrollIntoView({ block: 'center' }); } else alert('沒有可扣款的帳戶。'); }, 80); return; }
+  const bp = c('[data-bill-pay]'); if (bp) { sheetEl('noticeBg').hidden = true; gotoBill(bp.dataset.billPay, Number(bp.dataset.off)); setTimeout(() => cardPayOpen(acct(bp.dataset.billPay), Number(bp.dataset.off)), 120); return; }
   const bd = c('[data-bill-dismiss]'); if (bd) { if (confirm('移除這筆帳單通知？移除後不會再出現在通知中心（帳單本身不受影響）。')) { setPref('billDismissed', [...(prefs().billDismissed || []), bd.dataset.billDismiss].slice(-200)); renderNotice(); } return; }
   if (c('#noticeBg [data-loan-id]')) { sheetEl('noticeBg').hidden = true; return; }
   const mv = c('[data-fc-move]'); if (mv) { const s = calSt(), d = new Date(s.y, s.m + Number(mv.dataset.fcMove), 1); s.y = d.getFullYear(); s.m = d.getMonth(); s.sel = ''; renderFullCal(); return; }

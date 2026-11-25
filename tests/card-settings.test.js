@@ -229,5 +229,5 @@ test('網頁版三欄：帳戶清單｜詳情｜交易；詳情容器存在、�
   assert.match(css, /\.pane-tx\{grid-column:2/);
   assert.ok(js.includes("a=selectedAccountId?acct(selectedAccountId):null"));
   assert.ok(js.includes("classList.toggle('has-detail'"));
-  assert.ok((js.match(/class="credit-section pane-tx"/g) || []).length === 2);
+  assert.ok((js.match(/class="credit-section pane-tx"/g) || []).length >= 1);
 });

@@ -62,6 +62,6 @@ document.addEventListener('click', e => {
   if ((b = c('[data-proj-off]'))) { projSt().off += Number(b.dataset.projOff); renderProjectPage(); return; }
   if (c('[data-proj-open]')) projSt().off = 0;
   if ((b = c('[data-br-i]'))) { window.__br.i = Number(b.dataset.brI); renderBillRemind(); return; }
-  if ((b = c('[data-br]'))) { const x = window.__br.l[window.__br.i]; document.getElementById('brBg').hidden = true; gotoBill(x.card.id, x.offset); if (b.dataset.br === 'recon') openReconMode(x.card.id); else setTimeout(() => document.querySelector('[data-inline-payment]')?.click(), 80); }
+  if ((b = c('[data-br]'))) { const x = window.__br.l[window.__br.i]; document.getElementById('brBg').hidden = true; gotoBill(x.card.id, x.offset); if (b.dataset.br === 'recon') openReconMode(x.card.id); else setTimeout(() => cardPayOpen(x.card, x.offset), 120); }
 });
 setTimeout(() => { try { if (state) billRemindShow(); } catch { } }, 5000);

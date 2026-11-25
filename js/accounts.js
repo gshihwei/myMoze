@@ -258,7 +258,7 @@ function acctBankRows(list, tiles, key, unit, bankCollapsed) {
   let body = '';
   for (const g of acctCardBanks(list)) {
     if (!g.bank) { body += tiles[g.idx[0]]; continue; }
-    const sub = g.idx.map(i => list[i]), total = acctGroupTotal(sub), tkey = key === 'card' ? g.bank : `${key}:${g.bank}`, off = bankCollapsed.has(tkey);
+    const sub = g.idx.map(i => list[i]), total = acctGroupTotal(typeof acctTotalList === 'function' ? acctTotalList(sub, 'mainTotal') : sub), tkey = key === 'card' ? g.bank : `${key}:${g.bank}`, off = bankCollapsed.has(tkey);
     const amount = key === 'card' ? money(Math.abs(Math.min(0, total))) : `${total < 0 ? '−' : ''}${money(Math.abs(total))}`;
     body += `<div class="account-tile bank-row${selectedBank && selectedBank.key === key && selectedBank.bank === g.bank ? ' active' : ''}" data-bank-key="${key}" data-bank-name="${esc(g.bank)}" role="button" tabindex="0"><div class="account-tile-icon">${svg('bank')}</div><div class="account-tile-main"><b>${esc(g.bank)}</b><span>${sub.length} ${unit}</span></div><strong>${amount}</strong><button type="button" class="bank-toggle" data-bank-toggle="${esc(tkey)}" aria-expanded="${off ? 'false' : 'true'}" aria-label="${off ? '展開' : '收合'} ${esc(g.bank)}">${off ? '⌄' : '⌃'}</button></div>`;
     if (!off) body += `<div class="bank-children">${g.idx.map(i => tiles[i]).join('')}</div>`;
@@ -267,10 +267,10 @@ function acctBankRows(list, tiles, key, unit, bankCollapsed) {
 }
 function acctGroupsHTML(cards, cardTiles, normal, tiles) {
   const collapsed = new Set(prefs().acctCollapsed || []), bankCollapsed = new Set(prefs().bankCollapsed || []);
-  const head = (key, label, list) => `<button type="button" class="acct-group-head" data-acct-group="${key}" aria-expanded="${collapsed.has(key) ? 'false' : 'true'}"><span>${collapsed.has(key) ? '＋' : '−'} ${label} (${list.length})</span><span class="acct-group-total">${acctSignedMoney(acctGroupTotal(list))}</span></button>`;
+  const head = (key, label, list) => `<button type="button" class="acct-group-head" data-acct-group="${key}" aria-expanded="${collapsed.has(key) ? 'false' : 'true'}"><span>${collapsed.has(key) ? '＋' : '−'} ${label} (${list.length})</span><span class="acct-group-total">${acctSignedMoney(acctGroupTotal(typeof acctTotalList === 'function' ? acctTotalList(list, 'groupTotal') : list))}</span></button>`;
   // V26.91 自訂帳戶分組 (account.group) comes after the built-in groups; those accounts leave their built-in group.
-  const custom = new Map(); cards.forEach((a, i) => { if (a.group) { if (!custom.has(a.group)) custom.set(a.group, []); custom.get(a.group).push([a, cardTiles[i]]); } }); normal.forEach((a, i) => { if (a.group) { if (!custom.has(a.group)) custom.set(a.group, []); custom.get(a.group).push([a, tiles[i]]); } });
-  if (custom.size) { const kc = cards.map((a, i) => [a, cardTiles[i]]).filter(([a]) => !a.group), kn = normal.map((a, i) => [a, tiles[i]]).filter(([a]) => !a.group); cards = kc.map(x => x[0]); cardTiles = kc.map(x => x[1]); normal = kn.map(x => x[0]); tiles = kn.map(x => x[1]); }
+  const custom = new Map(); const put = (g, x) => { if (g) { if (!custom.has(g)) custom.set(g, []); custom.get(g).push(x); } }, live = a => a.archived ? '' : a.group; cards.forEach((a, i) => put(live(a), [a, cardTiles[i]])); normal.forEach((a, i) => put(live(a), [a, tiles[i]])); cards.forEach((a, i) => put(a.archived ? '封存' : '', [a, cardTiles[i]])); normal.forEach((a, i) => put(a.archived ? '封存' : '', [a, tiles[i]]));
+  if (custom.size) { const kc = cards.map((a, i) => [a, cardTiles[i]]).filter(([a]) => !a.group && !a.archived), kn = normal.map((a, i) => [a, tiles[i]]).filter(([a]) => !a.group && !a.archived); cards = kc.map(x => x[0]); cardTiles = kc.map(x => x[1]); normal = kn.map(x => x[0]); tiles = kn.map(x => x[1]); }
   let html = custom.size && !cards.length ? '' : head('card', '信用卡', cards) + (collapsed.has('card') ? '' : `<div class="credit-list">${cards.length ? acctBankRows(cards, cardTiles, 'card', '張信用卡', bankCollapsed) : '<div class="empty">尚無信用卡</div>'}</div>`);
   for (const [key, label] of acctTypes().filter(([k]) => k !== 'card')) {
     const idx = normal.map((a, i) => [a, i]).filter(([a]) => acctGroupKey(a) === key).map(([, i]) => i);

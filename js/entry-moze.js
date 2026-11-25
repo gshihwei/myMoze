@@ -59,7 +59,7 @@ function entryHasOp(expr) { return /[+\-*/]/.test(String(expr || '')); }
 // Categories used most in the last `days` days (expense / income only), topped up with the first main categories.
 function entrySuggest(st, today, n, days) {
   const d = new Date(String(today || '').slice(0, 10) + 'T00:00:00'); d.setDate(d.getDate() - (days || 90));
-  const cutoff = Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+  const cutoff = Number.isNaN(d.getTime()) ? '' : isoDate(d);
   const cnt = new Map(), cats = new Map((st.categories || []).map(c => [String(c.id), c]));
   for (const t of (st.transactions || [])) {
     if (!t || (t.kind !== 'expense' && t.kind !== 'income') || !t.category || String(t.date) < cutoff) continue;
@@ -99,7 +99,7 @@ function entryPostLoan(st, o) {
   if (!account) return { error: '請選擇帳戶' };
   if (account.type === 'card' && o.direction === 'payable') return { error: '應付款項請選擇現金或銀行帳戶，不能用信用卡' };
   const direction = o.direction === 'payable' ? 'payable' : 'receivable';
-  const date = o.date || new Date().toISOString().slice(0, 10), person = String(o.person || '').trim() || '未指定對象';
+  const date = o.date || isoDate(new Date()), person = String(o.person || '').trim() || '未指定對象';
   const label = o.label || (direction === 'receivable' ? '借出' : '借入');
   const name = String(o.name || '').trim() || `${label}：${person}`;
   const loanId = id();
