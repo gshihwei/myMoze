@@ -57,7 +57,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   };
   document.addEventListener('click',e=>{
     const s=e.target.closest('[data-tf-side]');if(s){side=s.dataset.tfSide;$('entrySide')?.classList.add('open');applyExpr();return;}
-    const p=e.target.closest('[data-tf-pick]');if(p){pick=p.dataset.tfPick;$('entrySide')?.classList.add('open');renderAccounts();applyExpr();sync();$('entryAcctTitle')?.scrollIntoView({block:'nearest'});$('accountChoices')?.scrollIntoView({block:'nearest'});return;}
+    const p=e.target.closest('[data-tf-pick]');if(p){pick=p.dataset.tfPick;applyExpr();efPick(pick==='in'?'toAccount':'account');return;}
     if(e.target.closest('[data-tf-all]')){const a=tfAcc('out');if(a){expr=String(Math.max(0,a.balance-feeVal()+discVal()));side='out';applyExpr();}return;}
     if(e.target.closest('#tfInReset')){inTouched=false;exprIn='';applyExpr();return;}
   });
@@ -72,7 +72,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const b=e.target.closest('#amountKeypad button[data-key]');if(b){press(b.dataset.key);return;}
     if(e.target.closest('#entryReset')){expr='';applyExpr();return;}
     const rn=e.target.closest('[data-rename-btn]');if(rn){const k=rn.dataset.renameBtn,lab=document.querySelector(`[data-rename=${k}]`),hid=$(k==='fee'?'entryFeeName':'entryDiscountName');const cur=lab?.textContent||'';const nv=prompt('欄位名稱（例如：運費、滿千送百）',cur);if(nv!==null){const dflt=k==='fee'?'手續費':'折扣',t=nv.trim().slice(0,12)||dflt;if(lab)lab.textContent=t;if(hid)hid.value=t===dflt?'':t;}return;}
-    if(e.target.closest('#entryAmountRow')&&!e.target.closest('select'))$('entrySide')?.classList.toggle('open');
+    if(e.target.closest('#entryAmountRow')&&!e.target.closest('select')&&!e.target.closest('#efFeeBtn'))$('entrySide')?.classList.add('open');
   });
   document.addEventListener('keydown',e=>{
     if(!$('modalBg')?.classList.contains('open')||e.ctrlKey||e.metaKey||e.altKey)return;
@@ -100,9 +100,9 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const mains=ordered.filter(c=>!c.parentId&&(c.kind||'expense')===kind);
     const cur=ordered.find(c=>String(c.id)===String($('formCategory')?.value));
     const cm=drill&&tab!=='suggest'?mains.find(c=>String(c.id)===String(drill)):null,kids=cm?ordered.filter(c=>String(c.parentId)===String(cm.id)&&catVisible(c)):[];
-    const list=(tab==='suggest'?entrySuggest(state,today(),10):mains).filter(c=>catVisible(c)&&modeAllows('categories',c.parentId||c.id));
+    const list=(tab==='suggest'?entrySuggest(state,today(),20).filter(c=>c.parentId||!state.categories.some(k=>String(k.parentId)===String(c.id)&&catVisible(k))).slice(0,10):mains).filter(c=>catVisible(c)&&modeAllows('categories',c.parentId||c.id));
     const chip=(c,small)=>{const on=cur&&String(cur.id)===String(c.id);return `<button type="button" class="entry-cat${on?' active':''}${small?' small':''}" data-cat="${c.id}"><span class="entry-bubble" style="background:${colorFor(c,mains,c.kind||kind)}">${iconHTML(c)}</span><span class="entry-cat-name">${esc(c.name)}</span></button>`;};
-    if(cm&&kids.length){cc.innerHTML=`<button type="button" class="entry-cat" data-cat-back aria-label="返回主類別"><span class="entry-bubble ef-add">‹</span><span class="entry-cat-name">返回</span></button>`+chip(cm)+kids.map(c=>chip(c)).join('');if(sub)sub.innerHTML='';return;}
+    if(cm&&kids.length){cc.innerHTML=`<button type="button" class="entry-cat" data-cat-back aria-label="返回主類別"><span class="entry-bubble ef-add">‹</span><span class="entry-cat-name">返回</span></button>`+kids.map(c=>chip(c)).join('');if(sub)sub.innerHTML='';return;}
     cc.innerHTML=list.map(c=>chip(c)).join('');if(sub)sub.innerHTML='';return;
     const mainOfCur=cur?(cur.parentId?ordered.find(x=>String(x.id)===String(cur.parentId)):cur):null;
     const subs=mainOfCur?ordered.filter(c=>String(c.parentId)===String(mainOfCur.id)&&catVisible(c)):[];
@@ -205,7 +205,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
       if(isTf()){alert('多類別不能包含轉帳');return;}
       if(!items.length)items=[snap()];else if(!items[ci].locked)items[ci]=snap();
       const b=items[ci];items.push({tab:b.locked?'expense':b.tab==='receivable'||b.tab==='payable'?'expense':b.tab,kind:b.kind||'expense',category:b.category,expr:'',account:b.account,project:b.project||'',person:b.person||'',name:'',cur:'',rewards:[]});
-      ci=items.length-1;loadItem(items[ci]);$('modalBg')?.classList.remove('item-locked');efPicked(false);for(const k of ['account','project'])if(f(k))f(k).dataset.userSet='1';$('entrySide')?.classList.add('open');efSync();
+      ci=items.length-1;loadItem(items[ci]);$('modalBg')?.classList.remove('item-locked');efPicked(false);for(const k of ['account','project'])if(f(k))f(k).dataset.userSet='1';efSync();
     },
     remove(i){
       if(items.length<2||items[i]?.locked){if(items[i]?.locked)alert('應收應付款項請到借還款頁處理');return;}
@@ -256,6 +256,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     window.__mozeLoanFilter='all';window.__mozeSelectedLoanId=r.loan?.id||null;if(typeof renderLoans==='function')renderLoans();
     return true;
   };
+  window.entryTfSet=(w,id)=>tfSet(w,id);
   window.entrySetAmount=v=>{if(isTf()&&side==='in'){exprIn=String(v);inTouched=true;}else expr=String(v);applyExpr();};
   window.refreshEntryChoices=refresh;
   window.mozeState=window.state;
@@ -274,7 +275,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     tab=(k==='income'||k==='transfer')?k:(hasHistory?'suggest':'expense');
     preset='';exprIn='';inTouched=false;side='out';pick='out';keepCat={};tfKeep=null;prevTab='expense';drill=t?cat(t.category).parentId||null:null;if(tab==='transfer'){if(t){preset=cat(t.category).name;if(t.toAmount!==undefined){exprIn=String(t.toAmount);inTouched=true;}if($('formToProject'))$('formToProject').value=t.toProject||'';}else{tab='';setTab('transfer');prevTab='expense';}}if($('entrySideTitle'))$('entrySideTitle').textContent=tab==='transfer'?'轉出金額':'金額';if($('entryAcctTitle')&&tab!=='transfer')$('entryAcctTitle').textContent='常用帳戶';if(bg)bg.dataset.etab=tab;
     if(tab==='suggest')setKind('expense');
-    $('entrySide')?.classList.add('open');
+    $('entrySide')?.classList.remove('open');
     setTimeout(()=>{window.mozeState=window.state;if(cs&&t&&t.category!==undefined)cs.dataset.keep=String(t.category);refresh();window.entryItems.reset(t||null);efSync();},0);
   };}
   setTimeout(()=>{window.mozeState=window.state;refresh();},200);

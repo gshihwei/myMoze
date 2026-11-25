@@ -12,7 +12,7 @@ function itemsTotal(list) { return Math.round(list.reduce((s, it) => s + itemTWD
 // True when every line can live in one transaction (only the category / amount / fee differ).
 function itemsUniform(list) {
   const a = list[0]; if (!a || itemLoan(a)) return false;
-  return list.every(x => !itemLoan(x) && !x.locked && x.kind === a.kind && String(x.account) === String(a.account) && String(x.project || '') === String(a.project || '') && (x.cur || '') === (a.cur || '') && !x.invoiceNo && (!x.name || x.name === (a.name || x.name)) && JSON.stringify(x.rewards || []) === JSON.stringify(a.rewards || [])) && !list.slice(1).some(x => x.name && x.name !== a.name);
+  return list.every(x => !itemLoan(x) && !x.locked && x.kind === a.kind && String(x.account) === String(a.account) && String(x.project || '') === String(a.project || '') && (x.cur || '') === (a.cur || '') && (!x.name || x.name === (a.name || x.name)) && JSON.stringify(x.rewards || []) === JSON.stringify(a.rewards || [])) && !list.slice(1).some(x => (x.name && x.name !== a.name) || (x.invoiceNo && x.invoiceNo !== a.invoiceNo));
 }
 function itemsCheck(list) {
   for (let i = 0; i < list.length; i++) { const it = list[i]; if (it.locked) continue; if (it.tab === 'transfer' || it.kind === 'transfer') return { error: '多類別不能包含轉帳', i }; if (!(itemBase(it) > 0)) return { error: `第 ${i + 1} 項還沒有金額`, i }; if (!(itemNet(it) > 0)) return { error: `第 ${i + 1} 項的折扣不能大於金額`, i }; if (it.tab === 'payable' && acct(it.account).type === 'card') return { error: '應付款項請選擇現金或銀行帳戶', i }; }

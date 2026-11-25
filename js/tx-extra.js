@@ -55,6 +55,7 @@ function txDetailExtra(t) {
   if (t.depositInst) { const o = txById(t.depositInst); if (o) h += txExtraBox('訂金', txLink(o, esc(o.name))); }
   if (t.installment) h += txExtraBox('分期', `<button type="button" class="tx-link" data-inst-open="${esc(t.installment.group)}">查看各期</button>`);
   if (t.rewards?.length) h += txExtraBox('紅利回饋', t.rewards.map(x => { const f = rewardRuleById(x); return f ? esc(f.rule.name) : ''; }).filter(Boolean).join('、'));
+  h += invDetailHTML(t);
   h += loanDetailExtra(t);
   h += splitGroupDetail(t);
   h += attachDetailHTML(t);
