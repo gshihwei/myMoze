@@ -696,3 +696,6 @@ button.account-detail-row{width:100%;background:none;border:0;border-bottom:1px 
 .draft-add textarea,.say-box textarea{width:100%;background:#1b2e41;color:#eef4fa;border:1px solid #2a4054;border-radius:13px;padding:12px;font:inherit;font-size:16px}
 .draft-row.open{background:#16273a;border-radius:13px}.draft-mark{padding:0 14px 12px}.draft-row .notice-row{width:100%;background:none;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
 #draftQ{width:100%;background:#1b2e41;color:#eef4fa;border:1px solid #2a4054;border-radius:12px;padding:10px;font:inherit;margin:6px 0}
+
+.qm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:12px 0}.qm-item{display:grid;gap:8px;justify-items:center;padding:16px 6px;border:1px solid #2a4054;border-radius:16px;background:#1b2e41;color:#eef4fa;font:inherit;cursor:pointer}.qm-item span{font-size:26px}
+.pull-hint{text-align:center;color:#8ea0b2;padding:8px;font-size:14px}#mobileAdd,#quickAdd{touch-action:manipulation;-webkit-touch-callout:none;user-select:none}
