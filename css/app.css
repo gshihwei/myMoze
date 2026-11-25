@@ -569,3 +569,14 @@ button.notice-row{cursor:pointer}.notice-row.overdue .day-main small:last-child{
 .app-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:10000;background:#5a2430;color:#fff;border-radius:12px;padding:12px 18px;box-shadow:0 10px 30px #0008;max-width:90vw}
 
 .top-tools{display:flex;gap:8px}.account-detail-list .account-detail-row{display:grid;grid-template-columns:auto 34px minmax(0,1fr) auto;gap:10px;align-items:center}.account-detail-list .account-detail-row .amount{text-align:right}
+
+/* V26.81 prefs */
+.quick-access{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.quick-access:empty{display:none}.quick-access .ghost{border:1px solid #2a4054;border-radius:999px;padding:6px 14px}.qa-remind{border:0;border-radius:999px;background:#2094d4;color:#fff;padding:6px 14px;cursor:pointer}
+html[data-font=l]{zoom:1.1}html[data-font=xl]{zoom:1.2}
+html[data-swap="1"] .expense-text{color:#31a875!important}html[data-swap="1"] .income-text{color:#ff6875!important}
+html[data-noanim="1"] *{transition:none!important;animation:none!important}
+html[data-keypad=phone] #amountKeypad [data-key="1"],html[data-keypad=phone] #amountKeypad [data-key="2"],html[data-keypad=phone] #amountKeypad [data-key="3"]{order:2}
+html[data-keypad=phone] #amountKeypad .op{order:1}html[data-keypad=phone] #amountKeypad [data-key=back]{order:3}
+html[data-keypad=phone] #amountKeypad [data-key="4"],html[data-keypad=phone] #amountKeypad [data-key="5"],html[data-keypad=phone] #amountKeypad [data-key="6"],html[data-keypad=phone] #amountKeypad [data-key=clear]{order:4}
+html[data-keypad=phone] #amountKeypad [data-key="7"],html[data-keypad=phone] #amountKeypad [data-key="8"],html[data-keypad=phone] #amountKeypad [data-key="9"]{order:5}
+html[data-keypad=phone] #amountKeypad [data-key=enter]{order:6}html[data-keypad=phone] #amountKeypad [data-key="."],html[data-keypad=phone] #amountKeypad [data-key="0"],html[data-keypad=phone] #amountKeypad [data-key="00"],html[data-keypad=phone] #amountKeypad [data-key=ok]{order:7}

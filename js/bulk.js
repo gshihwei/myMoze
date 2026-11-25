@@ -52,6 +52,8 @@ function bulkBarHTML() {
     <span class="bulk-group"><select id="bulkCat" aria-label="改分類"><option value="">改分類…</option>${catOptionsHTML('', '')}</select><button type="button" class="secondary" data-bulk="cat" ${n ? '' : 'disabled'}>套用</button></span>
     <span class="bulk-group"><select id="bulkProj" aria-label="改專案">${projOpts}</select><button type="button" class="secondary" data-bulk="proj" ${n ? '' : 'disabled'}>改專案</button></span>
     <span class="bulk-group"><input id="bulkTags" placeholder="#標籤" aria-label="加標籤"><button type="button" class="secondary" data-bulk="tags" ${n ? '' : 'disabled'}>加標籤</button></span>
+    <span class="bulk-group"><select id="bulkAcct" aria-label="改帳戶"><option value="">改帳戶…</option>${acctActive(acctOrdered(state.accounts)).map(a => `<option value="${esc(a.id)}">${acctName(a)}</option>`).join('')}</select><button type="button" class="secondary" data-bulk="acct" ${n ? '' : 'disabled'}>套用</button></span>
+    <span class="bulk-group"><select id="bulkField" aria-label="欄位"><option value="name">名稱</option><option value="merchant">商家</option><option value="date">日期 (YYYY-MM-DD)</option></select><input id="bulkValue" aria-label="新內容"><button type="button" class="secondary" data-bulk="field" ${n ? '' : 'disabled'}>修改</button></span>
     <button type="button" class="secondary danger-btn" data-bulk="del" ${n ? '' : 'disabled'}>刪除</button>
     <button type="button" class="primary" data-bulk="done">完成</button>
   </div>`;
@@ -70,6 +72,8 @@ async function bulkRun(action) {
   if (action === 'cat') { const v = document.getElementById('bulkCat')?.value; if (!v) return alert('請先選擇分類'); res = bulkSetCategory(ids, v); label = '改分類'; }
   else if (action === 'proj') { res = bulkSetProject(ids, document.getElementById('bulkProj')?.value || ''); label = '改專案'; }
   else if (action === 'tags') { res = bulkAddTags(ids, document.getElementById('bulkTags')?.value || ''); if (!res.changed && !res.skipped) return; label = '加標籤'; }
+  else if (action === 'acct') { const v = document.getElementById('bulkAcct')?.value; if (!v) return alert('請先選擇帳戶'); res = bulkSetAccount(ids, v); label = '改帳戶'; }
+  else if (action === 'field') { const k = document.getElementById('bulkField')?.value, v = document.getElementById('bulkValue')?.value || ''; if (k === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return alert('日期請輸入 YYYY-MM-DD'); res = bulkSetField(ids, k, v); label = '修改'; }
   else if (action === 'del') { if (!confirm(`刪除 ${ids.length} 筆交易？\n\n帳戶餘額會一併還原；借還款交易不會被刪除（請到借還款頁處理）。`)) return; res = bulkDelete(ids); label = '刪除'; bulkSel.clear(); }
   if (!res) return;
   await save(); render(); renderBulkBar();

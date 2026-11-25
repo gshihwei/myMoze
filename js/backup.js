@@ -6,7 +6,7 @@
 // The newest 7 days are kept. Snapshots stay on this device and are never synced.
 
 var backupLastDay = '', backupBusy = false;
-function backupKeep() { return 7; }
+function backupKeep() { return 30; }
 function backupDbName() { return 'moze-backups'; }
 
 function backupSummary(st) {

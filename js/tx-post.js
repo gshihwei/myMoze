@@ -69,7 +69,7 @@ function txPostOpen(t) {
   const finishing = t && window.__finishPending === String(t.id); window.__finishPending = null;
   el.postMode.value = finishing ? 'now' : txPostMode(t);
   el.postOn.value = t ? (t.pending ? t.date : t.postDate || '') : '';
-  if (finishing && el.date) el.date.value = isoDate(new Date());
+  if (finishing && el.date && prefs().finishTime !== 'keep') el.date.value = isoDate(new Date());
   const b = t ? depositBalance(t) : null, off = !!(t && (t.depositOf || t.installment || t.recurringId || (b && !b.pending)));
   const box = document.getElementById('depositBox'); if (box) box.dataset.off = off ? '1' : '';
   el.depOn.checked = !!(b && b.pending); el.depAmount.value = b && !b.amountTbd ? b.amount : ''; el.depDate.value = b && !b.dateTbd ? b.date : '';
@@ -79,6 +79,7 @@ function txPostOpen(t) {
 function finishPending(t) {
   if (!t?.pending) return false;
   if (t.depositOf || t.amountTbd || t.dateTbd) { window.__finishPending = String(t.id); window.editTx(t.id); return false; }
+  if (prefs().finishTime !== 'keep') { t.date = isoDate(new Date()); t.time = nowTime(); }
   confirmPending(t); return true;
 }
 document.addEventListener('change', e => { if (e.target?.closest?.('#txForm') && ['postMode', 'postOn', 'depOn', 'depAmount', 'depDate', 'kind', 'account', 'instOn'].includes(e.target.name)) txPostSyncUI(); });

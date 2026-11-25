@@ -531,6 +531,10 @@ html[data-theme="light"],:root[data-theme="light"] body{background:#f7f8fa !impo
 :root[data-theme="light"] .acct-totals summary{color:#465c72}
 :root[data-theme="light"] .pb-after{color:#586b7e}
 :root[data-theme="light"] .app-toast{background:#f4ecee;color:#141414;box-shadow:0 10px 30px rgba(15,23,32,0.16)}
+:root[data-theme="light"] .quick-access .ghost{border:1px solid #ecf0f4}
+:root[data-theme="light"] .qa-remind{background:#2094d4;color:#141414}
+html[data-theme="light"][data-swap="1"] .expense-text{color:#31a875!important}
+html[data-theme="light"][data-swap="1"] .income-text{color:#cc0012!important}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}

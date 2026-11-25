@@ -26,7 +26,7 @@ function txRangeBounds(f, today = new Date()) {
 // One transaction against the filters (pure; covered by tests/search.test.js).
 function txMatches(t, f, bounds = txRangeBounds(f)) {
   if (f.q) {
-    const hay = [t.name, t.merchant, t.note, t.person, ...(Array.isArray(t.tags) ? t.tags.map(x => '#' + x) : [])].filter(Boolean).join(' ').toLowerCase();
+    const hay = [t.name, t.merchant, t.note, t.person, cat(t.category).name, acct(t.account).name, t.project ? (state.projects || []).find(p => String(p.id) === String(t.project))?.name : '', String(Math.abs(Number(t.amount || 0))), t.invoiceNo, ...(Array.isArray(t.tags) ? t.tags.map(x => '#' + x) : [])].filter(Boolean).join(' ').toLowerCase();
     if (!hay.includes(f.q)) return false;
   }
   if (f.type && f.type !== 'all') {
@@ -47,6 +47,10 @@ function txMatches(t, f, bounds = txRangeBounds(f)) {
     if (f.project === 'none' ? !!t.project : String(t.project) !== String(f.project)) return false;
   }
   if (f.status === 'pending' && !t.pending) return false;
+  if (f.status === 'ev-single' && rptEvent(t) !== 'single') return false;
+  if (f.status === 'ev-recurring' && rptEvent(t) !== 'recurring') return false;
+  if (f.status === 'ev-installment' && rptEvent(t) !== 'installment') return false;
+  if (f.status === 'postpone' && !t.postDate) return false;
   if (f.status === 'done' && t.pending) return false;
   if (f.status === 'imported' && !t.imported) return false;
   return true;

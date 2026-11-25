@@ -45,7 +45,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   document.addEventListener('input',e=>{if(e.target?.id==='entryFee'||e.target?.id==='entryDiscount')applyExpr();if(e.target?.name==='name'&&e.isTrusted)delete e.target.dataset.auto;});
 
   // ---- categories / presets / accounts ----
-  function colorFor(c,mains,kind){if(kind==='income')return COLOR.income;const main=c.parentId?mains.find(x=>String(x.id)===String(c.parentId))||c:c;const i=mains.findIndex(x=>String(x.id)===String(main.id));return PALETTE[(i<0?0:i)%PALETTE.length];}
+  function colorFor(c,mains,kind){const own=c.color||(c.parentId&&mains.find(x=>String(x.id)===String(c.parentId))?.color);if(/^#[0-9a-f]{6}$/i.test(own||''))return own;if(kind==='income')return COLOR.income;const main=c.parentId?mains.find(x=>String(x.id)===String(c.parentId))||c:c;const i=mains.findIndex(x=>String(x.id)===String(main.id));return PALETTE[(i<0?0:i)%PALETTE.length];}
   function iconHTML(c){return (typeof iconPaths!=='undefined'&&iconPaths[c.id])?svg(c.id):`<span class="emoji">${esc(c.icon||'🏷️')}</span>`;}
   function fillCategorySelect(prev){
     const cs=$('formCategory');if(!cs)return;
@@ -61,11 +61,11 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const kind=curKind(),ordered=typeof catOrdered==='function'?catOrdered():state.categories;
     const mains=ordered.filter(c=>!c.parentId&&(c.kind||'expense')===kind);
     const cur=ordered.find(c=>String(c.id)===String($('formCategory')?.value));
-    const list=(tab==='suggest'?entrySuggest(state,today(),10):mains).filter(c=>modeAllows('categories',c.parentId||c.id));
+    const list=(tab==='suggest'?entrySuggest(state,today(),10):mains).filter(c=>catVisible(c)&&modeAllows('categories',c.parentId||c.id));
     const chip=(c,small)=>{const on=cur&&String(cur.id)===String(c.id);return `<button type="button" class="entry-cat${on?' active':''}${small?' small':''}" data-cat="${c.id}"><span class="entry-bubble" style="background:${colorFor(c,mains,c.kind||kind)}">${iconHTML(c)}</span><span class="entry-cat-name">${esc(c.name)}</span></button>`;};
     cc.innerHTML=list.map(c=>chip(c)).join('');
     const mainOfCur=cur?(cur.parentId?ordered.find(x=>String(x.id)===String(cur.parentId)):cur):null;
-    const subs=mainOfCur?ordered.filter(c=>String(c.parentId)===String(mainOfCur.id)):[];
+    const subs=mainOfCur?ordered.filter(c=>String(c.parentId)===String(mainOfCur.id)&&catVisible(c)):[];
     if(sub)sub.innerHTML=subs.length?`<div class="entry-subs-title">${esc(mainOfCur.name)}</div><div class="entry-grid">${subs.map(c=>chip(c,true)).join('')}</div>`:'';
   }
   function renderPresets(){
@@ -145,7 +145,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     if(t&&t.orig&&k!=='transfer')expr=String(t.orig.amount);if(t&&t.feeIncluded&&k!=='transfer'){if(!t.orig)expr=String(entryBaseAmount(t));const fe=f('fee'),de=f('discount');if(fe)fe.value=t.fee||'';if(de)de.value=t.discount||'';}
     const cs=$('formCategory');if(cs&&t&&t.category!==undefined)cs.dataset.keep=String(t.category);
     const nm=f('name');if(nm)delete nm.dataset.auto;
-    const hasHistory=!t&&entrySuggest(state,today(),1).length&&(state.transactions||[]).some(x=>x.kind==='expense'||x.kind==='income');
+    const hasHistory=!t&&prefOn('suggest')&&entrySuggest(state,today(),1).length&&(state.transactions||[]).some(x=>x.kind==='expense'||x.kind==='income');
     tab=(k==='income'||k==='transfer')?k:(hasHistory?'suggest':'expense');
     preset='';if(bg)bg.dataset.etab=tab;
     if(tab==='suggest')setKind('expense');

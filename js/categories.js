@@ -88,7 +88,7 @@ function catFormHTML(c) {
   <div class="cat-icon-groups" role="group" aria-label="常用圖示">${catIconGroups().map(([label, list]) => `<div class="cat-icon-group"><small>${esc(label)}</small><div class="cat-icons">${list.map(i => `<button type="button" data-cat-icon="${esc(i)}" aria-label="${esc(i)}">${esc(i)}</button>`).join('')}</div></div>`).join('')}</div>
   <p class="hint">找不到想要的？直接在上方「圖示」欄輸入或貼上任何 emoji（建議單一圖示）。</p>
   ${r.id && !r.__new ? `<p class="cat-form-del"><button type="button" class="secondary danger-btn" data-cat-del="${esc(r.id)}">刪除這個分類</button></p>` : ''}
-  ${isMainWithKids ? '<p class="hint">這個主分類底下有子分類，不能改成子分類；改變收支類型時，子分類會一起改。</p>' : ''}`;
+  ${isMainWithKids ? '<p class="hint">這個主分類底下有子分類，不能改成子分類；改變收支類型時，子分類會一起改。</p>' : ''}<label class="proj-archive"><input type="checkbox" name="ccoloron"${r.color ? ' checked' : ''}> 自訂顏色 <input type="color" name="ccolor" value="${esc(r.color || '#3f86e6')}"></label><label class="proj-archive"><input type="checkbox" name="chidden"${r.hidden ? ' checked' : ''}> 隱藏（記帳時不出現，既有記錄保留）</label>`;
 }
 function catFormBind(root) {
   root.querySelectorAll('[data-cat-icon]').forEach(b => b.onclick = () => { const i = root.querySelector('[name=cicon]'); if (i) i.value = b.dataset.catIcon; });
@@ -109,6 +109,8 @@ function catFromForm(f, old) {
   if (dup) return { error: `「${name}」已經存在` };
   const c = { ...(old || { id: id() }), name, icon: String(f.get('cicon') || '•').trim().slice(0, 4) || '•', kind };
   if (parentId) c.parentId = parentId; else delete c.parentId;
+  if (f.get('chidden')) c.hidden = true; else delete c.hidden;
+  const col = String(f.get('ccolor') || ''); if (f.get('ccoloron') && /^#[0-9a-f]{6}$/i.test(col)) c.color = col; else delete c.color;
   return { category: c };
 }
 

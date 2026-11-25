@@ -53,9 +53,9 @@ function bundle(state, idb) {
 }
 const ST = { accounts: [{ id: 'a' }], categories: [], projects: [], transactions: [{ id: 1 }, { id: 2 }], budgets: [], recurring: [], loans: [] };
 
-test('backupPrune()／backupShouldRun()：只留最新 7 天，同一天只跑一次', () => {
+test('backupPrune()／backupShouldRun()：只留最新 N 天，同一天只跑一次', () => {
   const run = bundle(ST, fakeIDB());
-  assert.equal(run(`JSON.stringify(backupPrune(['2026-11-01','2026-11-09','2026-11-03','2026-11-04','2026-11-05','2026-11-06','2026-11-07','2026-11-08','2026-11-02']))`), '["2026-11-02","2026-11-01"]');
+  assert.equal(run(`JSON.stringify(backupPrune(['2026-11-01','2026-11-09','2026-11-03','2026-11-04','2026-11-05','2026-11-06','2026-11-07','2026-11-08','2026-11-02'], 7))`), '["2026-11-02","2026-11-01"]');
   assert.equal(run(`backupShouldRun('2026-11-19','2026-11-19')`), false);
   assert.equal(run(`backupShouldRun('','2026-11-19')`), true);
 });
@@ -71,12 +71,12 @@ test('backupMaybe()：今天第一次存檔建立快照，同一天再存不重�
   assert.equal(JSON.parse(snap.data).transactions.length, 2);
 });
 
-test('backupMaybe()：超過 7 天時刪掉最舊的', async () => {
+test('backupMaybe()：超過 30 天時刪掉最舊的', async () => {
   const idb = fakeIDB(), run = bundle(ST, idb);
-  // seed 7 older days directly
-  await run(`backupOpen().then(db=>backupTx(db,'readwrite',s=>{for(let i=1;i<=7;i++)s.put({day:'2026-10-0'+i,at:'x',summary:{transactions:0},data:'{}'})}))`);
+  // seed 30 older days directly
+  await run(`backupOpen().then(db=>backupTx(db,'readwrite',s=>{for(let i=1;i<=30;i++)s.put({day:'2026-10-'+String(i).padStart(2,'0'),at:'x',summary:{transactions:0},data:'{}'})}))`);
   await run('backupMaybe()');
   const days = (await run('backupList()')).map(b => b.day);
-  assert.equal(days.length, 7);
+  assert.equal(days.length, 30);
   assert.ok(!days.includes('2026-10-01'));
 });
