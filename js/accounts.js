@@ -16,6 +16,8 @@ function acctMove(a, dir) {
   const i = group.indexOf(a), j = i + dir; if (i < 0 || j < 0 || j >= group.length) return false;
   const b = group[j]; [a.order, b.order] = [b.order, a.order]; return true;
 }
+// True when the account has a low-balance threshold and its balance is below it (cards never trigger).
+function lowBalanceHit(a) { return !!a && a.type !== 'card' && !a.archived && Number.isFinite(Number(a.lowBalance)) && a.lowBalance !== '' && a.lowBalance !== null && Number(a.balance || 0) < Number(a.lowBalance); }
 function acctActive(list, keepId) { return (list || []).filter(a => !a.archived || String(a.id) === String(keepId ?? '')); }
 
 function acctCurrencyField(cur, locked) {
@@ -32,6 +34,8 @@ function acctEditFormHTML(a) {
   </div>
   <div class="form-grid form-grid-1"><label>備註<input name="anote" maxlength="100" value="${esc(a.note || '')}" placeholder="可留空，例如帳號末四碼"></label></div>
   <label class="proj-archive"><input type="checkbox" name="aarchived" ${a.archived ? 'checked' : ''}> 封存（不再出現在記帳的帳戶選單；餘額仍計入淨資產）</label>
+  <label class="proj-archive"><input type="checkbox" name="aexclude" ${a.excludeNet ? 'checked' : ''}> 不納入總資產（概覽的淨資產、淨資產走勢與資產負債總覽都不計入這個帳戶）</label>
+  ${card ? '' : `<div class="form-grid form-grid-1"><label>餘額不足提醒（餘額低於此金額時提醒，留空＝不提醒）<input name="alow" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.lowBalance ?? '')}" placeholder="例如 3000"></label></div>`}
   ${locked ? '<p class="hint">這個帳戶已有交易，幣別不能修改。</p>' : ''}
   <div class="acct-manage-actions">
     <span class="hint">目前餘額 ${acctMoney(a.balance, a)}</span>
@@ -53,6 +57,8 @@ function acctFromEditForm(f, old) {
   else { a.limit = Math.max(0, Number(f.get('alimit') || 0)); a.statement = Math.min(31, Math.max(1, Math.round(Number(f.get('astatement') || 15)))); a.due = Math.min(31, Math.max(1, Math.round(Number(f.get('adue') || 5)))); }
   if (!a.note) delete a.note;
   if (!a.archived) delete a.archived;
+  if (f.get('aexclude')) a.excludeNet = true; else delete a.excludeNet;
+  const low = Number(f.get('alow')); if (old.type !== 'card' && String(f.get('alow') ?? '').trim() !== '' && Number.isFinite(low) && low >= 0) a.lowBalance = low; else delete a.lowBalance;
   return { account: a };
 }
 

@@ -40,6 +40,7 @@ function yearReviewHTML(r) {
 function balanceOverview(accounts = state.accounts) {
   const rows = [], missing = [];
   for (const a of (accounts || [])) {
+    if (a.excludeNet) continue;
     const cur = acctCur(a), v = Number(a.balance || 0), tw = cur === 'TWD' ? v : toTWD(v, cur);
     if (tw === null || tw === undefined) { if (v) missing.push(cur); continue; }
     rows.push({ id: String(a.id), name: a.name, type: a.type, cur, balance: v, twd: Math.round(tw) });

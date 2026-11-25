@@ -54,6 +54,7 @@ function reminderList(today, lead) {
     const info = creditDueInfo(card, base);
     if (info && info.days <= n) out.push({ type: 'card', id: String(card.id), title: `${card.name} 信用卡繳款`, date: info.dueDate, days: info.days, amount: info.owed });
   }
+  for (const a of (state.accounts || [])) if (lowBalanceHit(a)) out.push({ type: 'low', id: String(a.id), title: `${a.name} 餘額不足`, date: '', days: 0, amount: Number(a.balance || 0), limit: Number(a.lowBalance) });
   for (const r0 of (state.recurring || [])) {
     const r = normRecurring(r0);
     if (recurringEnded(r) || r.paused || !r.next) continue;
@@ -66,7 +67,7 @@ function reminderDayText(days) { return days < 0 ? `逾期 ${-days} 天` : days 
 function reminderBarHTML(list) {
   const shown = list.slice(0, 6), more = list.length - shown.length;
   return `<div class="reminder-head"><b>🔔 提醒 ${list.length} 項</b><button type="button" class="ghost" id="reminderSnooze">今天不再提醒</button></div>` +
-    shown.map(x => `<div class="reminder-row ${x.days < 0 ? 'overdue' : x.days <= 1 ? 'soon' : ''}"><span>${esc(x.title)}</span><small>${esc(x.date)} · ${reminderDayText(x.days)}</small><b>${x.kind === 'income' ? '+' : ''}${money(x.amount)}</b></div>`).join('') +
+    shown.map(x => `<div class="reminder-row ${x.days < 0 ? 'overdue' : x.days <= 1 ? 'soon' : ''}"><span>${esc(x.title)}</span><small>${x.type === 'low' ? `低於 ${money(x.limit)}` : `${esc(x.date)} · ${reminderDayText(x.days)}`}</small><b>${x.kind === 'income' ? '+' : ''}${money(x.amount)}</b></div>`).join('') +
     (more > 0 ? `<div class="hint">還有 ${more} 項…</div>` : '');
 }
 function renderReminders() {
