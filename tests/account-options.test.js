@@ -64,3 +64,19 @@ test('新增帳戶表單：選項 HTML 與表單轉換（信用卡不存餘額�
   assert.deepEqual(J(`acctOptionsFromForm(new Map([['alow','']]), 'bank')`), {});
   assert.deepEqual(J(`acctOptionsFromForm(new Map([['alow','0']]), 'cash')`), { lowBalance: 0 });
 });
+
+test('帳戶類型：新增電子支付；現有帳戶可改類型，轉成信用卡帶預設欄位、轉離信用卡清掉卡片欄位', () => {
+  const { J, run } = bundle(mk([A('錢包', 100), A('卡', -500, { type: 'card', limit: 80000, statement: 10, due: 25, lowBalance: 5 })]));
+  assert.equal(J(`acctTypeLabel({type:'ewallet'})`), '電子支付');
+  assert.deepEqual(J('acctTypes().map(x => x[0])'), ['bank', 'cash', 'ewallet', 'card']);
+  const e = J(`acctFromEditForm(new Map([['aname','錢包'],['acur','TWD'],['atype','ewallet']]), state.accounts[0]).account`);
+  assert.equal(e.type, 'ewallet'); assert.equal(e.limit, undefined); assert.equal(e.balance, 100);
+  const c = J(`acctFromEditForm(new Map([['aname','錢包'],['acur','TWD'],['atype','card'],['alimit','30000']]), state.accounts[0]).account`);
+  assert.equal(c.type, 'card'); assert.equal(c.limit, 30000); assert.equal(c.statement, 15); assert.equal(c.due, 5);
+  const b = J(`acctFromEditForm(new Map([['aname','卡'],['acur','TWD'],['atype','bank']]), state.accounts[1]).account`);
+  assert.equal(b.type, 'bank'); assert.equal(b.limit, undefined); assert.equal(b.statement, undefined); assert.equal(b.balance, -500);
+  const bad = J(`acctFromEditForm(new Map([['aname','錢包'],['acur','TWD'],['atype','hack']]), state.accounts[0]).account`);
+  assert.equal(bad.type, 'bank');
+  assert.match(J('acctEditFormHTML(state.accounts[1])'), /data-acct-card-fields\s*>/);
+  assert.match(J('acctEditFormHTML(state.accounts[0])'), /data-acct-card-fields hidden/);
+});

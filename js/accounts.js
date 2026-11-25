@@ -3,10 +3,11 @@
 // acctCur, adjust, isoDate, selectedDate, openEntity, deleteAccount, save, render, id).
 // Function declarations / var only.
 //
-// Account record: { id, name, type: 'cash' | 'bank' | 'card', balance, currency?, limit?, statement?, due?, note?, archived? }
+// Account record: { id, name, type: 'cash' | 'bank' | 'ewallet' | 'card', balance, currency?, limit?, statement?, due?, note?, archived? }
 
 function acctCurrencies() { return ['TWD', 'USD', 'JPY', 'EUR', 'CNY', 'HKD', 'KRW', 'GBP', 'AUD', 'SGD', 'CAD', 'THB']; }
-function acctTypeLabel(a) { return a?.type === 'card' ? '信用卡' : a?.type === 'cash' ? '現金' : '銀行'; }
+function acctTypes() { return [['bank', '銀行'], ['cash', '現金'], ['ewallet', '電子支付'], ['card', '信用卡']]; }
+function acctTypeLabel(a) { return (acctTypes().find(([k]) => k === a?.type) || [0, '銀行'])[1]; }
 function acctHasTx(aid) { const k = String(aid); return (state.transactions || []).some(t => String(t.account) === k || String(t.toAccount ?? '') === k); }
 // User-defined order (account.order); accounts without one keep their stored order after the ordered ones.
 function acctOrdered(list) { const arr = [...(list || [])]; return arr.map((a, i) => [a, Number.isFinite(Number(a.order)) ? Number(a.order) : 1e6 + i]).sort((x, y) => x[1] - y[1]).map(x => x[0]); }
@@ -38,10 +39,11 @@ function acctEditFormHTML(a) {
   const locked = acctHasTx(a.id), card = a.type === 'card';
   return `<div class="form-grid">
     <label>帳戶名稱<input name="aname" required maxlength="30" value="${esc(a.name || '')}"></label>
-    <label>類型${card ? '<input value="信用卡" readonly>' : `<select name="atype"><option value="bank" ${a.type !== 'cash' ? 'selected' : ''}>銀行</option><option value="cash" ${a.type === 'cash' ? 'selected' : ''}>現金</option></select>`}</label>
+    <label>類型<select name="atype">${acctTypes().map(([k, l]) => `<option value="${k}" ${(a.type || 'bank') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
     ${acctCurrencyField(acctCur(a), locked)}
-    ${card ? `<label>信用額度<input name="alimit" type="number" min="0" step="any" value="${esc(a.limit ?? 0)}"></label><label>結帳日<input name="astatement" type="number" min="1" max="31" value="${esc(a.statement ?? 15)}"></label><label>繳款日<input name="adue" type="number" min="1" max="31" value="${esc(a.due ?? 5)}"></label>` : ''}
   </div>
+  <div class="form-grid" data-acct-card-fields ${card ? '' : 'hidden'}><label>信用額度<input name="alimit" type="number" min="0" step="any" value="${esc(a.limit ?? 0)}"></label><label>結帳日<input name="astatement" type="number" min="1" max="31" value="${esc(a.statement ?? 15)}"></label><label>繳款日<input name="adue" type="number" min="1" max="31" value="${esc(a.due ?? 5)}"></label></div>
+  <p class="hint">更改類型不會變動餘額與交易。信用卡的餘額為負數代表欠款；由一般帳戶改成信用卡時，請確認餘額符號。</p>
   <div class="form-grid form-grid-1"><label>備註<input name="anote" maxlength="100" value="${esc(a.note || '')}" placeholder="可留空，例如帳號末四碼"></label></div>
   <label class="proj-archive"><input type="checkbox" name="aarchived" ${a.archived ? 'checked' : ''}> 封存（不再出現在記帳的帳戶選單；餘額仍計入淨資產）</label>
   <label class="proj-archive"><input type="checkbox" name="aexclude" ${a.excludeNet ? 'checked' : ''}> 不納入總資產（概覽的淨資產、淨資產走勢與資產負債總覽都不計入這個帳戶）</label>
@@ -63,10 +65,12 @@ function acctFromEditForm(f, old) {
   if (cur !== acctCur(old) && acctHasTx(old.id)) return { error: '這個帳戶已有交易，幣別不能修改' };
   if ((state.accounts || []).some(a => a !== old && a.name === name && acctCur(a) === cur)) return { error: `已經有「${name}（${cur}）」` };
   const a = { ...old, name, currency: cur, note: String(f.get('anote') || '').trim(), archived: !!f.get('aarchived') };
-  if (old.type !== 'card') a.type = f.get('atype') === 'cash' ? 'cash' : 'bank';
+  const want = String(f.get('atype') || old.type || 'bank'); a.type = acctTypes().some(([k]) => k === want) ? want : (old.type || 'bank');
+  if (a.type !== 'card') { delete a.limit; delete a.statement; delete a.due; }
   else { a.limit = Math.max(0, Number(f.get('alimit') || 0)); a.statement = Math.min(31, Math.max(1, Math.round(Number(f.get('astatement') || 15)))); a.due = Math.min(31, Math.max(1, Math.round(Number(f.get('adue') || 5)))); }
   if (!a.note) delete a.note;
   if (!a.archived) delete a.archived;
+  if (a.type === 'card') delete a.lowBalance;
   if (f.get('aexclude')) a.excludeNet = true; else delete a.excludeNet;
   const low = Number(f.get('alow')); if (old.type !== 'card' && String(f.get('alow') ?? '').trim() !== '' && Number.isFinite(low) && low >= 0) a.lowBalance = low; else delete a.lowBalance;
   return { account: a };
@@ -112,6 +116,7 @@ function updateTransferFx() {
 }
 document.addEventListener('change', e => { if (e.target?.closest?.('#txForm') && ['account', 'toAccount', 'kind'].includes(e.target.name)) updateTransferFx(); });
 
+document.addEventListener('change', e => { const s = e.target; if (s?.name === 'atype' && s.closest?.('#entityForm')) { const box = s.closest('#entityForm').querySelector('[data-acct-card-fields]'); if (box) box.hidden = s.value !== 'card'; } });
 document.addEventListener('click', async e => {
   const find = v => (state.accounts || []).find(a => String(a.id) === String(v));
   const mg = e.target.closest?.('[data-acct-manage]'); if (mg) { e.preventDefault(); e.stopPropagation(); const a = find(mg.dataset.acctManage); if (a) openEntity('accountEdit', a); return; }
