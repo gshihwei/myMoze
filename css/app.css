@@ -305,7 +305,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .bank-children{margin:2px 0 6px 22px;padding-left:12px;border-left:1px solid rgba(255,255,255,.12)}
 
 /* V26.49 account / credit-card details open as a full-screen sheet instead of below the list */
-#creditAccountDetail:not([hidden]),#accountDetail:not([hidden]){position:fixed;inset:0;z-index:25;margin:0;border:0;border-radius:0;overflow-y:auto;padding:max(16px,env(safe-area-inset-top)) 16px 28px;background:#101a26}
+@media(max-width:1099px){#creditAccountDetail:not([hidden]),#accountDetail:not([hidden]){position:fixed;inset:0;z-index:25;margin:0;border:0;border-radius:0;overflow-y:auto;padding:max(16px,env(safe-area-inset-top)) 16px 28px;background:#101a26}}
 .detail-close-row{margin-bottom:10px}
 .bank-row{cursor:pointer}
 
@@ -315,4 +315,24 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .info-row span{opacity:.75}.info-row b{font-weight:600;text-align:right}
 .detail-gear{font-size:13px}
 .sub-accts{display:grid;gap:6px}.sub-acct{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 14px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03);color:inherit;font:inherit;cursor:pointer;text-align:left}
-@media(min-width:900px){#creditAccountDetail:not([hidden]),#accountDetail:not([hidden]){padding-left:calc(50% - 360px);padding-right:calc(50% - 360px)}}
+
+
+/* V26.51 desktop: account list | detail | transactions (three panes, like MOZE) */
+.detail-empty{display:none}
+.account-tile.active{border-color:#a99af1;background:#242b43}
+@media(min-width:1100px){
+  #view-accounts.active{display:grid;grid-template-columns:minmax(340px,400px) minmax(0,1fr);gap:20px;align-items:start}
+  #view-accounts>.page-head{grid-column:1/-1}
+  #view-accounts #accountGrid{display:block;grid-column:1;grid-row:2;margin:0;max-height:calc(100vh - 170px);overflow-y:auto;padding-right:6px}
+  #view-accounts .credit-detail,#view-accounts .detail-empty{grid-column:2;grid-row:2;margin:0;max-height:calc(100vh - 170px);overflow-y:auto}
+  #creditAccountDetail:not([hidden]),#accountDetail:not([hidden]){display:grid;grid-template-columns:minmax(300px,1fr) minmax(300px,1fr);column-gap:22px;align-content:start}
+  #creditAccountDetail:not([hidden])>*,#accountDetail:not([hidden])>*{grid-column:1;min-width:0}
+  #creditAccountDetail:not([hidden])>.pane-tx,#accountDetail:not([hidden])>.pane-tx{grid-column:2;grid-row:1/span 40;align-self:start}
+  .detail-close-row{display:none}
+  #view-accounts.has-detail .detail-empty{display:none}
+  #view-accounts:not(.has-detail) .detail-empty{display:grid;place-items:center;min-height:320px;border:1px dashed rgba(255,255,255,.14);border-radius:18px;color:#8194a7}
+}
+
+.credit-period strong{white-space:nowrap;font-size:14px}
+.pane-tx .account-detail-row{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid rgba(255,255,255,.06)}
+.pane-tx .account-detail-date{font-size:12px;opacity:.7}

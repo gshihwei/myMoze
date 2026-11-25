@@ -124,7 +124,7 @@ function acctBankRows(list, tiles, key, unit, bankCollapsed) {
     if (!g.bank) { body += tiles[g.idx[0]]; continue; }
     const sub = g.idx.map(i => list[i]), total = acctGroupTotal(sub), tkey = key === 'card' ? g.bank : `${key}:${g.bank}`, off = bankCollapsed.has(tkey);
     const amount = key === 'card' ? money(Math.abs(Math.min(0, total))) : `${total < 0 ? '−' : ''}${money(Math.abs(total))}`;
-    body += `<div class="account-tile bank-row" data-bank-key="${key}" data-bank-name="${esc(g.bank)}" role="button" tabindex="0"><div class="account-tile-icon">${svg('bank')}</div><div class="account-tile-main"><b>${esc(g.bank)}</b><span>${sub.length} ${unit}</span></div><strong>${amount}</strong><button type="button" class="bank-toggle" data-bank-toggle="${esc(tkey)}" aria-expanded="${off ? 'false' : 'true'}" aria-label="${off ? '展開' : '收合'} ${esc(g.bank)}">${off ? '⌄' : '⌃'}</button></div>`;
+    body += `<div class="account-tile bank-row${selectedBank && selectedBank.key === key && selectedBank.bank === g.bank ? ' active' : ''}" data-bank-key="${key}" data-bank-name="${esc(g.bank)}" role="button" tabindex="0"><div class="account-tile-icon">${svg('bank')}</div><div class="account-tile-main"><b>${esc(g.bank)}</b><span>${sub.length} ${unit}</span></div><strong>${amount}</strong><button type="button" class="bank-toggle" data-bank-toggle="${esc(tkey)}" aria-expanded="${off ? 'false' : 'true'}" aria-label="${off ? '展開' : '收合'} ${esc(g.bank)}">${off ? '⌄' : '⌃'}</button></div>`;
     if (!off) body += `<div class="bank-children">${g.idx.map(i => tiles[i]).join('')}</div>`;
   }
   return body;
@@ -181,7 +181,10 @@ function bankDetailHTML(sel) {
     const used = list.reduce((s, a) => s + Math.abs(Math.min(0, Number(a.balance || 0))), 0), limit = list.reduce((s, a) => s + Number(a.limit || 0), 0);
     html += `<section class="detail-sec"><h4>帳戶資訊</h4>${infoRow('已使用', money(used), used ? 'expense-text' : '')}${infoRow('信用額度合計', limit ? money(limit) : '尚未設定')}${infoRow('可用額度', limit ? money(Math.max(0, limit - used)) : '—')}${infoRow('信用卡張數', list.length)}</section>`;
   } else html += `<section class="detail-sec"><h4>帳戶資訊</h4>${infoRow('折合 TWD', `${total < 0 ? '−' : ''}${money(Math.abs(total))}`, total < 0 ? 'expense-text' : '')}${infoRow('帳戶數', list.length)}</section>`;
-  return html + `<section class="detail-sec"><h4>子帳戶</h4><div class="sub-accts">${subs || '<div class="empty">沒有子帳戶</div>'}</div></section>`;
+  html += `<section class="detail-sec"><h4>子帳戶</h4><div class="sub-accts">${subs || '<div class="empty">沒有子帳戶</div>'}</div></section>`;
+  const ids = new Set(list.map(a => String(a.id))), txs = (state.transactions || []).filter(t => ids.has(String(t.account)) && !isUnappliedPending(t)).sort((x, y) => String(y.date).localeCompare(String(x.date)) || String(y.time || '').localeCompare(String(x.time || ''))).slice(0, 40);
+  const rows = txs.map(t => `<div class="account-detail-row"><span class="account-detail-date">${esc(t.date)}</span><div><b>${esc(t.name || '')}</b><div class="tx-meta">${esc(acct(t.account).name || '')}</div></div><div class="amount ${t.kind === 'income' ? 'income-text' : 'expense-text'}">${t.kind === 'income' ? '+' : '−'}${money(Math.abs(Number(t.amount || 0)))}</div></div>`).join('');
+  return html + `<section class="detail-sec pane-tx"><h4>最近交易 <span class="hint">${txs.length} 筆</span></h4>${rows || '<div class="empty">沒有交易記錄</div>'}</section>`;
 }
 function renderBankDetail() {
   const el = document.getElementById('creditAccountDetail'); if (!el) return;
@@ -306,7 +309,7 @@ document.addEventListener('change', e => { const s = e.target; if ((s?.name === 
 document.addEventListener('input', e => { if (e.target?.name === 'acur' && e.target.closest?.('#entityForm')) acctSyncBankField(e.target.closest('#entityForm')); });
 document.addEventListener('click', async e => {
   const row = e.target.closest?.('.bank-row');
-  if (row) { const t = e.target.closest('[data-bank-toggle]'); if (t) acctToggleBank(t.dataset.bankToggle); else selectedBank = { key: row.dataset.bankKey, bank: row.dataset.bankName }; renderAccounts(); return; }
+  if (row) { const t = e.target.closest('[data-bank-toggle]'); if (t) acctToggleBank(t.dataset.bankToggle); else { selectedBank = { key: row.dataset.bankKey, bank: row.dataset.bankName }; selectedCreditCardId = null; selectedAccountId = null; } renderAccounts(); return; }
   if (e.target.closest?.('[data-close-bank]')) { selectedBank = null; renderAccounts(); return; }
   const fromBank = e.target.closest?.('[data-open-card-from-bank]'); if (fromBank) { openCreditAccount(fromBank.dataset.openCardFromBank); return; }
   if (e.target.closest?.('[data-close-credit]')) { selectedCreditCardId = null; renderAccounts(); return; }

@@ -221,3 +221,13 @@ test('銀行詳情與帳戶資訊：子帳戶清單、信用額度合計、帳�
   run(`prefs = () => ({})`);
   assert.match(J(`acctGroupsHTML([state.accounts[0], state.accounts[1]], ['<i>1</i>', '<i>2</i>'], [], [])`), /data-bank-key="card" data-bank-name="富邦"/);
 });
+
+test('網頁版三欄：帳戶清單｜詳情｜交易；詳情容器存在、未選取時不顯示帳戶明細', () => {
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8'), css = fs.readFileSync(path.join(root, 'css', 'app.css'), 'utf8'), js = fs.readFileSync(path.join(root, 'js', 'app.bundle.js'), 'utf8');
+  assert.ok(html.includes('id="accountDetail"')); assert.ok(html.includes('id="creditAccountDetail"')); assert.ok(html.includes('id="accountDetailEmpty"'));
+  assert.match(css, /@media\(min-width:1100px\)\{\s*#view-accounts\.active\{display:grid/);
+  assert.match(css, /\.pane-tx\{grid-column:2/);
+  assert.ok(js.includes("a=selectedAccountId?acct(selectedAccountId):null"));
+  assert.ok(js.includes("classList.toggle('has-detail'"));
+  assert.ok((js.match(/class="credit-section pane-tx"/g) || []).length === 2);
+});
