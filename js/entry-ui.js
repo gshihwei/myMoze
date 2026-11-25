@@ -7,7 +7,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const PALETTE=['#e8c88c','#3f86e6','#9a63c9','#d4706e','#aaa88f','#e24c4c','#40648e','#d99ac9','#6f8f5e','#f5a623'];
   const COLOR={income:'#c9a35a',transfer:'#d98a3d',system:'#d98a3d',receivable:'#7dd8c6',payable:'#d05c82'};
-  let tab='expense',preset='',expr='',exprIn='',side='out',pick='out',inTouched=false,prevTab='expense',keepCat={},tfKeep=null,items=[],ci=0,oldIds=[];
+  let tab='expense',preset='',expr='',exprIn='',side='out',pick='out',inTouched=false,prevTab='expense',keepCat={},tfKeep=null,items=[],ci=0,oldIds=[],drill=null;
   const isTf=()=>tab==='transfer';
   const form=()=>$('txForm'),input=()=>$('amountInput');
   const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
@@ -99,9 +99,11 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const kind=curKind(),ordered=typeof catOrdered==='function'?catOrdered():state.categories;
     const mains=ordered.filter(c=>!c.parentId&&(c.kind||'expense')===kind);
     const cur=ordered.find(c=>String(c.id)===String($('formCategory')?.value));
+    const cm=drill&&tab!=='suggest'?mains.find(c=>String(c.id)===String(drill)):null,kids=cm?ordered.filter(c=>String(c.parentId)===String(cm.id)&&catVisible(c)):[];
     const list=(tab==='suggest'?entrySuggest(state,today(),10):mains).filter(c=>catVisible(c)&&modeAllows('categories',c.parentId||c.id));
     const chip=(c,small)=>{const on=cur&&String(cur.id)===String(c.id);return `<button type="button" class="entry-cat${on?' active':''}${small?' small':''}" data-cat="${c.id}"><span class="entry-bubble" style="background:${colorFor(c,mains,c.kind||kind)}">${iconHTML(c)}</span><span class="entry-cat-name">${esc(c.name)}</span></button>`;};
-    cc.innerHTML=list.map(c=>chip(c)).join('');
+    if(cm&&kids.length){cc.innerHTML=`<button type="button" class="entry-cat" data-cat-back aria-label="返回主類別"><span class="entry-bubble ef-add">‹</span><span class="entry-cat-name">返回</span></button>`+chip(cm)+kids.map(c=>chip(c)).join('');if(sub)sub.innerHTML='';return;}
+    cc.innerHTML=list.map(c=>chip(c)).join('');if(sub)sub.innerHTML='';return;
     const mainOfCur=cur?(cur.parentId?ordered.find(x=>String(x.id)===String(cur.parentId)):cur):null;
     const subs=mainOfCur?ordered.filter(c=>String(c.parentId)===String(mainOfCur.id)&&catVisible(c)):[];
     if(sub)sub.innerHTML=subs.length?`<div class="entry-subs-title">${esc(mainOfCur.name)}</div><div class="entry-grid">${subs.map(c=>chip(c,true)).join('')}</div>`:'';
@@ -145,7 +147,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   }
   function setTab(t){
     leaveTab(t);
-    tab=t;preset='';side='out';pick='out';const st=$('entrySideTitle');if(st)st.textContent=t==='transfer'?'轉出金額':'金額';if(t!=='transfer'&&$('entryAcctTitle'))$('entryAcctTitle').textContent='常用帳戶';const bg=$('modalBg');if(bg)bg.dataset.etab=t;
+    tab=t;preset='';drill=null;side='out';pick='out';const st=$('entrySideTitle');if(st)st.textContent=t==='transfer'?'轉出金額':'金額';if(t!=='transfer'&&$('entryAcctTitle'))$('entryAcctTitle').textContent='常用帳戶';const bg=$('modalBg');if(bg)bg.dataset.etab=t;
     if(t==='expense'||t==='income'||t==='transfer')setKind(t);else if(t!=='suggest')setKind('expense');
     if(t==='transfer'){const k=tfKeep;preset=k?.preset||'轉帳';if(k?.inTouched){exprIn=k.exprIn;inTouched=true;}if(k?.to&&$('formToAccount'))$('formToAccount').value=k.to;tfPreset(preset);{const nm=f('name');if(nm&&!nm.value){nm.value=preset;nm.dataset.auto='1';}}const o=$('formAccount'),i=$('formToAccount');if(o&&i&&o.value===i.value){const d=tfDefaults(state,'轉帳',{from:o.value});if(d.to!==undefined)i.value=d.to;}}
     refresh();
@@ -153,10 +155,12 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
   document.addEventListener('click',e=>{
     if(e.target.closest('#entryBack')){setTab(prevTab&&prevTab!==tab&&(prevTab==='suggest'||prevTab==='expense'||prevTab==='income')?prevTab:'expense');return;}
     const tb=e.target.closest('#entryTabs [data-etab-btn]');if(tb){setTab(tb.dataset.etabBtn);return;}
+    if(e.target.closest('[data-cat-back]')){drill=null;renderCats();sync();return;}
     const cb=e.target.closest('#categoryChoices [data-cat],#categorySubs [data-cat]');
     if(cb){
       const c=state.categories.find(x=>String(x.id)===String(cb.dataset.cat));
       if(c&&tab==='suggest'&&(c.kind||'expense')!==curKind()){setKind(c.kind||'expense');fillCategorySelect(undefined);}
+      if(c&&!c.parentId&&tab!=='suggest'&&String(drill)!==String(c.id)&&state.categories.some(k=>String(k.parentId)===String(c.id)&&catVisible(k)))drill=c.id;
       const cs=$('formCategory');if(cs){cs.value=cb.dataset.cat;cs.dispatchEvent(new Event('change',{bubbles:true}));}
       renderCats();sync();return;
     }
@@ -266,7 +270,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     const nm=f('name');if(nm)delete nm.dataset.auto;
     const hasHistory=!t&&prefOn('suggest')&&entrySuggest(state,today(),1).length&&(state.transactions||[]).some(x=>x.kind==='expense'||x.kind==='income');
     tab=(k==='income'||k==='transfer')?k:(hasHistory?'suggest':'expense');
-    preset='';exprIn='';inTouched=false;side='out';pick='out';keepCat={};tfKeep=null;prevTab='expense';if(tab==='transfer'){if(t){preset=cat(t.category).name;if(t.toAmount!==undefined){exprIn=String(t.toAmount);inTouched=true;}if($('formToProject'))$('formToProject').value=t.toProject||'';}else{tab='';setTab('transfer');prevTab='expense';}}if($('entrySideTitle'))$('entrySideTitle').textContent=tab==='transfer'?'轉出金額':'金額';if($('entryAcctTitle')&&tab!=='transfer')$('entryAcctTitle').textContent='常用帳戶';if(bg)bg.dataset.etab=tab;
+    preset='';exprIn='';inTouched=false;side='out';pick='out';keepCat={};tfKeep=null;prevTab='expense';drill=t?cat(t.category).parentId||null:null;if(tab==='transfer'){if(t){preset=cat(t.category).name;if(t.toAmount!==undefined){exprIn=String(t.toAmount);inTouched=true;}if($('formToProject'))$('formToProject').value=t.toProject||'';}else{tab='';setTab('transfer');prevTab='expense';}}if($('entrySideTitle'))$('entrySideTitle').textContent=tab==='transfer'?'轉出金額':'金額';if($('entryAcctTitle')&&tab!=='transfer')$('entryAcctTitle').textContent='常用帳戶';if(bg)bg.dataset.etab=tab;
     if(tab==='suggest')setKind('expense');
     $('entrySide')?.classList.add('open');
     setTimeout(()=>{window.mozeState=window.state;if(cs&&t&&t.category!==undefined)cs.dataset.keep=String(t.category);refresh();window.entryItems.reset(t||null);efSync();},0);

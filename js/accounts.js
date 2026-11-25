@@ -26,6 +26,7 @@ function acctNewOptionsHTML() {
 function acctOptionsFromForm(f, type) {
   const o = {}, raw = String(f.get('alow') ?? '').trim(), low = Number(raw);
   if (f.get('aexclude')) o.excludeNet = true;
+  const ag = String(f.get('agroup') || '').trim().slice(0, 12); if (ag) o.group = ag;
   if (type !== 'card' && raw !== '' && Number.isFinite(low) && low >= 0) o.lowBalance = low;
   return o;
 }
@@ -164,9 +165,9 @@ function acctBankNames(current) {
 }
 function acctBankOptions(current) { const cur = String(current || '').trim(); return acctBankNames(cur).map(b => `<option value="${esc(b)}" ${b === cur ? 'selected' : ''}>${esc(b)}</option>`).join(''); }
 function acctBankFieldHTML(a, show) {
-  return `<div class="form-grid form-grid-1" data-acct-bank-field ${show ? '' : 'hidden'}><label>所屬銀行（從銀行帳戶選擇，帳戶頁依銀行分組）<select name="abank"><option value="">不指定</option>${acctBankOptions(a.bank)}</select></label></div>`;
+  return `<div class="form-grid form-grid-1" data-acct-bank-field ${show ? '' : 'hidden'}><label>所屬銀行／主帳戶（相同者在帳戶頁合併成一組）<select name="abank"><option value="">不指定</option>${acctBankOptions(a.bank)}</select></label><label>或輸入新的主帳戶名稱<input name="abanknew" maxlength="30" placeholder="例如：玉山信用卡"></label></div>`;
 }
-function acctBankFromForm(f) { const b = String(f.get('abank') ?? '').trim().slice(0, 30); return b ? { bank: b } : {}; }
+function acctBankFromForm(f) { const b = String(f.get('abanknew') || f.get('abank') || '').trim().slice(0, 30); return b ? { bank: b } : {}; }
 function acctCardFieldsHTML(a, card) {
   const sources = (state.accounts || []).filter(x => x.type !== 'card' && String(x.id) !== String(a.id));
   return `<div class="acct-card-fields" data-acct-card-fields ${card ? '' : 'hidden'}><div class="form-grid">
@@ -229,6 +230,8 @@ function acctGroupKey(a) {
   if (a?.type === 'foreign' || acctCur(a) !== 'TWD') return 'foreign';
   return a?.type || 'bank';
 }
+function acctGroupNames() { return [...new Set((state.accounts || []).map(a => a.group).filter(Boolean))]; }
+function acctGroupFieldHTML(a) { return `<div class="form-grid form-grid-1"><label>帳戶分組（留空＝依類型）<input name="agroup" maxlength="12" list="acctGroupNames" value="${esc(a?.group || '')}" placeholder="例如：台幣銀行、保單、卷商"><datalist id="acctGroupNames">${acctGroupNames().map(g => `<option value="${esc(g)}"></option>`).join('')}</datalist></label>${a?.id && !acctUsesBank(a) ? `<label>主帳戶（同名的帳戶合併成一組，可展開收合）<input name="amain" maxlength="30" value="${esc(a.bank || '')}" placeholder="例如：台新銀行"></label>` : ''}</div>`; }
 function acctUsesBank(a) { return a?.type === 'card' || a?.type === 'foreign' || acctCur(a) !== 'TWD'; }
 function acctSignedMoney(n) { return `${n < 0 ? '−' : '+'}${money(Math.abs(n))}`; }
 // Banks of credit cards in first-seen order: [{ bank, idx: [indexes into cards] }]; cards without a bank stay single.
@@ -245,6 +248,12 @@ function acctCardBanks(cards) {
 // Account page groups (collapsible, each with its total). Collapsed groups / banks live in prefs() (per device).
 // Credit cards and foreign-currency accounts are shown under their bank (account.bank) with a chevron.
 // cardTiles / tiles are the per-account HTML aligned with cards / normal.
+// 主帳戶 of ordinary accounts: only names shared by two or more accounts become a hierarchy.
+function acctMainRows(list, tiles, key, bankCollapsed) {
+  const n = new Map(); for (const a of list) { const b = String(a.bank || '').trim(); if (b) n.set(b, (n.get(b) || 0) + 1); }
+  if (![...n.values()].some(v => v > 1)) return tiles.join('');
+  return acctBankRows(list.map(a => n.get(String(a.bank || '').trim()) > 1 ? a : { ...a, bank: '' }), tiles, key, '個子帳戶', bankCollapsed);
+}
 function acctBankRows(list, tiles, key, unit, bankCollapsed) {
   let body = '';
   for (const g of acctCardBanks(list)) {
@@ -259,14 +268,18 @@ function acctBankRows(list, tiles, key, unit, bankCollapsed) {
 function acctGroupsHTML(cards, cardTiles, normal, tiles) {
   const collapsed = new Set(prefs().acctCollapsed || []), bankCollapsed = new Set(prefs().bankCollapsed || []);
   const head = (key, label, list) => `<button type="button" class="acct-group-head" data-acct-group="${key}" aria-expanded="${collapsed.has(key) ? 'false' : 'true'}"><span>${collapsed.has(key) ? '＋' : '−'} ${label} (${list.length})</span><span class="acct-group-total">${acctSignedMoney(acctGroupTotal(list))}</span></button>`;
-  let html = head('card', '信用卡', cards) + (collapsed.has('card') ? '' : `<div class="credit-list">${cards.length ? acctBankRows(cards, cardTiles, 'card', '張信用卡', bankCollapsed) : '<div class="empty">尚無信用卡</div>'}</div>`);
+  // V26.91 自訂帳戶分組 (account.group) comes after the built-in groups; those accounts leave their built-in group.
+  const custom = new Map(); cards.forEach((a, i) => { if (a.group) { if (!custom.has(a.group)) custom.set(a.group, []); custom.get(a.group).push([a, cardTiles[i]]); } }); normal.forEach((a, i) => { if (a.group) { if (!custom.has(a.group)) custom.set(a.group, []); custom.get(a.group).push([a, tiles[i]]); } });
+  if (custom.size) { const kc = cards.map((a, i) => [a, cardTiles[i]]).filter(([a]) => !a.group), kn = normal.map((a, i) => [a, tiles[i]]).filter(([a]) => !a.group); cards = kc.map(x => x[0]); cardTiles = kc.map(x => x[1]); normal = kn.map(x => x[0]); tiles = kn.map(x => x[1]); }
+  let html = custom.size && !cards.length ? '' : head('card', '信用卡', cards) + (collapsed.has('card') ? '' : `<div class="credit-list">${cards.length ? acctBankRows(cards, cardTiles, 'card', '張信用卡', bankCollapsed) : '<div class="empty">尚無信用卡</div>'}</div>`);
   for (const [key, label] of acctTypes().filter(([k]) => k !== 'card')) {
     const idx = normal.map((a, i) => [a, i]).filter(([a]) => acctGroupKey(a) === key).map(([, i]) => i);
     if (!idx.length) continue;
     const list = idx.map(i => normal[i]), ts = idx.map(i => tiles[i]);
-    html += head(key, label, list) + (collapsed.has(key) ? '' : `<div class="normal-accounts">${key === 'foreign' ? acctBankRows(list, ts, 'foreign', '個外幣帳戶', bankCollapsed) : ts.join('')}</div>`);
+    html += head(key, label, list) + (collapsed.has(key) ? '' : `<div class="normal-accounts">${key === 'foreign' ? acctBankRows(list, ts, 'foreign', '個外幣帳戶', bankCollapsed) : acctMainRows(list, ts, key, bankCollapsed)}</div>`);
   }
-  if (!normal.length && !cards.length) html += '<div class="empty">尚無帳戶</div>';
+  for (const [g, l] of custom) html += head('g:' + esc(g), esc(g), l.map(x => x[0])) + (collapsed.has('g:' + g) ? '' : `<div class="normal-accounts">${l.map(x => x[1]).join('')}</div>`);
+  if (!normal.length && !cards.length && !custom.size) html += '<div class="empty">尚無帳戶</div>';
   return html;
 }
 // ---- V26.50 account detail sections (帳務統計 / 繳款記錄 / 帳戶資訊 / 子帳戶), modelled on MOZE ----
@@ -308,9 +321,9 @@ function acctInfoHTML(a) {
   const card = a.type === 'card', n = state.transactions.filter(t => String(t.account) === String(a.id) || String(t.toAccount ?? '') === String(a.id)).length;
   const due = card ? isoDate(cardStatementDueDate(a, cardPeriod(a, new Date(), 0))) : '';
   const payFrom = card && a.payFrom ? (state.accounts.find(x => String(x.id) === String(a.payFrom))?.name || '') : '';
-  const rows = [infoRow('餘額', acctMoney(a.balance, a), Number(a.balance) < 0 ? 'expense-text' : ''), infoRow('記帳筆數', n), infoRow('主幣種', esc(acctCur(a))), infoRow('帳戶分組', esc(acctTypeLabel(a)))];
-  if (a.bank) rows.push(infoRow('所屬銀行', esc(a.bank)));
-  if (card) rows.push(infoRow('信用額度', a.limit ? money(a.limit) : '尚未設定'), infoRow('結帳日', `每月 ${a.statement || 15} 日`), infoRow('繳款期限', due), infoRow('主帳戶', payFrom ? esc(payFrom) : '無'), infoRow('紅利回饋', a.rewardPct ? `${a.rewardPct}%` : '無'));
+  const rows = [infoRow('餘額', acctMoney(a.balance, a), Number(a.balance) < 0 ? 'expense-text' : ''), infoRow('記帳筆數', n), infoRow('主幣種', esc(acctCur(a))), infoRow('帳戶分組', esc(a.group || acctTypeLabel(a)))];
+  if (a.bank) rows.push(infoRow('所屬銀行／主帳戶', esc(a.bank)));
+  if (card) rows.push(infoRow('信用額度', a.limit ? money(a.limit) : '尚未設定'), infoRow('結帳日', `每月 ${a.statement || 15} 日`), infoRow('繳款期限', due), infoRow('扣繳帳戶', payFrom ? esc(payFrom) : '無'), infoRow('紅利回饋', a.rewardPct ? `${a.rewardPct}%` : '無'));
   rows.push(infoRow('不計入總資產', a.excludeNet ? '是' : '否'), infoRow('封存帳戶', a.archived ? '是' : '否'));
   return `<section class="detail-sec"><h4>帳戶資訊 <button type="button" class="ghost detail-gear" data-acct-manage="${esc(a.id)}" aria-label="管理 ${esc(a.name)}">管理 ⚙</button></h4>${rows.join('')}</section>${rewardSectionHTML(a)}`;
 }
@@ -318,7 +331,7 @@ function bankCards(sel) { return (state.accounts || []).filter(a => acctGroupKey
 function bankDetailHTML(sel) {
   const list = bankCards(sel), card = sel.key === 'card', total = acctGroupTotal(list);
   const subs = list.map(a => `<button type="button" class="sub-acct" data-open-card-from-bank="${esc(a.id)}"><span>${esc(a.name)}${acctCur(a) !== 'TWD' ? ` (${esc(acctCur(a))})` : ''}</span><b>${card ? money(Math.abs(Number(a.balance || 0))) : acctMoney(a.balance, a)}</b></button>`).join('');
-  let html = `<div class="detail-close-row"><button type="button" class="secondary" data-close-bank>← 返回帳戶</button></div><div class="credit-detail-head"><div><div class="eyebrow">${card ? '信用卡' : '外幣帳戶'}</div><h3>${esc(sel.bank)}</h3><div class="hint">${list.length} ${card ? '張信用卡' : '個外幣帳戶'}</div></div></div>`;
+  let html = `<div class="detail-close-row"><button type="button" class="secondary" data-close-bank>← 返回帳戶</button></div><div class="credit-detail-head"><div><div class="eyebrow">${card ? '信用卡' : sel.key === 'foreign' ? '外幣帳戶' : '主帳戶'}</div><h3>${esc(sel.bank)}</h3><div class="hint">${list.length} ${card ? '張信用卡' : sel.key === 'foreign' ? '個外幣帳戶' : '個子帳戶'}</div></div></div>`;
   if (card) {
     html += bankCombinedHTML(list);
     const used = list.reduce((s, a) => s + Math.abs(Math.min(0, Number(a.balance || 0))), 0), shared = list.filter(a => a.shareLimit), limit = list.filter(a => !a.shareLimit).reduce((s, a) => s + Number(a.limit || 0), 0) + Math.max(0, ...shared.map(a => Number(a.limit || 0)));
@@ -370,6 +383,7 @@ function acctEditFormHTML(a) {
     ${acctCurrencyField(acctCur(a), locked)}
   </div>
   ${acctCustomCurHTML(a)}
+  ${acctGroupFieldHTML(a)}
   ${acctBankFieldHTML(a, acctUsesBank(a))}
   ${acctCardFieldsHTML(a, card)}
   <p class="hint">更改類型不會變動餘額與交易。信用卡的餘額為負數代表欠款；由一般帳戶改成信用卡時，請確認餘額符號。</p>
@@ -405,6 +419,8 @@ function acctFromEditForm(f, old) {
   if (a.type === 'card') delete a.lowBalance;
   if (f.get('aexclude')) a.excludeNet = true; else delete a.excludeNet;
   const low = Number(f.get('alow')); if (old.type !== 'card' && String(f.get('alow') ?? '').trim() !== '' && Number.isFinite(low) && low >= 0) a.lowBalance = low; else delete a.lowBalance;
+  const main = String(f.get('amain') || '').trim().slice(0, 30), grp = String(f.get('agroup') || '').trim().slice(0, 12); if (main && !acctUsesBank(a)) a.bank = main;
+  if (grp) a.group = grp; else delete a.group;
   acctPlusFromForm(a, f);
   return { account: a };
 }

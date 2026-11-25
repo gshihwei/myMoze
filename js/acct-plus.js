@@ -7,14 +7,11 @@ function toast(msg) { const o = document.createElement('div'); o.className = 'ap
 
 // ---- totals ----
 function acctTotals(list, cur) {
-  const rows = (list || state.accounts).filter(a => !a.excludeNet && (!cur || acctCur(a) === cur)).map(a => ({ a, twd: acctCur(a) === 'TWD' ? Number(a.balance || 0) : toTWD(a.balance, acctCur(a)) })), ok = rows.filter(r => r.twd !== null);
+  const fut = acctFuture(), bal = a => a.type === 'card' ? Number(a.balance || 0) : acctNow(a, fut), rows = (list || state.accounts).filter(a => !a.excludeNet && (!cur || acctCur(a) === cur)).map(a => ({ a, twd: acctCur(a) === 'TWD' || cur ? bal(a) : toTWD(bal(a), acctCur(a)) })), ok = rows.filter(r => r.twd !== null);
   const sum = l => Math.round(l.reduce((s, r) => s + r.twd, 0)), part = key => { const m = new Map(); for (const r of ok) { const k = key(r.a), x = m.get(k) || { key: k, assets: 0, debts: 0 }; if (r.twd >= 0) x.assets += r.twd; else x.debts -= r.twd; m.set(k, x); } return [...m.values()].map(x => ({ ...x, assets: Math.round(x.assets), debts: Math.round(x.debts) })).sort((a, b) => b.assets + b.debts - a.assets - a.debts); };
-  return { total: sum(ok), assets: sum(ok.filter(r => r.twd > 0)), debts: -sum(ok.filter(r => r.twd < 0)), groups: part(a => acctTypeLabel(a)), curs: part(a => acctCur(a)), missing: rows.length - ok.length };
+  return { total: sum(ok), assets: sum(ok.filter(r => r.twd > 0)), debts: -sum(ok.filter(r => r.twd < 0)), groups: part(a => a.group || acctTypeLabel(a)), curs: part(a => acctCur(a)), missing: rows.length - ok.length };
 }
-function acctTotalsHTML() {
-  const cur = window.__acctCur || '', T = acctTotals(null, cur), tot = T.assets + T.debts || 1, rows = l => l.map(x => `<div class="at-row"><span>${esc(x.key)}</span><i style="width:${((x.assets + x.debts) / tot * 100).toFixed(1)}%"></i><b>${x.assets ? `<em class="income-text">${money(x.assets)}</em>` : ''}${x.debts ? ` <em class="expense-text">−${money(x.debts)}</em>` : ''}</b></div>`).join('');
-  return `<div class="at-head"><div><small>總額${cur ? `（${esc(cur)}）` : ''}</small><strong>${T.total < 0 ? '−' : ''}${money(Math.abs(T.total))}</strong></div><div><small>總資產</small><b class="income-text">${money(T.assets)}</b></div><div><small>總負債</small><b class="expense-text">${money(T.debts)}</b></div><select id="acctCurPick" aria-label="指定幣種"><option value="">所有幣種</option>${[...new Set(state.accounts.map(acctCur))].map(c => `<option value="${esc(c)}"${c === cur ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></div><details><summary>各分組與幣種佔比</summary><h4>分組</h4>${rows(T.groups)}<h4>幣種（折合 TWD）</h4>${rows(T.curs)}</details>`;
-}
+function acctTotalsHTML() { return acctTotalsView(); }
 function renderAcctTotals() {
   const g = document.getElementById('accountGrid'); if (!g?.parentNode) return; let el = document.getElementById('acctTotals');
   if (!el) { el = document.createElement('section'); el.id = 'acctTotals'; el.className = 'acct-totals'; g.prepend(el); }

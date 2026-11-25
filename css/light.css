@@ -572,6 +572,22 @@ html[data-theme="light"][data-swap="1"] .income-text{color:#cc0012!important}
 :root[data-theme="light"] .ef-row.on{background:#f2f4f7}
 :root[data-theme="light"] .ef-add{background:#eaeef3!important}
 :root[data-theme="light"] .ef-multi .entry-bubble i{background:#2094d4;color:#141414}
+:root[data-theme="light"] .av-out{fill:#f2818f}
+:root[data-theme="light"] .av-in{fill:#a9cf89}
+:root[data-theme="light"] .av-line{stroke:#2f8fd0}
+:root[data-theme="light"] .av-area{fill:rgba(47,143,208,0.2)}
+:root[data-theme="light"] .av-hit.on{fill:rgba(15,23,32,0.094)}
+:root[data-theme="light"] .av-full{background:#f5f7f9}
+:root[data-theme="light"] .dn-l{fill:#f4f6f8}
+:root[data-theme="light"] .dn-c{fill:#141b22}
+:root[data-theme="light"] .due-pill{background:#b8a6ff;color:#f3f5f8}
+:root[data-theme="light"] .due-pill.over{background:#ff7188}
+:root[data-theme="light"] .ap-stat i{color:#f4f6f8}
+:root[data-theme="light"] button.account-detail-row{border-bottom:1px solid #eef1f5}
+:root[data-theme="light"] .account-detail-row.hit{background:#eef2f5}
+:root[data-theme="light"] .ar-tick{border:2px solid #46607a}
+:root[data-theme="light"] .ar-row.done .ar-tick{background:#3fa66b;border-color:#3fa66b}
+:root[data-theme="light"] .av-foot select{background:#eef1f5;color:#141b22;border:1px solid #ecf0f4}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}

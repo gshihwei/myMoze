@@ -134,7 +134,7 @@ document.addEventListener('click', e => {
   if (c('[data-item-all]')) { const S = window.entryItems.state(); alert(`共 ${S.items.length} 項，合計 ${money(Math.abs(itemsTotal(S.items)))}\n\n${S.items.map((it, k) => `${k + 1}. ${it.preset || cat(it.category).name} ${itemSign(it) > 0 ? '+' : '−'}${itemNet(it)}${it.name ? ` ${it.name}` : ''}（${acct(it.account).name}）`).join('\n')}`); return; }
   if (c('[data-ef-change]')) { efPicked(false); document.querySelector('.entry-scroll')?.scrollTo?.(0, 0); return; }
   if ((b = c('#categoryChoices [data-cat],#categorySubs [data-cat],#entryPresets [data-preset]'))) {
-    const x = b.dataset.cat ? state.categories.find(k => String(k.id) === b.dataset.cat) : null, subs = x && !x.parentId && state.categories.some(k => String(k.parentId) === String(x.id) && catVisible(k));
+    const x = b.dataset.cat ? state.categories.find(k => String(k.id) === b.dataset.cat) : null, subs = x && !x.parentId && efTab() !== 'suggest' && !document.querySelector('[data-cat-back]') && state.categories.some(k => String(k.parentId) === String(x.id) && catVisible(k));
     setTimeout(() => { if (!subs) efPicked(true); efSync(); }, 40); return;
   }
   if (c('#entryTabs [data-etab-btn]') || c('#entryBack')) { setTimeout(() => { if (efEl('evType')?.value !== 'single') efAdvTab(efEl('evType').value); efSync(); }, 40); return; }
