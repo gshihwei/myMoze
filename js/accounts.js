@@ -29,6 +29,72 @@ function acctOptionsFromForm(f, type) {
   if (type !== 'card' && raw !== '' && Number.isFinite(low) && low >= 0) o.lowBalance = low;
   return o;
 }
+// ---- V26.40 credit-card account settings (MOZE-style) ----
+function acctWeekendOptions(cur) { return [['keep', '依原日期'], ['next', '順延到下週一'], ['prev', '提前到週五']].map(([k, l]) => `<option value="${k}" ${(cur || 'keep') === k ? 'selected' : ''}>${l}</option>`).join(''); }
+function acctCardFieldsHTML(a, card) {
+  const sources = (state.accounts || []).filter(x => x.type !== 'card' && String(x.id) !== String(a.id));
+  return `<div class="acct-card-fields" data-acct-card-fields ${card ? '' : 'hidden'}><div class="form-grid">
+    <label>信用額度<input name="alimit" type="number" min="0" step="any" value="${esc(a.limit ?? 0)}"></label>
+    <label>可用額度不足提醒（低於此金額提醒，留空＝不提醒）<input name="alowavail" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.lowAvail ?? '')}" placeholder="例如 10000"></label>
+    <label>結帳日<input name="astatement" type="number" min="1" max="31" value="${esc(a.statement ?? 15)}"></label>
+    <label>結帳日遇非工作日<select name="astmtwk">${acctWeekendOptions(a.stmtWeekend)}</select></label>
+    <label>繳款日<input name="adue" type="number" min="1" max="31" value="${esc(a.due ?? 5)}"></label>
+    <label>繳款日遇非工作日<select name="aduewk">${acctWeekendOptions(a.dueWeekend)}</select></label>
+    <label>主帳戶（繳款時預設的扣款帳戶）<select name="apayfrom"><option value="">不指定</option>${sources.map(x => `<option value="${esc(x.id)}" ${String(a.payFrom ?? '') === String(x.id) ? 'selected' : ''}>${esc(acctName(x))}</option>`).join('')}</select></label>
+    <label>紅利回饋 %<input name="areward" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.rewardPct ?? '')}" placeholder="例如 1"></label>
+    <label>國外交易手續費 %（外幣卡，僅估算顯示）<input name="afxfee" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.fxFeePct ?? '')}" placeholder="例如 1.5"></label></div>
+    <label class="proj-archive"><input type="checkbox" name="aoffset" ${a.offsetBill ? 'checked' : ''}> 帳單折抵（建議繳款金額先扣掉預估回饋）</label></div>`;
+}
+// Weekend handling for statement / due dates. Only Saturdays and Sundays are known (public holidays are not built in).
+function cardAdjustDate(card, d, mode) {
+  const out = new Date(d.getFullYear(), d.getMonth(), d.getDate()), w = out.getDay();
+  if (mode === 'next') { if (w === 6) out.setDate(out.getDate() + 2); else if (w === 0) out.setDate(out.getDate() + 1); }
+  else if (mode === 'prev') { if (w === 6) out.setDate(out.getDate() - 1); else if (w === 0) out.setDate(out.getDate() - 2); }
+  return out;
+}
+// Statement closing date for the (0-based) month m of year y, after the weekend rule.
+function cardStmtEnd(card, y, m) {
+  const first = new Date(y, m, 1), stmt = Math.min(31, Math.max(1, Number(card.statement || 15))), dim = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  return cardAdjustDate(card, new Date(first.getFullYear(), first.getMonth(), Math.min(stmt, dim)), card.stmtWeekend);
+}
+// [year, month] (0-based) of the closed statement `offset` periods back from `base`.
+function cardNominalMonth(card, base, offset) {
+  const day = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+  let y = base.getFullYear(), m = base.getMonth();
+  if (day <= cardStmtEnd(card, y, m)) m -= 1;
+  const d = new Date(y, m + (offset || 0), 1); return [d.getFullYear(), d.getMonth()];
+}
+// Available credit below the reminder threshold.
+function creditLowAvailHit(a) {
+  if (!a || a.type !== 'card' || a.archived) return false;
+  const lim = Number(a.limit || 0), th = a.lowAvail; if (!(lim > 0) || th === '' || th === null || th === undefined || !Number.isFinite(Number(th))) return false;
+  return creditUsage(a).available < Number(th);
+}
+// Estimated reward / foreign fee lines for the statement panel (display only; never changes balances).
+function creditRewardHTML(card, spend, due) {
+  const pct = Number(card.rewardPct || 0), fx = Number(card.fxFeePct || 0), parts = [];
+  const reward = Math.round(spend * pct / 100);
+  if (pct > 0) { parts.push(`預估回饋 ${money(reward)}（${pct}%）`); if (card.offsetBill) parts.push(`折抵後建議繳款 ${money(Math.max(0, due - reward))}`); }
+  if (fx > 0 && acctCur(card) !== 'TWD') parts.push(`預估國外手續費 ${money(Math.round(spend * fx / 100))}（${fx}%）`);
+  return parts.length ? `<div class="credit-reward hint">${parts.join(' · ')}</div>` : '';
+}
+// Account page groups (collapsible). Collapsed keys live in prefs().acctCollapsed (per device).
+function acctGroupsHTML(cards, cardHtml, normal, tiles) {
+  const collapsed = new Set(prefs().acctCollapsed || []);
+  const head = (key, label, n) => `<button type="button" class="acct-group-head" data-acct-group="${key}" aria-expanded="${collapsed.has(key) ? 'false' : 'true'}">${collapsed.has(key) ? '＋' : '−'} ${label} (${n})</button>`;
+  let html = head('card', '信用卡', cards.length) + (collapsed.has('card') ? '' : `<div class="credit-list">${cards.length ? cardHtml : '<div class="empty">尚無信用卡</div>'}</div>`);
+  for (const [key, label] of acctTypes().filter(([k]) => k !== 'card')) {
+    const idx = normal.map((a, i) => [a, i]).filter(([a]) => (a.type || 'bank') === key).map(([, i]) => i);
+    if (!idx.length) continue;
+    html += head(key, label, idx.length) + (collapsed.has(key) ? '' : `<div class="normal-accounts">${idx.map(i => tiles[i]).join('')}</div>`);
+  }
+  if (!normal.length) html += '<div class="empty">尚無一般帳戶</div>';
+  return html;
+}
+function acctToggleGroup(key) {
+  const set = new Set(prefs().acctCollapsed || []); if (set.has(key)) set.delete(key); else set.add(key);
+  setPref('acctCollapsed', [...set]);
+}
 function acctActive(list, keepId) { return (list || []).filter(a => !a.archived || String(a.id) === String(keepId ?? '')); }
 
 function acctCurrencyField(cur, locked) {
@@ -36,13 +102,15 @@ function acctCurrencyField(cur, locked) {
 }
 
 function acctEditFormHTML(a) {
-  const locked = acctHasTx(a.id), card = a.type === 'card';
-  return `<div class="form-grid">
+  const locked = acctHasTx(a.id), card = a.type === 'card', bal = Number(a.balance || 0);
+  const period = card ? cardPeriod(a, new Date(), 0) : null;
+  return `<div class="acct-edit-top"><div class="account-detail-icon">${svgForAccount(a)}</div><small>餘額 ${esc(acctCur(a))}</small><strong class="${bal < 0 ? 'expense-text' : ''}">${acctMoney(bal, a)}</strong>${period ? `<small>帳單週期 ${period.start} ～ ${period.end}</small>` : ''}</div>
+  <div class="form-grid">
     <label>帳戶名稱<input name="aname" required maxlength="30" value="${esc(a.name || '')}"></label>
     <label>類型<select name="atype">${acctTypes().map(([k, l]) => `<option value="${k}" ${(a.type || 'bank') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
     ${acctCurrencyField(acctCur(a), locked)}
   </div>
-  <div class="form-grid" data-acct-card-fields ${card ? '' : 'hidden'}><label>信用額度<input name="alimit" type="number" min="0" step="any" value="${esc(a.limit ?? 0)}"></label><label>結帳日<input name="astatement" type="number" min="1" max="31" value="${esc(a.statement ?? 15)}"></label><label>繳款日<input name="adue" type="number" min="1" max="31" value="${esc(a.due ?? 5)}"></label></div>
+  ${acctCardFieldsHTML(a, card)}
   <p class="hint">更改類型不會變動餘額與交易。信用卡的餘額為負數代表欠款；由一般帳戶改成信用卡時，請確認餘額符號。</p>
   <div class="form-grid form-grid-1"><label>備註<input name="anote" maxlength="100" value="${esc(a.note || '')}" placeholder="可留空，例如帳號末四碼"></label></div>
   <label class="proj-archive"><input type="checkbox" name="aarchived" ${a.archived ? 'checked' : ''}> 封存（不再出現在記帳的帳戶選單；餘額仍計入淨資產）</label>
@@ -66,8 +134,15 @@ function acctFromEditForm(f, old) {
   if ((state.accounts || []).some(a => a !== old && a.name === name && acctCur(a) === cur)) return { error: `已經有「${name}（${cur}）」` };
   const a = { ...old, name, currency: cur, note: String(f.get('anote') || '').trim(), archived: !!f.get('aarchived') };
   const want = String(f.get('atype') || old.type || 'bank'); a.type = acctTypes().some(([k]) => k === want) ? want : (old.type || 'bank');
-  if (a.type !== 'card') { delete a.limit; delete a.statement; delete a.due; }
-  else { a.limit = Math.max(0, Number(f.get('alimit') || 0)); a.statement = Math.min(31, Math.max(1, Math.round(Number(f.get('astatement') || 15)))); a.due = Math.min(31, Math.max(1, Math.round(Number(f.get('adue') || 5)))); }
+  if (a.type !== 'card') for (const k of ['limit', 'statement', 'due', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k];
+  else {
+    a.limit = Math.max(0, Number(f.get('alimit') || 0)); a.statement = Math.min(31, Math.max(1, Math.round(Number(f.get('astatement') || 15)))); a.due = Math.min(31, Math.max(1, Math.round(Number(f.get('adue') || 5))));
+    const wk = v => (['next', 'prev'].includes(String(v)) ? String(v) : ''), num = k => { const raw = String(f.get(k) ?? '').trim(), n = Number(raw); return raw !== '' && Number.isFinite(n) && n >= 0 ? n : null; };
+    const set = (k, v) => { if (v === null || v === '' || v === false) delete a[k]; else a[k] = v; };
+    set('stmtWeekend', wk(f.get('astmtwk'))); set('dueWeekend', wk(f.get('aduewk')));
+    const pf = String(f.get('apayfrom') || ''); set('payFrom', (state.accounts || []).some(x => x.type !== 'card' && String(x.id) === pf) ? pf : '');
+    set('rewardPct', num('areward')); set('fxFeePct', num('afxfee')); set('lowAvail', num('alowavail')); set('offsetBill', !!f.get('aoffset'));
+  }
   if (!a.note) delete a.note;
   if (!a.archived) delete a.archived;
   if (a.type === 'card') delete a.lowBalance;
@@ -118,6 +193,7 @@ document.addEventListener('change', e => { if (e.target?.closest?.('#txForm') &&
 
 document.addEventListener('change', e => { const s = e.target; if (s?.name === 'atype' && s.closest?.('#entityForm')) { const box = s.closest('#entityForm').querySelector('[data-acct-card-fields]'); if (box) box.hidden = s.value !== 'card'; } });
 document.addEventListener('click', async e => {
+  const grp = e.target.closest?.('[data-acct-group]'); if (grp) { acctToggleGroup(grp.dataset.acctGroup); renderAccounts(); return; }
   const find = v => (state.accounts || []).find(a => String(a.id) === String(v));
   const mg = e.target.closest?.('[data-acct-manage]'); if (mg) { e.preventDefault(); e.stopPropagation(); const a = find(mg.dataset.acctManage); if (a) openEntity('accountEdit', a); return; }
   const mv = e.target.closest?.('[data-acct-move]'); if (mv) { const a = find(mv.dataset.acctId); if (a && acctMove(a, Number(mv.dataset.acctMove))) { await save(); render(); } return; }

@@ -147,20 +147,13 @@ let creditDetailTab='statement';
 function pad2(n){return String(n).padStart(2,'0')}
 function isoDate(d){return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`}
 function cardStatementAnchor(card, base=new Date(), offset=0){
-  const statement=Math.min(31,Math.max(1,Number(card.statement||15)));
-  let y=base.getFullYear(), m=base.getMonth();
-  const thisMonthDay=Math.min(statement,new Date(y,m+1,0).getDate());
-  if(base.getDate()<=thisMonthDay){m-=1;}
-  m+=offset;
-  const end=new Date(y,m,Math.min(statement,new Date(y,m+1,0).getDate()));
-  return end;
+  const [y,m]=cardNominalMonth(card,base,offset);
+  return cardStmtEnd(card,y,m);
 }
 function cardPeriod(card, base=new Date(), offset=creditStatementOffset){
-  const end=cardStatementAnchor(card,base,offset);
-  const prevMonthLast=new Date(end.getFullYear(),end.getMonth(),0);
-  const statement=Math.min(31,Math.max(1,Number(card.statement||15)));
-  const startDay=Math.min(statement+1,prevMonthLast.getDate());
-  const start=new Date(end.getFullYear(),end.getMonth()-1,startDay);
+  const [y,m]=cardNominalMonth(card,base,offset);
+  const end=cardStmtEnd(card,y,m), prevEnd=cardStmtEnd(card,y,m-1);
+  const start=new Date(prevEnd.getFullYear(),prevEnd.getMonth(),prevEnd.getDate()+1);
   return {start:isoDate(start),end:isoDate(end),offset};
 }
 function cardStatementDueDate(card, period){
@@ -169,7 +162,7 @@ function cardStatementDueDate(card, period){
   const endDay=new Date(end.getFullYear(),end.getMonth()+1,0).getDate();
   const due=new Date(end.getFullYear(),end.getMonth(),Math.min(dueDay,endDay));
   if(due<=end) due.setMonth(due.getMonth()+1);
-  return due;
+  return cardAdjustDate(card,due,card.dueWeekend);
 }
 function creditStatementKey(card, period){return `${card.id}|${period.start}|${period.end}`;}
 function paymentBelongsToPeriod(payment, card, period){
@@ -177,7 +170,7 @@ function paymentBelongsToPeriod(payment, card, period){
   if(payment.cardStatementKey) return payment.cardStatementKey===key;
   // V26.3: an unkeyed payment (e.g. imported from CSV) pays the statement that closed before it:
   // made after this statement's closing date and on or before the next closing date.
-  const [y,m]=period.end.split('-').map(Number),stmt=Math.min(31,Math.max(1,Number(card.statement||15))),nextEnd=isoDate(new Date(y,m,Math.min(stmt,new Date(y,m+1,0).getDate())));
+  const [y,m]=period.end.split('-').map(Number);let ne=cardStmtEnd(card,y,m);if(isoDate(ne)<=period.end)ne=cardStmtEnd(card,y,m+1);const nextEnd=isoDate(ne);
   return payment.date>period.end&&payment.date<=nextEnd;
 }
 function creditStatementPayments(card,period){
@@ -205,9 +198,9 @@ function openAccountDetail(id){selectedAccountId=id;renderAccounts();setTimeout(
 function renderAccountDetail(){const el=document.getElementById('accountDetail'),a=acct(selectedAccountId);if(!el||!a||a.type==='card'){if(el)el.hidden=true;return}const ts=state.transactions.filter(t=>String(t.account)===String(a.id)||String(t.toAccount)===String(a.id)).sort((x,y)=>y.date.localeCompare(x.date));const income=ts.filter(t=>t.kind==='income'&&String(t.account)===String(a.id)).reduce((s,t)=>s+t.amount,0);const expense=ts.filter(t=>t.kind==='expense'&&String(t.account)===String(a.id)).reduce((s,t)=>s+t.amount,0);const transferIn=ts.filter(t=>t.kind==='transfer'&&String(t.toAccount)===String(a.id)).reduce((s,t)=>s+t.amount,0);const transferOut=ts.filter(t=>t.kind==='transfer'&&String(t.account)===String(a.id)).reduce((s,t)=>s+t.amount,0);el.hidden=false;el.innerHTML=`<div class="account-detail-head"><div class="account-detail-title"><div class="account-detail-icon">${svgForAccount(a)}</div><div><h3>${acctName(a)}</h3><div class="hint">${acctTypeLabel(a)} · 帳戶明細</div></div></div><button type="button" class="secondary" data-close-account-detail>關閉</button></div><div class="account-detail-summary"><div class="account-summary-box"><span>目前餘額</span><b>${acctMoney(a.balance,a)}</b></div><div class="account-summary-box"><span>收入</span><b class="income-text">${money(income+transferIn)}</b></div><div class="account-summary-box"><span>支出</span><b class="expense-text">${money(expense+transferOut)}</b></div></div><div class="panel-head" style="margin:8px 0 10px"><h3 style="margin:0">相關交易</h3><span class="hint">${ts.length} 筆</span></div><div class="account-detail-list">${ts.length?ts.map(t=>{const c=cat(t.category);let sign=t.kind==='income'||(t.kind==='transfer'&&String(t.toAccount)===String(a.id))?'+':'−';let cls=sign==='+'?'income-text':'expense-text';return `<div class="account-detail-row"><span class="account-detail-date">${t.date}</span><div class="mini-icon">${esc(c.icon)}</div><div><b>${esc(t.name)}</b><div class="tx-meta">${esc(t.merchant||t.note||'—')}${t.kind==='transfer'?' · 轉帳':''}</div></div><div class="amount ${cls}">${sign}${money(t.amount)}</div></div>`}).join(''):'<div class="empty">目前沒有相關交易</div>'}</div>`;el.querySelector('[data-close-account-detail]')?.addEventListener('click',()=>{selectedAccountId=null;el.hidden=true;renderAccounts()})}
 function renderAccounts(){
   const ordered=acctOrdered(state.accounts),cards=ordered.filter(a=>a.type==='card'), normal=ordered.filter(a=>a.type!=='card');
-  const normalHtml=normal.map(a=>`<div class="account-tile ${a.archived?'archived':''}" data-open-account="${a.id}" role="button" tabindex="0"><div class="account-tile-icon">${svgForAccount(a)}</div><div class="account-tile-main"><b>${acctName(a)}</b><span>${acctTypeLabel(a)}${a.archived?' · 已封存':''}${a.excludeNet?' · 不計入總資產':''}${lowBalanceHit(a)?' · 餘額不足':''}</span></div><strong>${acctMoney(a.balance,a)}</strong><button type="button" class="account-delete-btn account-manage-btn" data-acct-manage="${a.id}" aria-label="管理 ${esc(a.name)}">管理</button></div>`).join('');
+  const normalHtml=normal.map(a=>`<div class="account-tile ${a.archived?'archived':''}" data-open-account="${a.id}" role="button" tabindex="0"><div class="account-tile-icon">${svgForAccount(a)}</div><div class="account-tile-main"><b>${acctName(a)}</b><span>${acctTypeLabel(a)}${a.archived?' · 已封存':''}${a.excludeNet?' · 不計入總資產':''}${lowBalanceHit(a)?' · 餘額不足':''}</span></div><strong>${acctMoney(a.balance,a)}</strong><button type="button" class="account-delete-btn account-manage-btn" data-acct-manage="${a.id}" aria-label="管理 ${esc(a.name)}">管理</button></div>`);
   const cardHtml=cards.map(a=>{let used=Math.max(0,Math.abs(a.balance)),limit=Math.max(0,a.limit||0),available=Math.max(0,limit-used),pct=limit?Math.min(100,used/limit*100):0;return `<div class="credit-card-row ${selectedCreditCardId===a.id?'active':''}" data-open-credit="${a.id}" role="button" tabindex="0"><div class="credit-card-row-main"><div class="cc-mini-icon">${svg('card')}</div><div><b>${esc(a.name)}</b><span>信用卡${a.archived?' · 已封存':''}${a.excludeNet?' · 不計入總資產':''}</span></div><button type="button" class="account-manage-btn" data-acct-manage="${a.id}" aria-label="管理 ${esc(a.name)}">管理</button></div><div class="credit-card-row-amount"><small>已用 ${money(used)} / ${money(limit)}</small><strong>${money(available)}</strong><span>可用額度</span>${creditRowExtraHTML(a)}</div><button type="button" class="secondary cc-row-settings" data-open-card-settings="${a.id}">設定</button><button type="button" class="account-delete-btn" data-delete-account="${a.id}" aria-label="刪除 ${esc(a.name)}">刪除</button></div>`}).join('');
-  accountGrid.innerHTML=`<div class="credit-list">${cards.length?cardHtml:'<div class="empty">尚無信用卡</div>'}</div><div class="normal-accounts">${normalHtml||'<div class="empty">尚無一般帳戶</div>'}</div>`;
+  accountGrid.innerHTML=acctGroupsHTML(cards,cardHtml,normal,normalHtml);
   document.querySelectorAll('[data-open-credit]').forEach(b=>{b.onclick=(e)=>{if(e.target.closest('button'))return;openCreditAccount(b.dataset.openCredit)}});document.querySelectorAll('[data-open-account]').forEach(b=>{b.onclick=(e)=>{if(e.target.closest('button'))return;openAccountDetail(b.dataset.openAccount)}});document.querySelectorAll('[data-open-account]').forEach(b=>{b.onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button')){e.preventDefault();openAccountDetail(b.dataset.openAccount)}}});
   document.querySelectorAll('[data-open-card-settings]').forEach(b=>b.onclick=(e)=>{e.preventDefault();e.stopPropagation();nav('accounts');setTimeout(()=>document.getElementById('creditSettingsPanel')?.scrollIntoView({behavior:'smooth',block:'start'}),30)});
   document.querySelectorAll('[data-delete-account]').forEach(b=>b.onclick=async(e)=>{e.preventDefault();e.stopPropagation();await deleteAccount(b.dataset.deleteAccount)});
@@ -236,7 +229,7 @@ function renderCreditAccountDetail(){
     <div class="credit-detail-head"><div><div class="eyebrow">信用帳戶</div><h3>${esc(card.name)}</h3><div class="hint">帳單週期 ${period.start} ～ ${period.end} · 繳款日 ${card.due||'—'} 日</div></div><div class="credit-period"><button type="button" data-credit-prev aria-label="上一期">‹</button><strong>${period.start} ～ ${period.end}</strong><button type="button" data-credit-next ${creditStatementOffset>=0?'disabled':''} aria-label="下一期">›</button></div></div>
     <div class="credit-cycle-status"><span class="credit-status credit-status-${status.key}">${status.label}</span><b>繳款截止 ${nextDue}</b></div>
     <div class="credit-summary"><div class="credit-summary-item"><span>本期帳單</span><b>${money(current)}</b></div><div class="credit-summary-item"><span>本期已繳</span><b class="green">${money(paid)}</b></div><div class="credit-summary-item"><span>本期未繳</span><b>${money(due)}</b></div><div class="credit-summary-item"><span>目前欠款</span><b>${money(outstanding)}</b></div></div>
-    <div class="credit-bar-row"><span>可用額度 ${money(available)}</span><span>額度 ${money(limit)} · ${pct.toFixed(0)}%</span></div><div class="credit-bar"><i style="width:${pct}%"></i></div>
+    <div class="credit-bar-row"><span>可用額度 ${money(available)}</span><span>額度 ${money(limit)} · ${pct.toFixed(0)}%</span></div><div class="credit-bar"><i style="width:${pct}%"></i></div>${creditRewardHTML(card,current,due)}
     <div class="credit-tabs" role="tablist" aria-label="信用卡交易狀態"><button type="button" class="credit-tab ${creditDetailTab==='statement'?'active':''}" data-credit-tab="statement">本期帳單 <b>${statementTx.length}</b></button><button type="button" class="credit-tab ${creditDetailTab==='unbilled'?'active':''}" data-credit-tab="unbilled">未出帳 <b>${unbilled.length}</b></button></div>
     ${creditDetailTab==='statement'?`<div class="credit-bill-summary"><div><span>本期應繳</span><b>${money(current)}</b></div><div><span>已繳</span><b class="green">${money(paid)}</b></div><div><span>尚欠</span><b>${money(due)}</b></div></div><div class="credit-section"><div class="credit-section-head"><h4>繳款記錄</h4><button class="ghost" data-inline-payment="${card.id}" ${sources.length&&due>0?'':'disabled'}>＋ 新增繳款</button></div><div id="creditPaymentForm" class="credit-payment-form" hidden></div>${payments.length?payments.map(p=>`<div class="payment-record"><div><b>${esc(p.name)}</b><div class="meta">${p.date} · ${esc(acct(p.account).name)}</div></div><div class="amount">${money(p.amount)}</div><span class="hint">已完成</span></div>`).join(''):'<div class="credit-empty">本期沒有繳款記錄</div>'}</div><div class="credit-section"><div class="credit-section-head"><h4>本期交易明細</h4><span class="hint">${statementTx.length} 筆 · ${money(current)}</span></div><div class="credit-tx-list">${txList(statementTx,'本期尚無交易')}</div></div>`:`<div class="credit-unbilled-card"><div><span>未出帳金額</span><b>${money(unbilledTotal)}</b></div><small>${unbilled.length} 筆 · ${creditStatementOffset===0?'結帳日後新增的消費':'上一期／歷史帳單不顯示未出帳'}</small></div><div class="credit-section"><div class="credit-section-head"><h4>未出帳交易</h4><span class="hint">${unbilled.length} 筆</span></div><div class="credit-tx-list">${txList(unbilled,'目前沒有未出帳交易')}</div></div>`}`;
   const payBtn=el.querySelector('[data-inline-payment]'); if(payBtn)payBtn.onclick=()=>showInlinePayment(card.id,period);
@@ -257,7 +250,7 @@ function showInlinePayment(cardId,periodArg=null){
   wrap.hidden=false;
   if(!sources.length){wrap.innerHTML='<div class="credit-empty">沒有可用的扣款帳戶。</div>';return}
   if(maxAmount<=0){wrap.innerHTML='<div class="credit-empty">本期帳單已經繳清。</div>';return}
-  wrap.innerHTML=`<div class="credit-payment-title"><b>繳交 ${period.start} ～ ${period.end} 帳單</b><span>本期尚欠 ${money(maxAmount)}</span></div><div class="credit-payment-grid"><label>繳款金額<input id="inlinePayAmount" type="number" min=1 max="${maxAmount}" value="${maxAmount}"></label><label>扣款帳戶<select id="inlinePaySource">${sources.map(a=>`<option value="${a.id}">${acctName(a)}（${acctMoney(a.balance,a)}）</option>`).join('')}</select></label></div><div class="credit-payment-actions"><button type="button" class="secondary" id="inlinePayCancel">取消</button><button type="button" class="primary" id="inlinePayConfirm">確認繳款</button></div>`;
+  wrap.innerHTML=`<div class="credit-payment-title"><b>繳交 ${period.start} ～ ${period.end} 帳單</b><span>本期尚欠 ${money(maxAmount)}</span></div><div class="credit-payment-grid"><label>繳款金額<input id="inlinePayAmount" type="number" min=1 max="${maxAmount}" value="${maxAmount}"></label><label>扣款帳戶<select id="inlinePaySource">${sources.map(a=>`<option value="${a.id}"${String(a.id)===String(card.payFrom)?' selected':''}>${acctName(a)}（${acctMoney(a.balance,a)}）</option>`).join('')}</select></label></div><div class="credit-payment-actions"><button type="button" class="secondary" id="inlinePayCancel">取消</button><button type="button" class="primary" id="inlinePayConfirm">確認繳款</button></div>`;
   wrap.querySelector('#inlinePayCancel').onclick=()=>{wrap.hidden=true};
   wrap.querySelector('#inlinePayConfirm').onclick=async()=>{
     const source=acct(wrap.querySelector('#inlinePaySource').value);

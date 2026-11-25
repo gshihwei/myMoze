@@ -55,6 +55,7 @@ function reminderList(today, lead) {
     if (info && info.days <= n) out.push({ type: 'card', id: String(card.id), title: `${card.name} 信用卡繳款`, date: info.dueDate, days: info.days, amount: info.owed });
   }
   for (const a of (state.accounts || [])) if (lowBalanceHit(a)) out.push({ type: 'low', id: String(a.id), title: `${a.name} 餘額不足`, date: '', days: 0, amount: Number(a.balance || 0), limit: Number(a.lowBalance) });
+  for (const a of (state.accounts || [])) if (creditLowAvailHit(a)) { const u = creditUsage(a); out.push({ type: 'low', id: String(a.id), title: `${a.name} 可用額度不足`, date: '', days: 0, amount: u.available, limit: Number(a.lowAvail) }); }
   for (const r0 of (state.recurring || [])) {
     const r = normRecurring(r0);
     if (recurringEnded(r) || r.paused || !r.next) continue;
