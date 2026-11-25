@@ -336,3 +336,6 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .credit-period strong{white-space:nowrap;font-size:14px}
 .pane-tx .account-detail-row{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid rgba(255,255,255,.06)}
 .pane-tx .account-detail-date{font-size:12px;opacity:.7}
+.pane-tx .account-detail-row{padding:10px 14px;gap:12px}
+.pane-tx .account-detail-list{border-radius:12px;overflow:hidden}
+.detail-sec.pane-tx .account-detail-row:first-of-type{border-top:0}
