@@ -14,4 +14,4 @@ default:'<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>'
 };
 export function svg(type){return `<svg viewBox="0 0 24 24" aria-hidden="true">${iconPaths[type]||iconPaths.default}</svg>`}
 export function accountIcon(a){return a?.type==='cash'?'cash':a?.type==='card'?'card':a?.type==='bank'?'bank':a?.type==='broker'?'chart':'wallet'}
-export function svgForAccount(a){return svg(accountIcon(a))}
+export function svgForAccount(a){const im=a&&a.image;if(typeof im==='string'&&/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+\/=]+$/.test(im))return `<img class="acct-img" src="${im}" alt="">`;return svg(accountIcon(a))}

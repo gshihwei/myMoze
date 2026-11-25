@@ -29,6 +29,49 @@ function acctOptionsFromForm(f, type) {
   if (type !== 'card' && raw !== '' && Number.isFinite(low) && low >= 0) o.lowBalance = low;
   return o;
 }
+// ---- V26.53 account picture (resized client-side to a small data URL; stored on the account, syncs with it) ----
+function acctImageValid(s) { return typeof s === 'string' && s.length <= 120000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(s); }
+function acctImageFromForm(f) { const v = String(f.get('aimage') ?? ''); return acctImageValid(v) ? { image: v } : {}; }
+function acctImageFieldHTML(a) {
+  const has = acctImageValid(a?.image);
+  return `<div class="acct-image-field"><div class="acct-image-preview" data-acct-image-preview>${svgForAccount(a || {})}</div><div class="acct-image-actions"><label class="secondary file-btn">選擇圖片<input type="file" accept="image/*" id="acctImageFile" hidden></label><button type="button" class="secondary" data-acct-image-clear ${has ? '' : 'hidden'}>移除圖片</button><small>會縮成小圖並隨帳戶同步</small></div><input type="hidden" name="aimage" value="${has ? esc(a.image) : ''}"></div>`;
+}
+// Center-crop to a square and scale to `size` px; resolves a data URL (webp when the browser can, else png).
+function acctResizeImage(file, size) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      try {
+        const side = Math.min(img.width, img.height), c = document.createElement('canvas'); c.width = c.height = size;
+        c.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
+        let out = c.toDataURL('image/webp', 0.85); if (!/^data:image\/(webp|png|jpeg)/.test(out)) out = c.toDataURL('image/png');
+        URL.revokeObjectURL(url); resolve(out);
+      } catch (e) { URL.revokeObjectURL(url); reject(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image')); };
+    img.src = url;
+  });
+}
+document.addEventListener('change', async e => {
+  const inp = e.target; if (inp?.id !== 'acctImageFile') return;
+  const form = inp.closest('#entityForm'), file = inp.files && inp.files[0]; if (!form || !file) return;
+  try {
+    let data = await acctResizeImage(file, 96);
+    if (!acctImageValid(data)) data = await acctResizeImage(file, 64);
+    if (!acctImageValid(data)) { alert('這張圖片太大或格式不支援，請換一張。'); return; }
+    form.querySelector('[name=aimage]').value = data;
+    const pv = form.querySelector('[data-acct-image-preview]'); if (pv) pv.innerHTML = `<img class="acct-img" src="${data}" alt="">`;
+    const clr = form.querySelector('[data-acct-image-clear]'); if (clr) clr.hidden = false;
+  } catch { alert('讀不到這張圖片，請換一張。'); }
+});
+document.addEventListener('click', e => {
+  const clr = e.target.closest?.('[data-acct-image-clear]'); if (!clr) return;
+  const form = clr.closest('#entityForm'); if (!form) return;
+  form.querySelector('[name=aimage]').value = '';
+  const pv = form.querySelector('[data-acct-image-preview]'), typeSel = form.querySelector('[name=atype],[name=accountType]');
+  if (pv) pv.innerHTML = svg(accountIcon({ type: typeSel?.value || 'bank' })); clr.hidden = true;
+});
+
 // ---- V26.40 credit-card account settings (MOZE-style) ----
 function acctWeekendOptions(cur) { return [['keep', '依原日期'], ['next', '順延到下週一'], ['prev', '提前到週五']].map(([k, l]) => `<option value="${k}" ${(cur || 'keep') === k ? 'selected' : ''}>${l}</option>`).join(''); }
 // Bank choices for a credit card: names of the bank-type accounts, plus the card's current value so it is never lost.
@@ -220,6 +263,7 @@ function acctEditFormHTML(a) {
   const locked = acctHasTx(a.id), card = a.type === 'card', bal = Number(a.balance || 0);
   const period = card ? cardPeriod(a, new Date(), 0) : null;
   return `<div class="acct-edit-top"><div class="account-detail-icon">${svgForAccount(a)}</div><small>餘額 ${esc(acctCur(a))}</small><strong class="${bal < 0 ? 'expense-text' : ''}">${acctMoney(bal, a)}</strong>${period ? `<small>帳單週期 ${period.start} ～ ${period.end}</small>` : ''}</div>
+  ${acctImageFieldHTML(a)}
   <div class="form-grid">
     <label>帳戶名稱<input name="aname" required maxlength="30" value="${esc(a.name || '')}"></label>
     <label>類型<select name="atype">${acctTypes().map(([k, l]) => `<option value="${k}" ${(a.type || 'bank') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
@@ -254,6 +298,7 @@ function acctFromEditForm(f, old) {
   else { for (const k of ['bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k]; Object.assign(a, acctCardSettingsFromForm(f)); }
   if (!a.note) delete a.note;
   if (!a.archived) delete a.archived;
+  delete a.image; Object.assign(a, acctImageFromForm(f));
   if (a.type === 'card') delete a.lowBalance;
   if (f.get('aexclude')) a.excludeNet = true; else delete a.excludeNet;
   const low = Number(f.get('alow')); if (old.type !== 'card' && String(f.get('alow') ?? '').trim() !== '' && Number.isFinite(low) && low >= 0) a.lowBalance = low; else delete a.lowBalance;

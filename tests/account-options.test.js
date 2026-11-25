@@ -91,3 +91,21 @@ test('帳戶類型：證券戶（標籤、可選、改類型、獨立分組、�
   const h = J(`acctGroupsHTML([], [], state.accounts, ['<i>證</i>', '<i>銀</i>'])`);
   assert.match(h, /證券戶 \(1\)/); assert.match(h, /銀行 \(1\)/);
 });
+
+test('帳戶圖片：只接受 png／jpeg／webp 的 data URL（不收 svg、外部網址、過大）；表單存取與移除；圖示改顯示圖片', () => {
+  const ok = 'data:image/png;base64,iVBORw0KGgo=', svg = 'data:image/svg+xml;base64,PHN2Zz4=', url = 'https://x.test/a.png', big = 'data:image/png;base64,' + 'A'.repeat(130000);
+  const { J, run } = bundle(mk([A('銀行', 5, { image: ok }), A('現金', 1)]));
+  assert.equal(J(`acctImageValid(${JSON.stringify(ok)})`), true);
+  for (const bad of [svg, url, big, '', 'data:image/png;base64,<script>']) assert.equal(J(`acctImageValid(${JSON.stringify(bad)})`), false);
+  assert.deepEqual(J(`acctImageFromForm(new Map([['aimage', ${JSON.stringify(ok)}]]))`), { image: ok });
+  assert.deepEqual(J(`acctImageFromForm(new Map([['aimage', '']]))`), {});
+  // 表單帶回原圖 → 保留；清空 → 移除；不合法 → 移除
+  assert.equal(J(`acctFromEditForm(new Map([['aname','銀行'],['acur','TWD'],['atype','bank'],['aimage', ${JSON.stringify(ok)}]]), state.accounts[0]).account.image`), ok);
+  assert.equal(run(`acctFromEditForm(new Map([['aname','銀行'],['acur','TWD'],['atype','bank'],['aimage','']]), state.accounts[0]).account.image`), undefined);
+  assert.equal(run(`acctFromEditForm(new Map([['aname','銀行'],['acur','TWD'],['atype','bank'],['aimage', ${JSON.stringify(svg)}]]), state.accounts[0]).account.image`), undefined);
+  // 圖示：有合法圖片 → <img>；惡意值 → 退回 SVG 圖示
+  assert.match(J(`svgForAccount(state.accounts[0])`), /<img class="acct-img" src="data:image\/png/);
+  assert.match(J(`svgForAccount({ type: 'bank', image: ${JSON.stringify('data:image/png;base64,"><script>')} })`), /<svg/);
+  assert.match(J('acctEditFormHTML(state.accounts[0])'), /name="aimage" value="data:image\/png/);
+  assert.match(J('acctEditFormHTML(state.accounts[1])'), /data-acct-image-clear hidden/);
+});

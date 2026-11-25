@@ -339,3 +339,12 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .pane-tx .account-detail-row{padding:10px 14px;gap:12px}
 .pane-tx .account-detail-list{border-radius:12px;overflow:hidden}
 .detail-sec.pane-tx .account-detail-row:first-of-type{border-top:0}
+
+/* V26.53 account pictures */
+.acct-img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
+.account-tile-icon,.account-detail-icon,.cc-mini-icon{overflow:hidden}
+.acct-image-field{display:flex;align-items:center;gap:14px;margin:4px 0 14px}
+.acct-image-preview{width:64px;height:64px;border-radius:16px;background:#233b51;display:grid;place-items:center;overflow:hidden;flex:none}
+.acct-image-preview svg{width:28px;height:28px;fill:none;stroke:#b9c6d6;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.acct-image-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.acct-image-actions small{width:100%;opacity:.65}
+.file-btn{display:inline-flex;align-items:center;padding:8px 14px;border-radius:10px;cursor:pointer}
