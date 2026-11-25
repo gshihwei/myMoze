@@ -72,6 +72,34 @@ document.addEventListener('click', e => {
   if (pv) pv.innerHTML = svg(accountIcon({ type: typeSel?.value || 'bank' })); clr.hidden = true;
 });
 
+// Apply a { 帳戶名稱: data URL } map to the accounts with the same name (spaces normalised).
+// Accounts that already have a picture are kept unless `overwrite`. Returns { applied, kept, unmatched }.
+function acctNameKey(s) { return String(s || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
+function acctApplyImages(map, accounts, overwrite) {
+  const by = new Map(); for (const [k, v] of Object.entries(map || {})) if (acctImageValid(v)) by.set(acctNameKey(k), v);
+  let applied = 0, kept = 0; const used = new Set();
+  for (const a of (accounts || [])) {
+    const key = acctNameKey(a.name); if (!by.has(key)) continue; used.add(key);
+    if (acctImageValid(a.image) && !overwrite) { kept++; continue; }
+    a.image = by.get(key); applied++;
+  }
+  return { applied, kept, unmatched: [...by.keys()].filter(k => !used.has(k)).length };
+}
+document.addEventListener('click', e => { if (e.target.closest?.('#importAcctImages')) document.getElementById('acctImagesFile')?.click(); });
+document.addEventListener('change', async e => {
+  const inp = e.target; if (inp?.id !== 'acctImagesFile' || !inp.files?.[0]) return;
+  let map; try { map = JSON.parse(await inp.files[0].text()); } catch { alert('這不是有效的圖片檔（需要 JSON）。'); inp.value = ''; return; }
+  inp.value = '';
+  const preview = acctApplyImages(map, JSON.parse(JSON.stringify(state.accounts || [])), false), more = acctApplyImages(map, JSON.parse(JSON.stringify(state.accounts || [])), true);
+  if (!more.applied) { alert('沒有名稱相符的帳戶，沒有更動。'); return; }
+  let overwrite = false;
+  if (preview.kept && more.applied > preview.applied) overwrite = confirm(`有 ${preview.kept} 個帳戶已經設定過圖片。\n要用這個檔案的圖片取代它們嗎？\n（按「取消」＝保留已有圖片，只補上沒有圖片的 ${preview.applied} 個帳戶）`);
+  const r = acctApplyImages(map, state.accounts, overwrite);
+  if (!r.applied) { alert('所有相符的帳戶都已經有圖片，沒有更動。'); return; }
+  await save(); render();
+  alert(`已為 ${r.applied} 個帳戶設定圖片${r.kept ? `，保留 ${r.kept} 個原有圖片` : ''}。`);
+});
+
 // ---- V26.40 credit-card account settings (MOZE-style) ----
 function acctWeekendOptions(cur) { return [['keep', '依原日期'], ['next', '順延到下週一'], ['prev', '提前到週五']].map(([k, l]) => `<option value="${k}" ${(cur || 'keep') === k ? 'selected' : ''}>${l}</option>`).join(''); }
 // Bank choices for a credit card: names of the bank-type accounts, plus the card's current value so it is never lost.

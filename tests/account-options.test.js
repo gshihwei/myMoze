@@ -109,3 +109,15 @@ test('帳戶圖片：只接受 png／jpeg／webp 的 data URL（不收 svg、外
   assert.match(J('acctEditFormHTML(state.accounts[0])'), /name="aimage" value="data:image\/png/);
   assert.match(J('acctEditFormHTML(state.accounts[1])'), /data-acct-image-clear hidden/);
 });
+
+test('匯入帳戶圖片：依帳戶名稱（忽略多餘空白與大小寫）套用；已有圖片預設保留；不合法的圖片略過', () => {
+  const img1 = 'data:image/webp;base64,UklGRg==', img2 = 'data:image/webp;base64,AAAA', old = 'data:image/png;base64,iVBORw0KGgo=';
+  const { J } = bundle(mk([A('玉山', 1), A('Open Possible', 1), A('國泰 Koko', 1, { image: old }), A('沒有的', 1)]));
+  const map = { '玉山': img1, 'Open  possible': img1, '國泰 koko': img2, '不存在': img1, '壞的': 'https://x.test/a.png', '': img1 };
+  const r1 = J(`(() => { const a = JSON.parse(JSON.stringify(state.accounts)); return [acctApplyImages(${JSON.stringify(map)}, a, false), a.map(x => x.image || null)]; })()`);
+  assert.deepEqual(r1[0], { applied: 2, kept: 1, unmatched: 2 });
+  assert.deepEqual(r1[1], [img1, img1, old, null]);
+  const r2 = J(`(() => { const a = JSON.parse(JSON.stringify(state.accounts)); return [acctApplyImages(${JSON.stringify(map)}, a, true), a.map(x => x.image || null)]; })()`);
+  assert.deepEqual(r2[0], { applied: 3, kept: 0, unmatched: 2 }); assert.equal(r2[1][2], img2);
+  assert.equal(J(`acctNameKey('  Open   Possible ')`), 'open possible');
+});
