@@ -188,3 +188,36 @@ test('信用卡／帳戶詳情以全螢幕面板開啟（不再捲到頁面底�
   assert.ok(!js.includes("getElementById('accountDetail')?.scrollIntoView"));
   assert.match(css, /#creditAccountDetail:not\(\[hidden\]\),#accountDetail:not\(\[hidden\]\)\{position:fixed;inset:0/);
 });
+
+test('帳務統計：新增花費／上期欠款／應繳／已繳／剩餘；銀行彙總為各卡加總', () => {
+  const c1 = card({ id: 'c1', name: 'A', bank: '永豐', balance: -3500 }), c2 = card({ id: 'c2', name: 'B', bank: '永豐', balance: -200 });
+  const st = mk([c1, c2, { id: 'bank', name: '永豐', type: 'bank', balance: 9000 }]);
+  const tx = (id, date, amount, account, extra = {}) => ({ id, date, kind: 'expense', amount, account, name: id, category: '', ...extra });
+  st.transactions = [tx('t1', '2026-10-20', 3000, 'c1'), tx('t0', '2026-10-01', 500, 'c1'), tx('t2', '2026-11-01', 200, 'c2'),
+    { id: 'p1', date: '2026-11-20', kind: 'transfer', amount: 1000, account: 'bank', toAccount: 'c1', cardPayment: true, name: '繳款' }];
+  const { J } = bundle(st);
+  const s1 = J(`creditStats(state.accounts[0], new Date('2026-11-25T09:00:00'), 0)`);
+  assert.equal(s1.spend, 3000); assert.equal(s1.prevOwed, 500); assert.equal(s1.payable, 3500); assert.equal(s1.paid, 1000); assert.equal(s1.remaining, 2500);
+  const sum = J(`sumCreditStats([creditStats(state.accounts[0], new Date('2026-11-25T09:00:00'), 0), creditStats(state.accounts[1], new Date('2026-11-25T09:00:00'), 0)])`);
+  assert.equal(sum.spend, 3200); assert.equal(sum.remaining, 2700);
+  assert.match(J(`creditStatsHTML(creditStats(state.accounts[0], new Date('2026-11-25T09:00:00'), 0))`), /帳務統計[\s\S]*上期欠款[\s\S]*剩餘帳款/);
+  assert.match(J(`creditStatsHTML({spend:0,prevOwed:0,payable:0,paid:0,remaining:0})`), /已繳清/);
+});
+
+test('銀行詳情與帳戶資訊：子帳戶清單、信用額度合計、帳戶資訊區塊', () => {
+  const st = mk([card({ id: 'c1', name: 'OP', bank: '富邦', balance: -100, limit: 10000 }), card({ id: 'c2', name: 'JP', bank: '富邦', balance: -250, limit: 20000 }), card({ id: 'c3', name: '別家', bank: '台新' }),
+    { id: 'f1', name: '日幣', type: 'bank', balance: 100, currency: 'TWD', bank: '富邦' }]);
+  st.transactions = [];
+  const { J, run } = bundle(st);
+  assert.deepEqual(J(`bankCards({ key: 'card', bank: '富邦' }).map(a => a.name)`), ['OP', 'JP']);
+  const h = J(`bankDetailHTML({ key: 'card', bank: '富邦' })`);
+  assert.match(h, /2 張信用卡/); assert.match(h, /data-open-card-from-bank="c1"/); assert.match(h, /data-open-card-from-bank="c2"/); assert.ok(!h.includes('別家'));
+  assert.match(h, /信用額度合計[\s\S]*30,000/); assert.match(h, /已使用[\s\S]*350/); assert.match(h, /data-close-bank/);
+  const info = J('acctInfoHTML(state.accounts[0])');
+  for (const t of ['帳戶資訊', '記帳筆數', '主幣種', '信用額度', '繳款期限', '紅利回饋', '封存帳戶', 'data-acct-manage="c1"']) assert.ok(info.includes(t), t);
+  assert.match(J('acctInfoHTML(state.accounts[3])'), /所屬銀行/);
+  assert.ok(!J('acctInfoHTML(state.accounts[3])').includes('信用額度'));
+  // 銀行列帶有開啟詳情所需的資料
+  run(`prefs = () => ({})`);
+  assert.match(J(`acctGroupsHTML([state.accounts[0], state.accounts[1]], ['<i>1</i>', '<i>2</i>'], [], [])`), /data-bank-key="card" data-bank-name="富邦"/);
+});

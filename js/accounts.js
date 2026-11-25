@@ -124,7 +124,7 @@ function acctBankRows(list, tiles, key, unit, bankCollapsed) {
     if (!g.bank) { body += tiles[g.idx[0]]; continue; }
     const sub = g.idx.map(i => list[i]), total = acctGroupTotal(sub), tkey = key === 'card' ? g.bank : `${key}:${g.bank}`, off = bankCollapsed.has(tkey);
     const amount = key === 'card' ? money(Math.abs(Math.min(0, total))) : `${total < 0 ? '−' : ''}${money(Math.abs(total))}`;
-    body += `<div class="account-tile bank-row"><div class="account-tile-icon">${svg('bank')}</div><div class="account-tile-main"><b>${esc(g.bank)}</b><span>${sub.length} ${unit}</span></div><strong>${amount}</strong><button type="button" class="bank-toggle" data-bank-toggle="${esc(tkey)}" aria-expanded="${off ? 'false' : 'true'}" aria-label="${off ? '展開' : '收合'} ${esc(g.bank)}">${off ? '⌄' : '⌃'}</button></div>`;
+    body += `<div class="account-tile bank-row" data-bank-key="${key}" data-bank-name="${esc(g.bank)}" role="button" tabindex="0"><div class="account-tile-icon">${svg('bank')}</div><div class="account-tile-main"><b>${esc(g.bank)}</b><span>${sub.length} ${unit}</span></div><strong>${amount}</strong><button type="button" class="bank-toggle" data-bank-toggle="${esc(tkey)}" aria-expanded="${off ? 'false' : 'true'}" aria-label="${off ? '展開' : '收合'} ${esc(g.bank)}">${off ? '⌄' : '⌃'}</button></div>`;
     if (!off) body += `<div class="bank-children">${g.idx.map(i => tiles[i]).join('')}</div>`;
   }
   return body;
@@ -141,6 +141,52 @@ function acctGroupsHTML(cards, cardTiles, normal, tiles) {
   }
   if (!normal.length && !cards.length) html += '<div class="empty">尚無帳戶</div>';
   return html;
+}
+// ---- V26.50 account detail sections (帳務統計 / 繳款記錄 / 帳戶資訊 / 子帳戶), modelled on MOZE ----
+var selectedBank;   // { key: 'card' | 'foreign', bank } while a bank's detail sheet is open
+function creditStmt(card, base, offset) {
+  const period = cardPeriod(card, base, offset);
+  const spend = state.transactions.filter(t => String(t.account) === String(card.id) && t.kind === 'expense' && !t.cardPayment && t.date >= period.start && t.date <= period.end).reduce((s, t) => s + Number(t.amount || 0), 0);
+  const paid = creditStatementPayments(card, period).reduce((s, t) => s + Number(t.amount || 0), 0);
+  return { period, spend, paid, owed: Math.max(0, Math.round((spend - paid) * 100) / 100) };
+}
+// 新增花費 / 上期欠款 / 應繳 / 已繳 / 剩餘 for the statement `offset` periods back (0 = last closed statement).
+function creditStats(card, base, offset) {
+  const b = base || new Date(), cur = creditStmt(card, b, offset || 0), prev = creditStmt(card, b, (offset || 0) - 1);
+  const payable = cur.spend + prev.owed;
+  return { period: cur.period, spend: cur.spend, prevOwed: prev.owed, payable, paid: cur.paid, remaining: Math.max(0, Math.round((payable - cur.paid) * 100) / 100) };
+}
+function sumCreditStats(list) { return list.reduce((s, x) => ({ spend: s.spend + x.spend, prevOwed: s.prevOwed + x.prevOwed, payable: s.payable + x.payable, paid: s.paid + x.paid, remaining: s.remaining + x.remaining }), { spend: 0, prevOwed: 0, payable: 0, paid: 0, remaining: 0 }); }
+function infoRow(label, value, cls) { return `<div class="info-row"><span>${esc(label)}</span><b class="${cls || ''}">${value}</b></div>`; }
+function creditStatsHTML(st) {
+  return `<section class="detail-sec"><h4>帳務統計</h4>${infoRow('新增花費', `${st.spend ? '−' : ''}${money(st.spend)}`, st.spend ? 'expense-text' : '')}${infoRow('上期欠款', money(st.prevOwed))}${infoRow('應繳金額', `${st.payable ? '−' : ''}${money(st.payable)}`, st.payable ? 'expense-text' : '')}${infoRow('已繳金額', `${st.paid ? '+' : ''}${money(st.paid)}`, st.paid ? 'income-text' : '')}${infoRow('剩餘帳款', st.remaining ? money(st.remaining) : '已繳清 ✓', st.remaining ? '' : 'income-text')}</section>`;
+}
+function acctInfoHTML(a) {
+  const card = a.type === 'card', n = state.transactions.filter(t => String(t.account) === String(a.id) || String(t.toAccount ?? '') === String(a.id)).length;
+  const due = card ? isoDate(cardStatementDueDate(a, cardPeriod(a, new Date(), 0))) : '';
+  const payFrom = card && a.payFrom ? (state.accounts.find(x => String(x.id) === String(a.payFrom))?.name || '') : '';
+  const rows = [infoRow('餘額', acctMoney(a.balance, a), Number(a.balance) < 0 ? 'expense-text' : ''), infoRow('記帳筆數', n), infoRow('主幣種', esc(acctCur(a))), infoRow('帳戶分組', esc(acctTypeLabel(a)))];
+  if (a.bank) rows.push(infoRow('所屬銀行', esc(a.bank)));
+  if (card) rows.push(infoRow('信用額度', a.limit ? money(a.limit) : '尚未設定'), infoRow('結帳日', `每月 ${a.statement || 15} 日`), infoRow('繳款期限', due), infoRow('主帳戶', payFrom ? esc(payFrom) : '無'), infoRow('紅利回饋', a.rewardPct ? `${a.rewardPct}%` : '無'));
+  rows.push(infoRow('不計入總資產', a.excludeNet ? '是' : '否'), infoRow('封存帳戶', a.archived ? '是' : '否'));
+  return `<section class="detail-sec"><h4>帳戶資訊 <button type="button" class="ghost detail-gear" data-acct-manage="${esc(a.id)}" aria-label="管理 ${esc(a.name)}">管理 ⚙</button></h4>${rows.join('')}</section>`;
+}
+function bankCards(sel) { return (state.accounts || []).filter(a => acctGroupKey(a) === sel.key && String(a.bank || '').trim() === sel.bank); }
+function bankDetailHTML(sel) {
+  const list = bankCards(sel), card = sel.key === 'card', total = acctGroupTotal(list);
+  const subs = list.map(a => `<button type="button" class="sub-acct" data-open-card-from-bank="${esc(a.id)}"><span>${esc(a.name)}${acctCur(a) !== 'TWD' ? ` (${esc(acctCur(a))})` : ''}</span><b>${card ? money(Math.abs(Number(a.balance || 0))) : acctMoney(a.balance, a)}</b></button>`).join('');
+  let html = `<div class="detail-close-row"><button type="button" class="secondary" data-close-bank>← 返回帳戶</button></div><div class="credit-detail-head"><div><div class="eyebrow">${card ? '信用卡' : '外幣帳戶'}</div><h3>${esc(sel.bank)}</h3><div class="hint">${list.length} ${card ? '張信用卡' : '個外幣帳戶'}</div></div></div>`;
+  if (card) {
+    html += creditStatsHTML(sumCreditStats(list.map(a => creditStats(a, new Date(), 0))));
+    const used = list.reduce((s, a) => s + Math.abs(Math.min(0, Number(a.balance || 0))), 0), limit = list.reduce((s, a) => s + Number(a.limit || 0), 0);
+    html += `<section class="detail-sec"><h4>帳戶資訊</h4>${infoRow('已使用', money(used), used ? 'expense-text' : '')}${infoRow('信用額度合計', limit ? money(limit) : '尚未設定')}${infoRow('可用額度', limit ? money(Math.max(0, limit - used)) : '—')}${infoRow('信用卡張數', list.length)}</section>`;
+  } else html += `<section class="detail-sec"><h4>帳戶資訊</h4>${infoRow('折合 TWD', `${total < 0 ? '−' : ''}${money(Math.abs(total))}`, total < 0 ? 'expense-text' : '')}${infoRow('帳戶數', list.length)}</section>`;
+  return html + `<section class="detail-sec"><h4>子帳戶</h4><div class="sub-accts">${subs || '<div class="empty">沒有子帳戶</div>'}</div></section>`;
+}
+function renderBankDetail() {
+  const el = document.getElementById('creditAccountDetail'); if (!el) return;
+  if (!selectedBank || !bankCards(selectedBank).length) { selectedBank = null; el.hidden = true; return; }
+  el.hidden = false; el.innerHTML = bankDetailHTML(selectedBank);
 }
 function acctToggleBank(name) {
   const set = new Set(prefs().bankCollapsed || []); if (set.has(name)) set.delete(name); else set.add(name);
@@ -259,7 +305,10 @@ function acctSyncBankField(form) {
 document.addEventListener('change', e => { const s = e.target; if ((s?.name === 'atype' || s?.name === 'accountType') && s.closest?.('#entityForm')) { const form = s.closest('#entityForm'), box = form.querySelector('[data-acct-card-fields]'); if (box && s.name === 'atype') box.hidden = s.value !== 'card'; acctSyncBankField(form); } });
 document.addEventListener('input', e => { if (e.target?.name === 'acur' && e.target.closest?.('#entityForm')) acctSyncBankField(e.target.closest('#entityForm')); });
 document.addEventListener('click', async e => {
-  const row = e.target.closest?.('.bank-row'); if (row) { const b = row.querySelector('[data-bank-toggle]'); if (b) { acctToggleBank(b.dataset.bankToggle); renderAccounts(); } return; }
+  const row = e.target.closest?.('.bank-row');
+  if (row) { const t = e.target.closest('[data-bank-toggle]'); if (t) acctToggleBank(t.dataset.bankToggle); else selectedBank = { key: row.dataset.bankKey, bank: row.dataset.bankName }; renderAccounts(); return; }
+  if (e.target.closest?.('[data-close-bank]')) { selectedBank = null; renderAccounts(); return; }
+  const fromBank = e.target.closest?.('[data-open-card-from-bank]'); if (fromBank) { openCreditAccount(fromBank.dataset.openCardFromBank); return; }
   if (e.target.closest?.('[data-close-credit]')) { selectedCreditCardId = null; renderAccounts(); return; }
   const bk = e.target.closest?.('[data-bank-toggle]'); if (bk) { acctToggleBank(bk.dataset.bankToggle); renderAccounts(); return; }
   const grp = e.target.closest?.('[data-acct-group]'); if (grp) { acctToggleGroup(grp.dataset.acctGroup); renderAccounts(); return; }
