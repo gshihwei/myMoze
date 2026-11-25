@@ -27,7 +27,8 @@ function acctOtherHTML(collapsed) {
 }
 function cardTileInfo(a) {
   const bills = (window.__tileBills || billNotices()).filter(b => b.card.id === a.id), owed = bills.reduce((s, b) => s + b.owed, 0), u = a.limit ? creditUsage(a) : null, due = bills[0]?.due;
-  return `${u ? `可用額度 ${acctMoney(u.available, a)}` : '信用卡'}${owed > 0 ? `<br>待繳帳款 ${acctMoney(owed, a)}` : ''}${due ? `<em class="due-pill${bills[0].days < 0 ? ' over' : ''}">${Number(due.slice(5, 7))}/${Number(due.slice(8))} ${bills[0].days < 0 ? '已過期' : '繳費截止'}</em>` : ''}`;
+  const best = (window.__freeBest || (window.__freeBest = interestFreeBest())).has(a.id);
+  return `${best ? `🏆 免息 ${interestFreeDays(a)} 天<br>` : ''}${u ? `可用額度 ${acctMoney(u.available, a)}` : '信用卡'}${owed > 0 ? `<br>待繳帳款 ${acctMoney(owed, a)}` : ''}${due ? `<em class="due-pill${bills[0].days < 0 ? ' over' : ''}">${Number(due.slice(5, 7))}/${Number(due.slice(8))} ${bills[0].days < 0 ? '已過期' : '繳費截止'}</em>` : ''}`;
 }
 // ---- overview chart ----
 function acctPeriods(unit, n, today) {
@@ -68,7 +69,7 @@ function acctChartHTML(full) {
 }
 function donutSVG(rows, centre) {
   const tot = rows.reduce((s, r) => s + r.v, 0) || 1; let a0 = -Math.PI / 2; const col = ['#a9cf89', '#7fb3d5', '#b8a6ff', '#f0b27a', '#e88c9a', '#76d7c4', '#c39bd3', '#f7dc6f', '#85c1e9', '#aab7b8'];
-  const seg = rows.map((r, i) => { const f = r.v / tot, a1 = a0 + f * 2 * Math.PI * 0.99999, p = (rad, an) => `${(100 + rad * Math.cos(an)).toFixed(2)},${(100 + rad * Math.sin(an)).toFixed(2)}`, big = a1 - a0 > Math.PI ? 1 : 0, mid = (a0 + a1) / 2, d = `M${p(90, a0)} A90,90 0 ${big} 1 ${p(90, a1)} L${p(56, a1)} A56,56 0 ${big} 0 ${p(56, a0)} Z`; a0 = a1; return `<path d="${d}" fill="${col[i % col.length]}"><title>${esc(r.k)} ${(f * 100).toFixed(1)}%</title></path>${f > 0.06 ? `<text x="${(100 + 73 * Math.cos(mid)).toFixed(1)}" y="${(104 + 73 * Math.sin(mid)).toFixed(1)}" text-anchor="middle" class="dn-l">${(f * 100).toFixed(1)}%</text>` : ''}`; }).join('');
+  const seg = rows.map((r, i) => { const f = r.v / tot, a1 = a0 + Math.min(f, 0.998) * 2 * Math.PI, p = (rad, an) => `${(100 + rad * Math.cos(an)).toFixed(2)},${(100 + rad * Math.sin(an)).toFixed(2)}`, big = a1 - a0 > Math.PI ? 1 : 0, mid = (a0 + a1) / 2, d = `M${p(90, a0)} A90,90 0 ${big} 1 ${p(90, a1)} L${p(56, a1)} A56,56 0 ${big} 0 ${p(56, a0)} Z`; a0 = a1; return `<path d="${d}" fill="${col[i % col.length]}"><title>${esc(r.k)} ${(f * 100).toFixed(1)}%</title></path>${f > 0.06 ? `<text x="${(100 + 73 * Math.cos(mid)).toFixed(1)}" y="${(104 + 73 * Math.sin(mid)).toFixed(1)}" text-anchor="middle" class="dn-l">${(f * 100).toFixed(1)}%</text>` : ''}`; }).join('');
   return `<svg class="donut" viewBox="0 0 200 200">${seg}<text x="100" y="106" text-anchor="middle" class="dn-c">${esc(centre)}</text></svg><div class="dn-legend">${rows.map((r, i) => `<span><i style="background:${col[i % col.length]}"></i>${esc(r.k)} ${(r.v / tot * 100).toFixed(1)}%</span>`).join('')}</div>`;
 }
 function openAcctShare(kind) {

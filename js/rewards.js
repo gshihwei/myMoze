@@ -29,6 +29,8 @@ function rewardUnit(r, spend) {
   if (r.mode === 'fixed') return spend >= Number(r.minSingle || 0) ? Number(r.value || 0) : 0;
   return spend * Number(r.value || 0) / 100;
 }
+// One record's reward: rounded, then limited by 單筆上限.
+function rewardOne(r, spend, digits) { const v = rewardRound(rewardUnit(r, spend), r.roundEach, digits); return Number(r.capEach) > 0 ? Math.min(v, Number(r.capEach)) : v; }
 // Everything about one rule in one period.
 function rewardStats(r, a, period) {
   const digits = curDigits(acctCur(acct(r.account || a.id))), items = [];
@@ -36,7 +38,7 @@ function rewardStats(r, a, period) {
     if (String(t.account) !== String(a.id) || t.kind !== 'expense' || isUnappliedPending(t) || !(t.rewards || []).includes(r.id)) continue;
     const d = rewardTxDate(r, t); if (d < period.start || d > period.end) continue;
     const spend = rewardSpendOf(t), ok = spend > 0 && spend >= Number(r.minSingle || 0);
-    items.push({ t, spend, ok, reward: ok ? rewardRound(rewardUnit(r, spend), r.roundEach, digits) : 0 });
+    items.push({ t, spend, ok, reward: ok ? rewardOne(r, spend, digits) : 0 });
   }
   items.sort((x, y) => (x.t.date + (x.t.time || '')).localeCompare(y.t.date + (y.t.time || '')));
   const good = items.filter(x => x.ok), spend = Math.round(good.reduce((s, x) => s + x.spend, 0) * 100) / 100, count = good.length;
@@ -119,7 +121,7 @@ function rewardFormHTML(a, r) {
   return `<div class="reward-form" data-reward-form="${esc(a.id)}" data-rule="${esc(r.id || '')}"><div class="form-grid"><label>名稱<input data-rw="name" maxlength="20" value="${esc(r.name || '')}" placeholder="例如：網購 2%"></label><label>回饋方式${o('mode', [['pct', '按照 %'], ['ratio', '按照比例'], ['fixed', '固定金額']])}</label><label>回饋值（% 或數量）${i('value')}</label><label>比例：每消費多少${i('per', '', '例如 15')}</label>
   <label>計算區間${o('period', [['stmt', '依照帳單區間'], ['month', '整月計算'], ['range', '指定活動區間']])}</label><label>活動開始${i('from', 'date')}</label><label>活動結束${i('to', 'date')}</label><label>統計基準（整月）${o('basis', [['date', '消費日'], ['post', '入帳日']])}</label>
   <label>入帳時機${o('timing', [['end', '區間結束後'], ['now', '當下交易後'], ['post', '依照入帳日'], ['manual', '手動指定']])}</label><label>交易／入帳後幾天${i('days')}</label><label>區間結束的${o('payMonth', [['0', '當月'], ['1', '次月']])}</label><label>幾號回饋（空白＝隔天）${i('payDay')}</label>
-  <label>最低累積消費${i('minTotal')}</label><label>單筆低消${i('minSingle')}</label><label>消費次數門檻${i('minCount')}</label><label>單筆進位${o('roundEach', rounds)}</label><label>總額進位${o('roundTotal', rounds)}</label><label>回饋上限${i('cap')}</label><label>共同上限群組${i('capGroup', 'text', '同名者共用上限')}</label>
+  <label>最低累積消費${i('minTotal')}</label><label>單筆低消${i('minSingle')}</label><label>消費次數門檻${i('minCount')}</label><label>單筆進位${o('roundEach', rounds)}</label><label>總額進位${o('roundTotal', rounds)}</label><label>單筆回饋上限${i('capEach')}</label><label>總額回饋上限${i('cap')}</label><label>共同上限群組${i('capGroup', 'text', '同名者共用上限')}</label>
   <label>回饋帳戶<select data-rw="account"><option value="">${esc(a.name)}（原帳戶）</option>${acctActive(acctOrdered(state.accounts), r.account).filter(x => x.id !== a.id).map(x => `<option value="${esc(x.id)}"${String(r.account || '') === String(x.id) ? ' selected' : ''}>${acctName(x)}</option>`).join('')}</select></label><label>回饋專案<select data-rw="project"><option value="">原記錄的專案</option>${(state.projects || []).map(p => `<option value="${esc(p.id)}"${String(r.project || '') === String(p.id) ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label><label>可用日期起${i('start', 'date')}</label><label>可用日期迄${i('end', 'date')}</label></div><label class="check"><input type="checkbox" data-rw="base"${r.base ? ' checked' : ''}> 基本回饋（記帳選到此帳戶自動帶入）</label><p class="hint">回饋趴數變更時請新增一筆，不要改舊的，以免影響既有記錄。</p><div class="form-actions"><button type="button" class="secondary" data-reward-cancel>取消</button><button type="button" class="primary" data-reward-save>儲存</button></div></div>`;
 }
 function rewardFromForm(root) {
@@ -133,18 +135,20 @@ function rewardValidate(r) {
   return { rule: r };
 }
 function rewardSectionHTML(a) {
-  const ui = rewardUi(), list = rewardRules(a), t0 = isoDate(new Date());
+  const ui = rewardUi(), t0 = isoDate(new Date()), every = rewardRules(a), ended = every.filter(r => r.end && r.end < t0), list = ui.ended ? every : every.filter(r => !(r.end && r.end < t0));
   const rows = list.map(r => {
     const cur = rewardPeriod(r, a, t0); let p = cur; for (let k = 0; k < -ui.off && r.period !== 'range'; k++) p = rewardPeriod(r, a, addDaysIso(p.start, -1));
     const s = rewardStats(r, a, p), tg = r.account || a.id, dead = !rewardActive(r, t0), bits = [`消費 ${money(s.spend)}（${s.count} 筆）`];
     if (s.minLeft) bits.push(`還差 ${money(s.minLeft)} 達門檻`); if (s.countLeft) bits.push(`還差 ${s.countLeft} 次`); if (s.cap !== null) bits.push(s.spendLeft ? `再消費 ${money(s.spendLeft)} 達上限 ${s.cap}` : s.capLeft === 0 ? '已達上限' : `上限 ${s.cap}`); if (s.got) bits.push(`已入帳 ${rewardText(s.got, tg)}`);
-    return `<div class="reward-row${dead ? ' dead' : ''}"><div class="day-main"><b>${esc(r.name)}${r.base ? '（基本）' : ''}</b><small>${esc(rewardRuleText(r))} · ${p.start} ～ ${p.end}</small><small>${esc(bits.join(' · '))}</small></div><div class="day-side"><b class="income-text">${esc(rewardText(s.total, tg))}</b><span class="notice-act">${r.timing === 'manual' && s.left > 0 ? `<button type="button" class="primary" data-reward-take="${esc(r.id)}" data-start="${p.start}">取得回饋</button>` : ''}<button type="button" class="ghost" data-reward-list="${esc(r.id)}">明細</button><button type="button" class="ghost" data-reward-edit="${esc(r.id)}" data-acct="${esc(a.id)}">編輯</button></span></div></div>${ui.open === r.id ? `<div class="reward-items">${s.items.map(x => `<button type="button" class="notice-row" data-tx-open="${esc(x.t.id)}"><span>${x.t.date.slice(5)}</span><span>${esc(x.t.name)}</span><b>${x.ok ? esc(rewardText(x.reward, tg)) : '未達單筆門檻'}</b></button>`).join('') || '<div class="hint">這個區間沒有套用的消費</div>'}<div class="form-actions"><button type="button" class="secondary" data-reward-copy="${esc(r.id)}">複製</button>${dead ? '' : `<button type="button" class="secondary" data-reward-end="${esc(r.id)}">終止</button>`}<button type="button" class="secondary danger-btn" data-reward-del="${esc(r.id)}">刪除</button></div></div>` : ''}`;
+    return `<div class="reward-row${dead ? ' dead' : ''}"><div class="day-main"><b>${esc(r.name)}${r.base ? '（基本）' : ''}</b><small>${esc(rewardRuleText(r))} · ${p.start} ～ ${p.end}</small><small>${esc(bits.join(' · '))}</small></div><div class="day-side"><b class="income-text">${esc(rewardText(s.total, tg))}</b><span class="notice-act">${r.timing === 'manual' && s.left > 0 ? `<button type="button" class="primary" data-reward-take="${esc(r.id)}" data-start="${p.start}">取得回饋</button>` : ''}<button type="button" class="ghost" data-reward-list="${esc(r.id)}">明細</button><button type="button" class="ghost" data-reward-edit="${esc(r.id)}" data-acct="${esc(a.id)}">編輯</button></span></div></div>${ui.open === r.id ? `<div class="reward-items">${s.items.map(x => `<button type="button" class="notice-row" data-tx-open="${esc(x.t.id)}"><span>${x.t.date.slice(5)}</span><span>${esc(x.t.name)}</span><b>${x.ok ? esc(rewardText(x.reward, tg)) : '未達單筆門檻'}</b></button>`).join('') || '<div class="hint">這個區間沒有套用的消費</div>'}<div class="form-actions"><button type="button" class="ghost" data-reward-up="${esc(r.id)}" aria-label="往前移">↑</button><button type="button" class="secondary" data-reward-copy="${esc(r.id)}">複製</button>${dead ? '' : `<button type="button" class="secondary" data-reward-end="${esc(r.id)}">終止</button>`}<button type="button" class="secondary danger-btn" data-reward-del="${esc(r.id)}">刪除</button></div></div>` : ''}`;
   }).join('');
   const ed = ui.edit && ui.edit.acct === String(a.id) ? rewardFormHTML(a, list.find(r => r.id === ui.edit.rule) || { mode: 'pct', period: a.type === 'card' ? 'stmt' : 'month', timing: 'end', payMonth: 0 }) : '';
-  return `<section class="detail-sec"><h4>紅利回饋 <span>${list.length ? '<button type="button" class="ghost" data-reward-off="-1">‹ 上期</button><button type="button" class="ghost" data-reward-off="1">下期 ›</button>' : ''}<button type="button" class="ghost" data-reward-edit="" data-acct="${esc(a.id)}">＋ 新增</button></span></h4>${rows || '<div class="hint">還沒有設定回饋。</div>'}${ed}</section>`;
+  return `<section class="detail-sec"><h4>紅利回饋 <span>${list.length ? '<button type="button" class="ghost" data-reward-off="-1">‹ 上期</button><button type="button" class="ghost" data-reward-off="1">下期 ›</button>' : ''}<button type="button" class="ghost" data-reward-edit="" data-acct="${esc(a.id)}">＋ 新增</button></span></h4>${rows || '<div class="hint">還沒有設定回饋。</div>'}${ended.length ? `<button type="button" class="ghost" data-reward-ended>${ui.ended ? '隱藏' : '顯示'}已結束（${ended.length}）</button>` : ''}${ed}</section>`;
 }
 document.addEventListener('click', async e => {
   const c = s => e.target.closest?.(s), ui = rewardUi(), again = () => { renderAccounts(); };
+  if (c('[data-reward-ended]')) { ui.ended = !ui.ended; again(); return; }
+  const mvr = c('[data-reward-up]'); if (mvr) { const f = rewardRuleById(mvr.dataset.rewardUp); if (f) { const l = [...rewardRules(f.acct)], k = l.indexOf(f.rule); if (k > 0) { [l[k - 1], l[k]] = [l[k], l[k - 1]]; f.acct.rewards = l; await save(); render(); } } return; }
   const of = c('[data-reward-off]'); if (of) { ui.off = Math.min(0, ui.off + Number(of.dataset.rewardOff)); again(); return; }
   const ed = c('[data-reward-edit]'); if (ed) { ui.edit = { acct: ed.dataset.acct, rule: ed.dataset.rewardEdit }; again(); document.querySelector('.reward-form')?.scrollIntoView({ block: 'center' }); return; }
   if (c('[data-reward-cancel]')) { ui.edit = null; again(); return; }

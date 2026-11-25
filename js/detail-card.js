@@ -17,7 +17,7 @@ function dcLines(t) {
   if (t.created) l.push(`建立時間：${t.created}`); return l;
 }
 function dcRewards(t) {
-  return (t.rewards || []).map(x => { const f = rewardRuleById(x); if (!f) return ''; const r = f.rule, v = rewardRound(rewardUnit(r, rewardSpendOf(t)), r.roundEach, curDigits(acctCur(acct(r.account || t.account)))); return `${esc(r.name)} ${esc(rewardRuleText(r))} ➤ ${esc(rewardText(v, r.account || t.account))}`; }).filter(Boolean);
+  return (t.rewards || []).map(x => { const f = rewardRuleById(x); if (!f) return ''; const r = f.rule, v = rewardOne(r, rewardSpendOf(t), curDigits(acctCur(acct(r.account || t.account)))); return `${esc(r.name)} ${esc(rewardRuleText(r))} ➤ ${esc(rewardText(v, r.account || t.account))}`; }).filter(Boolean);
 }
 function detailCardHTML(t) {
   const a = acct(t.account), img = attachList(t)[0], c = cat(t.category), e = txEffect(t), multi = Array.isArray(t.splits) && t.splits.length > 1, ico = multi ? catSpecialIcon('多類別', '🗂️') : c, p = c.parentId ? cat(c.parentId) : c, proj = x => (state.projects || []).find(y => String(y.id) === String(x))?.name || '無專案', chip = (i, v) => `<div class="dc-item"><span>${i}</span><b>${v}</b></div>`, fee = [t.fee ? `手續費 ${acctMoney(t.fee, a)}` : '', t.discount ? `折扣 ${acctMoney(t.discount, a)}` : ''].filter(Boolean).join('、');

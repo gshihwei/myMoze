@@ -612,6 +612,12 @@ html[data-theme="light"][data-swap="1"] .income-text{color:#cc0012!important}
 :root[data-theme="light"] .br-ico{background:#edf1f4}
 :root[data-theme="light"] .br-dots button{background:#8396a9}
 :root[data-theme="light"] .br-dots .on{background:#141414}
+:root[data-theme="light"] .rv-chips button{color:#4b6175}
+:root[data-theme="light"] .rv-chips .on{color:#141414}
+:root[data-theme="light"] .rv-ring .rv-bg{stroke:#eef1f5}
+:root[data-theme="light"] .rv-ring text{fill:#4d5f71}
+:root[data-theme="light"] .rv-day{color:#4d5f71;border-bottom:1px solid #eef1f5}
+:root[data-theme="light"] .qm-item.on{border-color:#b8a6ff;box-shadow:0 0 0 1px rgba(15,23,32,0.16)}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}
