@@ -35,7 +35,7 @@ function depositSync(t, o) {
   return b;
 }
 // A balance only shows up once its deposit has itself been posted.
-function pendingVisible(t) { if (!t?.pending) return false; const d = t.depositOf ? txById(t.depositOf) : null; return !(d && d.pending); }
+function pendingVisible(t) { if (!t?.pending || t.autoPost) return false; const d = t.depositOf ? txById(t.depositOf) : null; return !(d && d.pending); }
 function depositLabel(t) { return t?.depositOf ? '尾款' : t?.balanceTx && depositBalance(t) ? '訂金' : ''; }
 function depositText(t) {
   if (t.depositOf) { const d = txById(t.depositOf); return d ? `含訂金 ${money(d.amount)}，交易總計 ${money(Number(d.amount) + Number(t.amount || 0))}` : ''; }
