@@ -532,3 +532,7 @@ button.notice-row{cursor:pointer}.notice-row.overdue .day-main small:last-child{
 
 /* V26.72 changelog */
 .cl-list{padding:0 14px 24px}.cl-item{border-bottom:1px solid #22364a;padding:10px 4px}.cl-item summary{cursor:pointer;display:flex;gap:10px;align-items:center}.cl-item summary span{margin-left:auto;color:#8194a7;font-size:13px}.cl-item em{font-style:normal;font-size:12px;border-radius:999px;background:#2094d4;color:#fff;padding:1px 8px}.cl-item ul{margin:8px 0 4px;padding-left:20px;color:#c5d1dc;line-height:1.6}
+
+/* V26.73 combined cards */
+.recon-group{display:flex;justify-content:space-between;padding:10px 14px;background:#101e2c;color:#9db0c2;position:sticky;top:0;z-index:2}
+.stmt-adjust{margin:8px 0;color:#9fb2c4}.stmt-adjust summary{cursor:pointer}

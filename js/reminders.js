@@ -4,7 +4,8 @@
 
 // Used / available credit. A card's balance is negative when money is owed.
 function creditUsage(card) {
-  const used = Math.max(0, -Number(card?.balance || 0)), limit = Math.max(0, Number(card?.limit || 0));
+  const grp = limitGroup(card), cur = acctCur(card), one = grp.length < 2;
+  const used = one ? Math.max(0, -Number(card?.balance || 0)) : Math.round(grp.reduce((s, a) => s + cardOwedTWD(a, cur), 0) * 100) / 100, limit = one ? Math.max(0, Number(card?.limit || 0)) : Math.max(...grp.map(a => acctCur(a) === cur ? Number(a.limit || 0) : 0));
   const pct = limit ? used / limit * 100 : 0;
   const level = !limit ? 'none' : pct > 100 ? 'over' : pct > 80 ? 'high' : 'ok';
   return { used, limit, available: Math.max(0, limit - used), pct, level, over: limit ? Math.max(0, used - limit) : 0 };
@@ -56,6 +57,7 @@ function reminderList(today, lead) {
   }
   for (const a of (state.accounts || [])) if (lowBalanceHit(a)) out.push({ type: 'low', id: String(a.id), title: `${a.name} 餘額不足`, date: '', days: 0, amount: Number(a.balance || 0), limit: Number(a.lowBalance) });
   for (const a of (state.accounts || [])) if (creditLowAvailHit(a)) { const u = creditUsage(a); out.push({ type: 'low', id: String(a.id), title: `${a.name} 可用額度不足`, date: '', days: 0, amount: u.available, limit: Number(a.lowAvail) }); }
+  if (typeof autoPayAlerts === 'function') out.push(...autoPayAlerts(base, n));
   for (const r0 of (state.recurring || [])) {
     const r = normRecurring(r0);
     if (recurringEnded(r) || r.paused || !r.next) continue;

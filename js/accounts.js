@@ -179,7 +179,7 @@ function acctCardFieldsHTML(a, card) {
     <label>主帳戶（繳款時預設的扣款帳戶）<select name="apayfrom"><option value="">不指定</option>${sources.map(x => `<option value="${esc(x.id)}" ${String(a.payFrom ?? '') === String(x.id) ? 'selected' : ''}>${esc(acctName(x))}</option>`).join('')}</select></label>
     <label>紅利回饋 %<input name="areward" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.rewardPct ?? '')}" placeholder="例如 1"></label>
     <label>國外交易手續費 %（外幣卡，僅估算顯示）<input name="afxfee" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.fxFeePct ?? '')}" placeholder="例如 1.5"></label></div>
-    <label class="proj-archive"><input type="checkbox" name="aoffset" ${a.offsetBill ? 'checked' : ''}> 帳單折抵（建議繳款金額先扣掉預估回饋）</label></div>`;
+    <label class="proj-archive"><input type="checkbox" name="aoffset" ${a.offsetBill ? 'checked' : ''}> 帳單折抵（建議繳款金額先扣掉預估回饋）</label>${acctCardPlusHTML(a)}</div>`;
 }
 // Weekend handling for statement / due dates. Only Saturdays and Sundays are known (public holidays are not built in).
 function cardAdjustDate(card, d, mode) {
@@ -191,6 +191,7 @@ function cardAdjustDate(card, d, mode) {
 // Statement closing date for the (0-based) month m of year y, after the weekend rule.
 function cardStmtEnd(card, y, m) {
   const first = new Date(y, m, 1), stmt = Math.min(31, Math.max(1, Number(card.statement || 15))), dim = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const ov = stmtOverrideOf(card, y, m); if (ov) { const [oy, om, od] = ov.split('-').map(Number); return new Date(oy, om - 1, od); }
   return cardAdjustDate(card, new Date(first.getFullYear(), first.getMonth(), Math.min(stmt, dim)), card.stmtWeekend);
 }
 // [year, month] (0-based) of the closed statement `offset` periods back from `base`.
@@ -309,8 +310,8 @@ function bankDetailHTML(sel) {
   const subs = list.map(a => `<button type="button" class="sub-acct" data-open-card-from-bank="${esc(a.id)}"><span>${esc(a.name)}${acctCur(a) !== 'TWD' ? ` (${esc(acctCur(a))})` : ''}</span><b>${card ? money(Math.abs(Number(a.balance || 0))) : acctMoney(a.balance, a)}</b></button>`).join('');
   let html = `<div class="detail-close-row"><button type="button" class="secondary" data-close-bank>← 返回帳戶</button></div><div class="credit-detail-head"><div><div class="eyebrow">${card ? '信用卡' : '外幣帳戶'}</div><h3>${esc(sel.bank)}</h3><div class="hint">${list.length} ${card ? '張信用卡' : '個外幣帳戶'}</div></div></div>`;
   if (card) {
-    html += creditStatsHTML(sumCreditStats(list.map(a => creditStats(a, new Date(), 0))));
-    const used = list.reduce((s, a) => s + Math.abs(Math.min(0, Number(a.balance || 0))), 0), limit = list.reduce((s, a) => s + Number(a.limit || 0), 0);
+    html += bankCombinedHTML(list);
+    const used = list.reduce((s, a) => s + Math.abs(Math.min(0, Number(a.balance || 0))), 0), shared = list.filter(a => a.shareLimit), limit = list.filter(a => !a.shareLimit).reduce((s, a) => s + Number(a.limit || 0), 0) + Math.max(0, ...shared.map(a => Number(a.limit || 0)));
     html += `<section class="detail-sec"><h4>帳戶資訊</h4>${infoRow('已使用', money(used), used ? 'expense-text' : '')}${infoRow('信用額度合計', limit ? money(limit) : '尚未設定')}${infoRow('可用額度', limit ? money(Math.max(0, limit - used)) : '—')}${infoRow('信用卡張數', list.length)}</section>`;
   } else html += `<section class="detail-sec"><h4>帳戶資訊</h4>${infoRow('折合 TWD', `${total < 0 ? '−' : ''}${money(Math.abs(total))}`, total < 0 ? 'expense-text' : '')}${infoRow('帳戶數', list.length)}</section>`;
   html += `<section class="detail-sec"><h4>子帳戶</h4><div class="sub-accts">${subs || '<div class="empty">沒有子帳戶</div>'}</div></section>`;
@@ -332,14 +333,14 @@ function acctToggleGroup(key) {
   setPref('acctCollapsed', [...set]);
 }
 // Credit-card fields from the account form (both "new" and "manage"); `old` supplies nothing but is kept for symmetry.
-function acctCardSettingsFromForm(f) {
+function acctCardSettingsFromForm(f, old) {
   const a = {};
   a.limit = Math.max(0, Number(f.get('alimit') || 0)); a.statement = Math.min(31, Math.max(1, Math.round(Number(f.get('astatement') || 15)))); a.due = Math.min(31, Math.max(1, Math.round(Number(f.get('adue') || 5))));
   const wk = v => (['next', 'prev'].includes(String(v)) ? String(v) : ''), num = k => { const raw = String(f.get(k) ?? '').trim(), n = Number(raw); return raw !== '' && Number.isFinite(n) && n >= 0 ? n : null; };
   const put = (k, v) => { if (!(v === null || v === '' || v === false)) a[k] = v; };
   put('bank', String(f.get('abank') ?? '').trim().slice(0, 30)); put('stmtWeekend', wk(f.get('astmtwk'))); put('dueWeekend', wk(f.get('aduewk')));
   const pf = String(f.get('apayfrom') || ''); put('payFrom', (state.accounts || []).some(x => x.type !== 'card' && String(x.id) === pf) ? pf : '');
-  put('rewardPct', num('areward')); put('fxFeePct', num('afxfee')); put('lowAvail', num('alowavail')); put('offsetBill', !!f.get('aoffset'));
+  put('rewardPct', num('areward')); put('fxFeePct', num('afxfee')); put('lowAvail', num('alowavail')); put('offsetBill', !!f.get('aoffset')); Object.assign(a, acctCardPlusFromForm(f, old));
   return a;
 }
 function acctActive(list, keepId) { return (list || []).filter(a => !a.archived || String(a.id) === String(keepId ?? '')); }
@@ -384,8 +385,8 @@ function acctFromEditForm(f, old) {
   if ((state.accounts || []).some(a => a !== old && a.name === name && acctCur(a) === cur)) return { error: `已經有「${name}（${cur}）」` };
   const a = { ...old, name, currency: cur, note: String(f.get('anote') || '').trim(), archived: !!f.get('aarchived') };
   const want = String(f.get('atype') || old.type || 'bank'); a.type = acctTypes().some(([k]) => k === want) ? want : (old.type || 'bank');
-  if (a.type !== 'card') { for (const k of ['limit', 'statement', 'due', 'bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k]; if (a.type === 'foreign' || cur !== 'TWD') Object.assign(a, acctBankFromForm(f)); }
-  else { for (const k of ['bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill']) delete a[k]; Object.assign(a, acctCardSettingsFromForm(f)); }
+  if (a.type !== 'card') { for (const k of ['limit', 'statement', 'due', 'bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill', 'shareLimit', 'autoPay', 'autoPaySince', 'stmtOverride']) delete a[k]; if (a.type === 'foreign' || cur !== 'TWD') Object.assign(a, acctBankFromForm(f)); }
+  else { for (const k of ['bank', 'stmtWeekend', 'dueWeekend', 'payFrom', 'rewardPct', 'fxFeePct', 'lowAvail', 'offsetBill', 'shareLimit', 'autoPay', 'autoPaySince']) delete a[k]; Object.assign(a, acctCardSettingsFromForm(f, old)); if (a.statement !== old.statement || (a.stmtWeekend || '') !== (old.stmtWeekend || '')) delete a.stmtOverride; }
   if (!a.note) delete a.note;
   if (!a.archived) delete a.archived;
   delete a.image; Object.assign(a, acctImageFromForm(f));
