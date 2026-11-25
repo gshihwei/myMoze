@@ -582,3 +582,5 @@ html[data-keypad=phone] #amountKeypad [data-key="7"],html[data-keypad=phone] #am
 html[data-keypad=phone] #amountKeypad [data-key=enter]{order:6}html[data-keypad=phone] #amountKeypad [data-key="."],html[data-keypad=phone] #amountKeypad [data-key="0"],html[data-keypad=phone] #amountKeypad [data-key="00"],html[data-keypad=phone] #amountKeypad [data-key=ok]{order:7}
 
 .sync-offline{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:10px 0}
+
+.split-more{grid-column:1/-1;font-size:13px}.split-more summary{cursor:pointer;color:var(--muted)}.split-more-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;align-items:center}

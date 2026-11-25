@@ -3,7 +3,7 @@
 // ledgerEffects, isUnappliedPending, render, renderCalendar). Function declarations / var only.
 
 // ---------- app version (keep in step with sw.js CACHE, index.html and manifest.json) ----------
-function appVersion() { return 'V26.82'; }
+function appVersion() { return 'V26.83'; }
 function appReleaseDate() { return '2026-11-25'; }
 function appVersionLabel() { const [y, m, d] = appReleaseDate().split('-').map(Number); return { version: appVersion(), date: `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')}` }; }
 // newest app shell cache ('moze-v26.26-shell-v1' → 'V26.26'), compared numerically so V26.26 beats V26.9
@@ -134,7 +134,7 @@ function mozeRows(st = state) {
     } else if (t.kind === 'expense' || t.kind === 'income') {
       const sign = t.kind === 'expense' ? -1 : 1, type = t.recordType && ['支出', '收入', '退款'].includes(t.recordType) ? t.recordType : (t.kind === 'expense' ? '支出' : '收入');
       if (Array.isArray(t.splits) && t.splits.length) {
-        t.splits.forEach((s, i) => { const [m2, s2] = mozeCats({ category: s.category }); out.push(row(a, type, m2, s2, sign * Math.abs(Number(s.amount || 0)), { ...base, fee: i ? 0 : fee, discount: i ? 0 : disc })); });
+        t.splits.forEach((s, i) => { const [m2, s2] = mozeCats({ category: s.category }); out.push(row(a, type, m2, s2, sign * Math.abs(Number(s.base ?? s.amount ?? 0)), { ...base, fee: i ? 0 : fee, discount: i ? 0 : disc })); });
       } else out.push(row(a, type, main, sub, sign * amt, { ...base, fee, discount: disc }));
     } else if (t.kind === 'balance_adjustment') {
       out.push(row(a, '餘額調整', main === '其他' ? '其他' : main, sub === '其他' ? '餘額調整' : sub, Number(t.amount || 0), base));

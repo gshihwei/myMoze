@@ -49,6 +49,7 @@ function txDetailExtra(t) {
   if (rs.length) h += txExtraBox('已退款', `${acctMoney(refundedAmount(t), acct(t.account))} ${rs.map(r => txLink(r, `${esc(r.date)} 查看`)).join(' ')}`, true);
   if (t.refundOf !== undefined) { const o = txById(t.refundOf); h += txExtraBox('原記錄', o ? txLink(o, `${esc(o.name)} ${esc(o.date)}`) : '已刪除', true); }
   if (t.rewards?.length) h += txExtraBox('紅利回饋', t.rewards.map(x => { const f = rewardRuleById(x); return f ? esc(f.rule.name) : ''; }).filter(Boolean).join('、'));
+  h += splitGroupDetail(t);
   h += attachDetailHTML(t);
   grid.insertAdjacentHTML('beforeend', h);
   let bar = document.getElementById('detailExtraBar');
