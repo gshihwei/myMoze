@@ -9,7 +9,7 @@ function dcMain(t) {
   if (t.kind === 'transfer') return '轉帳'; if (isLoanTx(t)) return (t.direction || t.loanDirection) === 'payable' ? '應付款項' : '應收款項'; if (t.kind === 'balance_adjustment') return '餘額調整'; if (Array.isArray(t.splits) && t.splits.length > 1) return '多類別';
   const c = cat(t.category), p = c.parentId ? cat(c.parentId) : c; return p.name || '未分類';
 }
-function dcEvent(t) { if (t.pending) return '提醒入帳'; if (t.installment) return '分期'; if (t.recurringId) return '週期'; if (t.stmtInst) return '帳單分期'; if (t.depositOf) return '尾款'; if (t.balanceTx && depositBalance(t)) return '訂金'; if (t.loanExisting) return (t.direction === 'payable') ? '既有欠款' : '既有應收'; return t.postDate ? '延後入帳' : '單次'; }
+function dcEvent(t) { if (t.pending) return '提醒入帳'; if (t.installment) return '分期'; if (t.recurringId) return '週期'; if (t.stmtInst) return '帳單分期'; if (t.depositOf) return '尾款'; if (t.balanceTx && depositBalance(t)) return '訂金'; if (t.loanExisting) return (t.direction === 'payable') ? '既有欠款' : '既有應收'; return t.offsetKey ? '帳單折抵' : t.postDate ? '延後入帳' : '單次'; }
 function dcLines(t) {
   const l = []; if (t.recurringId) { const r = seriesRule(t); l.push(`週期：#${t.recurringSeq || '—'} / ${r ? (r.end?.type === 'count' ? r.end.value : r.end?.type === 'date' ? `至 ${fmtDate(r.end.value)}` : '無限期') + `（${freqText(normRecurring(r))}）` : '已結束'}`); }
   if (t.installment) l.push(`${t.installment.prepay ? '提前償還本金' : `分期：#${t.installment.n} / ${t.installment.total}`}（${money(t.installment.amount)}）`);

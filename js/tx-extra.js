@@ -20,7 +20,7 @@ function refundCreate(t, o) {
   if (acctCur(a) !== acctCur(acct(t.account))) return { error: '退款帳戶的幣別必須和原帳戶相同' };
   const c = entryEnsureCategory(state, '退款', 'income');
   const tx = { id: id(), date: o.date, time: o.time || '', kind: 'income', amount, account: a.id, category: c.id, name: `退款：${t.name}`, merchant: t.merchant || '', project: t.project || '', person: '', tags: [], note: o.note || '', refundOf: t.id };
-  if (split !== undefined) tx.refundSplit = split;
+  if (split !== undefined) tx.refundSplit = split; offsetApply(tx);
   state.transactions.push(tx); adjust(tx, 1);
   const fee = acct(t.account).fxFeeRefund ? (state.transactions || []).find(x => x.feeOf === t.id) : null, back = fee ? Math.min(refundLeft(fee), curRound(Number(fee.amount) * amount / Math.abs(Number(t.amount || 1)), acctCur(acct(fee.account)))) : 0;
   if (back > 0) { const r = { ...tx, id: id(), amount: back, account: fee.account, name: `退款：${fee.name}`, refundOf: fee.id, note: '' }; delete r.refundSplit; state.transactions.push(r); adjust(r, 1); }

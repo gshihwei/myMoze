@@ -742,3 +742,6 @@ button.account-detail-row{width:100%;background:none;border:0;border-bottom:1px 
 .fxfee-chip{display:inline-flex;margin-top:8px}.fxfee-chip[hidden]{display:none}.fxfee-chip label{background:#6a4fa0;color:#fff;border-radius:10px;padding:6px 10px;margin:0}
 .dc-fx{border:1px solid #8ea0b2;border-radius:50%;width:30px;height:30px;background:none;color:inherit;cursor:pointer}.ef-bar{white-space:pre-line}
 button.entry-cur{border:0;color:#eef4fa;font:inherit;font-weight:700;cursor:pointer}
+
+#advSheet #instCountField>label[hidden]{display:none}#advSheet .post-box{border:0;padding:4px 0;background:none}
+#advSheet #instCountField{grid-template-columns:minmax(0,1fr)}.adv-rows[hidden]{display:none}.adv-card{min-width:0}.adv-body{min-width:0}

@@ -16,7 +16,7 @@ function efEventText() {
   if (ev === 'recurring') return '週期'; if (ev === 'inst') return '分期';
   if (efEl('depOn')?.checked) return '訂金'; const t = editId ? txById(editId) : null; if (t?.depositOf) return '尾款'; if (t?.installment) return `分期 ${t.installment.n}/${t.installment.total}`; if (t?.recurringId) return '週期';
   if (efLoanTab() && efEl('loanExisting')?.checked) return efTab() === 'payable' ? '既有欠款' : '既有應收';
-  return mode === 'remind' ? '提醒入帳' : mode === 'postpone' ? '延後入帳' : '單次';
+  return mode === 'remind' ? '提醒入帳' : mode === 'postpone' ? '延後入帳' : mode === 'offset' ? '帳單折抵' : '單次';
 }
 // 起始期數 + 剩餘次數 → r.end value (total periods)
 function efRecEnd(type, value, startNo) {
@@ -44,13 +44,14 @@ function efRecOptions(f) { return { freq: f.get('rcFreq'), interval: f.get('rcIn
 function efBarText() {
   const el = txForm?.elements; if (!el) return ''; const ev = el.evType?.value, n = Number(el.amount?.value || 0);
   if (ev === 'recurring') { const no = Math.max(1, Number(el.rcStartNo.value) || 1), k = el.rcEndType.value, tot = k === 'count' ? (Number(el.rcEndCount.value) || 0) + no - 1 : k === 'date' ? `至 ${el.rcEndDate.value || '—'}` : '無限期'; return `週期：#${no} / ${tot}（${freqText(normRecurring({ freq: el.rcFreq.value, interval: el.rcInterval.value, start: el.date.value, days: [...txForm.querySelectorAll('[name=rcDays]:checked')].map(x => Number(x.value)), end: { type: 'never' } }))}）`; }
-  if (ev === 'inst') { const c = Number(el.instCount.value) || 0, s = Math.max(1, Number(el.instStart.value) || 1); return `分期：#${s} / ${c + s - 1}（${money(n)}）`; }
+  if (ev === 'inst') return instBarText(n);
   const dep = document.getElementById('depositSum')?.textContent; if (el.depOn?.checked && dep) return dep;
   const t = editId ? txById(editId) : null; if (t?.depositOf) { const d = txById(t.depositOf); if (d) return `含訂金 ${money(d.amount)}，交易總計 ${money(Number(d.amount) + n)}`; }
   const rw = [...document.querySelectorAll('#rewardPick input:checked')].map(i => i.closest('label')?.querySelector('em')?.textContent.replace('約 ', '')).filter(Boolean);
   const out = [], fx = document.getElementById('fxRow'); if (fx && !fx.hidden && Number(el.convAmount?.value) > 0) out.push('約 ' + acctMoney(Number(el.convAmount.value), acct(el.account.value)));
   if (rw.length) out.push('預計可獲得回饋：' + rw.join(' / '));
   if (el.fxFeeOn?.checked) { const v = fxFeeAmount(acct(el.account.value), fx && !fx.hidden && Number(el.convAmount?.value) ? Number(el.convAmount.value) : n); if (v) out.push('國外交易手續費：' + money(v)); }
+  if (el.postMode?.value === 'offset') out.push('這筆記錄將會自動折抵最新一期帳單');
   if (el.postMode?.value === 'remind' && el.postOn?.value) out.push(`這筆記錄將會在 ${fmtDate(el.postOn.value)} 詢問你是否完成入帳`);
   return out.join('\n');
 }
@@ -92,11 +93,11 @@ function efOpen(t) {
 function efAdvTabs() { const k = document.querySelector('input[name=kind]:checked')?.value, t = editId ? txById(editId) : null; if (efLoanTab()) return editId ? ['single'] : ['single', 'recurring', 'inst']; if (editId) return instEditable(t) ? ['single', 'inst'] : ['single']; return k === 'expense' ? ['single', 'recurring', 'inst'] : ['single', 'recurring']; }
 function efAdvTab(k) {
   const el = txForm?.elements; if (!el?.evType) return; if (!efAdvTabs().includes(k)) k = 'single';
-  if (k !== 'single' && el.depOn?.checked) { alert('訂金尾款追蹤開著時不能改成週期或分期'); k = 'single'; }
+  if (k !== 'single' && el.depOn?.checked && !(editId && instEditable(txById(editId)))) { alert('訂金尾款追蹤開著時不能改成週期或分期'); k = 'single'; }
   el.evType.value = k; if (el.instOn && el.instOn.checked !== (k === 'inst')) { el.instOn.checked = k === 'inst'; el.instOn.dispatchEvent(new Event('change', { bubbles: true })); }
   document.querySelectorAll('[data-adv-tab]').forEach(b => { b.classList.toggle('active', b.dataset.advTab === k); b.hidden = !efAdvTabs().includes(b.dataset.advTab); });
   document.querySelectorAll('[data-adv-pane]').forEach(x => { x.hidden = x.dataset.advPane !== k; });
-  const box = document.getElementById('installmentBox'), cnt = document.getElementById('instCountField'), ln = document.getElementById('loanInstBox'); if (efLoanTab() && k === 'inst' && box && cnt) { box.hidden = false; cnt.hidden = false; } if (ln) ln.hidden = !efLoanTab();
+  const box = document.getElementById('installmentBox'), cnt = document.getElementById('instCountField'), ln = document.getElementById('loanInstBox'); if (efLoanTab() && k === 'inst' && box && cnt) { box.hidden = false; cnt.hidden = false; } if (ln) ln.hidden = !efLoanTab(); instFormHint(); txForm.querySelectorAll('[name=instEvery],[name=instFirst],[name=instPost],[name=instReward],[name=instEach],[name=instHow],[name=instRem],[name=instInt]').forEach(x => { const l = x.closest('label'); if (l && efLoanTab()) l.hidden = true; else if (l && !l.dataset.instRow) l.hidden = false; });
   const ty = efEl('loanInstType'); if (ty) ty.parentNode.hidden = efTab() !== 'receivable';
   efRecUI();
 }
@@ -148,10 +149,10 @@ document.addEventListener('click', e => {
   if (c('#efProject')) { efPick('project'); return; }
   if ((b = c('[data-ef-pick]'))) { const bg = document.getElementById('efPickBg'), s = efEl(bg.dataset.kind); if (efTab() === 'transfer' && bg.dataset.kind !== 'project') { window.entryTfSet(bg.dataset.kind === 'toAccount' ? 'in' : 'out', b.dataset.efPick); bg.hidden = true; efSync(); return; } if (s) { s.value = b.dataset.efPick; s.dataset.userSet = '1'; s.dispatchEvent(new Event('change', { bubbles: true })); } bg.hidden = true; efSync(); return; }
   if (c('#efAdv,#efAccount,#efProject,[data-tf-pick],#categoryChoices,#entryPresets,.ef-pick-native,#attachBox')) document.getElementById('entrySide')?.classList.remove('open');
-  if (c('#efAdv')) { efAdvTab(efEl('evType').value); window.__advKeep = new FormData(txForm); document.getElementById('advSheet').hidden = false; return; }
+  if (c('#efAdv')) { efAdvTab(efEl('evType').value); offsetSyncUI(); instFormHint(); txPostSyncUI(); window.__advKeep = new FormData(txForm); document.getElementById('advSheet').hidden = false; return; }
   if ((b = c('[data-adv-tab]'))) { efAdvTab(b.dataset.advTab); efSync(); return; }
   if (c('[data-adv-ok]') || e.target.id === 'advSheet') { document.getElementById('advSheet').hidden = true; updateInstallmentUI(); efSync(); return; }
-  if (c('[data-adv-cancel]')) { const k = window.__advKeep; if (k) { for (const n of ['postMode', 'postOn', 'depAmount', 'depDate', 'instCount', 'instStart', 'instRem', 'instRate', 'instMethod', 'instGrace', 'instDaily', 'rcFreq', 'rcInterval', 'rcStartNo', 'rcEndType', 'rcEndCount', 'rcEndDate', 'rcPost', 'rcAdjust', 'person']) if (k.has(n) && efEl(n)) efEl(n).value = k.get(n); efEl('depOn').checked = k.has('depOn'); if (efEl('loanExisting')) efEl('loanExisting').checked = k.has('loanExisting'); efAdvTab(k.get('evType') || 'single'); } txPostSyncUI(); document.getElementById('advSheet').hidden = true; efSync(); return; }
+  if (c('[data-adv-cancel]')) { const k = window.__advKeep; if (k) { for (const n of ['postMode', 'postOn', 'depAmount', 'depDate', 'instCount', 'instStart', 'instRem', 'instRate', 'instMethod', 'instGrace', 'instDaily', 'instRateType', 'instHow', 'instEach', 'instEvery', 'instFirst', 'instPost', 'instReward', 'rcFreq', 'rcInterval', 'rcStartNo', 'rcEndType', 'rcEndCount', 'rcEndDate', 'rcPost', 'rcAdjust', 'person']) if (k.has(n) && efEl(n)) efEl(n).value = k.get(n); efEl('depOn').checked = k.has('depOn'); if (efEl('loanExisting')) efEl('loanExisting').checked = k.has('loanExisting'); efAdvTab(k.get('evType') || 'single'); } txPostSyncUI(); document.getElementById('advSheet').hidden = true; efSync(); return; }
   if ((b = c('[data-ef-untag]'))) { efTagSet(efTagList().filter(t => t !== b.dataset.efUntag)); return; }
   if ((b = c('[data-ef-tag]'))) { efTagAdd(b.dataset.efTag); const i = document.getElementById('efTagInput'); if (i) { i.value = ''; i.focus(); } efTagsRender(); return; }
   if (c('#efTags')) { document.getElementById('efTagInput')?.focus(); return; }

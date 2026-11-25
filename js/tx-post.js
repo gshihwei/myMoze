@@ -4,7 +4,7 @@
 // A deposit has `balanceTx` (id of the balance); the balance is a pending transaction with `depositOf`,
 // `amountTbd` / `dateTbd` while its amount / date is still 未定.
 
-function txPostMode(t) { return !t ? 'now' : t.pending ? 'remind' : t.postDate ? 'postpone' : 'now'; }
+function txPostMode(t) { return !t ? 'now' : t.offsetKey ? 'offset' : t.pending ? 'remind' : t.postDate ? 'postpone' : 'now'; }
 // Called by submitTx with the transaction about to be saved. o = { mode, on }
 function txApplyPostMode(t, o) {
   const on = /^\d{4}-\d{2}-\d{2}$/.test(String(o?.on || '')) ? o.on : '';
@@ -38,7 +38,7 @@ function depositSync(t, o) {
 function pendingVisible(t) { if (!t?.pending || t.autoPost) return false; const d = t.depositOf ? txById(t.depositOf) : null; return !(d && d.pending); }
 function depositLabel(t) { return t?.depositOf ? '尾款' : t?.balanceTx && depositBalance(t) ? '訂金' : ''; }
 function depositText(t) {
-  if (t.depositOf) { const d = txById(t.depositOf); return d ? `含訂金 ${money(d.amount)}，交易總計 ${money(Number(d.amount) + Number(t.amount || 0))}` : ''; }
+  if (t.depositOf) { const d = txById(t.depositOf); return d && d.kind !== undefined ? `含訂金 ${money(d.amount)}，交易總計 ${money(Number(d.amount) + Number(t.amount || 0))}` : ''; }
   const b = depositBalance(t); if (!b) return '';
   const total = `交易總計 ${money(Number(t.amount) + Number(b.amount || 0))}`;
   if (b.installment) { const all = b.installment.amount || b.amount; return `尾款 ${money(all)} 已於 ${b.date} 分期付款，交易總計 ${money(Number(t.amount) + all)}`; }
@@ -58,17 +58,17 @@ function txPostSyncUI() {
   const mode = el.postMode.value, kind = document.querySelector('input[name=kind]:checked')?.value, cardAcct = acct(el.account?.value)?.type === 'card';
   if (el.pending) el.pending.checked = mode === 'remind';
   const row = document.getElementById('postOnRow'), lab = document.getElementById('postOnLabel');
-  if (row) row.hidden = mode === 'now'; if (lab) lab.textContent = mode === 'remind' ? '提醒日期' : '入帳日期';
-  const hint = document.getElementById('postHint'); if (hint) hint.textContent = mode === 'remind' ? '到日期會出現在待完成交易，完成後才計入餘額與統計。' : mode === 'postpone' ? `信用卡帳單依入帳日期歸期${cardAcct ? '' : '（只影響信用卡）'}，報表仍算在消費日。` : '';
-  const dep = document.getElementById('depositBox'); if (dep) dep.hidden = !(kind === 'expense' || kind === 'transfer') || !!el.instOn?.checked || dep.dataset.off === '1';
+  if (row) row.hidden = mode === 'now' || mode === 'offset'; if (lab) lab.textContent = mode === 'remind' ? '提醒日期' : '入帳日期';
+  const hint = document.getElementById('postHint'); if (hint) hint.textContent = mode === 'remind' ? '到日期會出現在待完成交易，完成後才計入餘額與統計。' : mode === 'offset' ? '這筆記錄將會自動折抵最新一期帳單。' : mode === 'postpone' ? `信用卡帳單依入帳日期歸期${cardAcct ? '' : '（只影響信用卡）'}，報表仍算在消費日。` : '';
+  const dep = document.getElementById('depositBox'); if (dep) dep.hidden = !((kind === 'expense' || kind === 'transfer') && efTab() !== 'payable') || (efLoanTab() && !!el.loanExisting?.checked) || !!el.instOn?.checked || dep.dataset.off === '1';
   const depf = document.getElementById('depositFields'); if (depf) depf.hidden = !el.depOn?.checked;
   const sum = document.getElementById('depositSum'); if (sum) { const a = Number(el.amount?.value || 0), b = Number(el.depAmount?.value || 0); sum.textContent = el.depOn?.checked ? (b ? `尾款 ${money(b)}，交易總計 ${money(a + b)}，${el.depDate?.value ? `預計於 ${el.depDate.value} 支付` : '日期未定'}` : '尾款金額未定，之後在待完成交易補上') : ''; }
 }
 // Fills the fields when the form opens.
 function txPostOpen(t) {
   const el = txForm?.elements; if (!el?.postMode) return;
-  const finishing = t && window.__finishPending === String(t.id); window.__finishPending = null;
-  el.postMode.value = finishing ? 'now' : txPostMode(t);
+  const finishing = t && window.__finishPending === String(t.id); window.__finishPending = null; if (finishing && typeof modalTitle !== 'undefined') modalTitle.textContent = '待完成交易';
+  delete el.postMode.dataset.user; el.postMode.value = finishing ? 'now' : txPostMode(t);
   el.postOn.value = t ? (t.pending ? t.date : t.postDate || '') : '';
   if (finishing && el.date && prefs().finishTime !== 'keep') el.date.value = isoDate(new Date());
   const b = t ? depositBalance(t) : null, off = !!(t && (t.depositOf || t.installment || t.recurringId || (b && !b.pending)));

@@ -249,8 +249,9 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
     if(items.length>1&&!window.__itemsRun){await submitItems();return true;}
     if(items.length===1&&oldIds.length>1&&!window.__itemsRun){await submitItems();return true;}
     if(!isLoanTab())return false;
-    const r=loanFromEntry({ev:window.__itemsRun?'single':fd.get('evType'),rec:efRecOptions(fd),inst:{n:fd.get('instCount'),startNo:fd.get('instStart'),rate:fd.get('instRate'),method:fd.get('instMethod'),grace:fd.get('instGrace'),next:fd.get('loanNext'),type:fd.get('loanInstType')},direction:tab,amount:fd.get('amount'),account:fd.get('account'),date:fd.get('date'),time:fd.get('time'),person:fd.get('person'),name:fd.get('name'),note:fd.get('note'),label:preset||(tab==='payable'?'借入':'借出'),existing:!!fd.get('loanExisting'),category:entryEnsureCategory(state,preset||(tab==='payable'?'借入':'借出'),tab).id});
+    const r=loanFromEntry({ev:window.__itemsRun?'single':fd.get('evType'),rec:efRecOptions(fd),inst:{n:fd.get('instCount'),startNo:fd.get('instStart'),rate:instOptsFromForm(fd).rate,method:instOptsFromForm(fd).method,grace:instOptsFromForm(fd).grace,next:fd.get('loanNext'),type:fd.get('loanInstType')},direction:tab,amount:fd.get('amount'),account:fd.get('account'),date:fd.get('date'),time:fd.get('time'),person:fd.get('person'),name:fd.get('name'),note:fd.get('note'),label:preset||(tab==='payable'?'借入':'借出'),existing:!!fd.get('loanExisting'),category:entryEnsureCategory(state,preset||(tab==='payable'?'借入':'借出'),tab).id});
     if(r.error){alert(r.error);return true;}
+    if(tab==='receivable'&&fd.get('depOn')&&r.loan&&!r.loan.existing&&fd.get('evType')==='single'&&!window.__itemsRun)loanDepositCreate(r.loan,{amount:fd.get('depAmount'),date:fd.get('depDate')});
     if(window.__itemsRun){window.__savedTx=state.transactions.find(x=>x.kind==='loan'&&x.loanId===r.loan.id);return true;}
     await save();closeModals();render();
     window.__mozeLoanFilter='all';window.__mozeSelectedLoanId=r.loan?.id||null;if(typeof renderLoans==='function')renderLoans();

@@ -181,7 +181,7 @@ function acctCardFieldsHTML(a, card) {
     <label>主帳戶（繳款時預設的扣款帳戶）<select name="apayfrom"><option value="">不指定</option>${sources.map(x => `<option value="${esc(x.id)}" ${String(a.payFrom ?? '') === String(x.id) ? 'selected' : ''}>${esc(acctName(x))}</option>`).join('')}</select></label>
     <label>紅利回饋 %<input name="areward" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.rewardPct ?? '')}" placeholder="例如 1"></label>
     <label>國外交易手續費 %（外幣卡，僅估算顯示）<input name="afxfee" type="number" min="0" step="any" inputmode="decimal" value="${esc(a.fxFeePct ?? '')}" placeholder="例如 1.5"></label><label>手續費計算方式<select name="afxround">${[['', '四捨五入'], ['floor', '無條件捨去'], ['ceil', '無條件進位']].map(([v, l]) => `<option value="${v}"${(a.fxFeeRound || '') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label><label>退款時手續費<select name="afxrefund"><option value="">不退</option><option value="1"${a.fxFeeRefund ? ' selected' : ''}>按比例一起退</option></select></label></div>
-    <label class="proj-archive"><input type="checkbox" name="aoffset" ${a.offsetBill ? 'checked' : ''}> 帳單折抵（建議繳款金額先扣掉預估回饋）</label><label class="proj-archive"><input type="checkbox" name="aholiday" ${a.useHoliday ? 'checked' : ''}> 非工作日依台灣國定假日（內建 2026、2027；不勾只看週末）</label>${acctCardPlusHTML(a)}</div>`;
+    <label class="proj-archive"><input type="checkbox" name="aoffset" ${a.offsetBill ? 'checked' : ''}> 建議繳款金額先扣掉預估回饋</label><label class="proj-archive"><input type="checkbox" name="aholiday" ${a.useHoliday ? 'checked' : ''}> 非工作日依台灣國定假日（內建 2026、2027；不勾只看週末）</label>${acctCardPlusHTML(a)}</div>`;
 }
 // Non-working days for statement / due dates: weekends, plus the built-in Taiwan holidays when the card has useHoliday.
 function cardAdjustDate(card, d, mode) {
@@ -296,7 +296,7 @@ function withTxIndex(fn) {
 function txIndexOf(aid, kind) { const x = window.__txIdx; return x ? x[kind].get(String(aid)) || [] : null; }
 function cardTxDate(t) { return t.postDate || t.date; }
 function cardSpendTxs(card, start, end) {
-  return (txIndexOf(card.id, 'own') || state.transactions || []).filter(t => String(t.account) === String(card.id) && !t.cardPayment && (t.kind === 'expense' || (t.kind === 'income' && t.refundOf) || (t.kind === 'balance_adjustment' && t.stmtInst) || (t.kind === 'loan' && t.loanAction === 'lend')) && !isUnappliedPending(t) && cardTxDate(t) >= start && cardTxDate(t) <= end);
+  return (txIndexOf(card.id, 'own') || state.transactions || []).filter(t => String(t.account) === String(card.id) && !t.cardPayment && (t.kind === 'expense' || (t.kind === 'income' && t.refundOf && !t.offsetKey) || (t.kind === 'balance_adjustment' && t.stmtInst) || (t.kind === 'loan' && t.loanAction === 'lend')) && !isUnappliedPending(t) && cardTxDate(t) >= start && cardTxDate(t) <= end);
 }
 function cardLineAmount(t) { const v = Number(t.amount || 0); return t.kind === 'balance_adjustment' ? -v : t.kind === 'income' ? -Math.abs(v) : Math.abs(v); }
 function cardSpendSum(list) { return Math.round(list.reduce((s, t) => s + cardLineAmount(t), 0) * 100) / 100; }

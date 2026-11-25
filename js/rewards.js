@@ -55,7 +55,7 @@ function rewardPaid(rid, start) { return Math.round((state.transactions || []).f
 function rewardPost(r, a, period, amount, o) {
   const target = (state.accounts || []).find(x => String(x.id) === String(r.account)) || a, c = entryEnsureCategory(state, '紅利回饋', 'income');
   const t = { id: o.id || id(), date: o.date, time: '', kind: 'income', amount, account: target.id, category: c.id, project: r.project || o.project || '', name: `${r.name} 回饋`, merchant: '', person: '', note: '', tags: [], rewardOf: { rule: r.id, start: period.start, ...(o.tx ? { tx: o.tx } : {}) } };
-  state.transactions.push(t); adjust(t, 1); return t;
+  offsetApply(t); state.transactions.push(t); adjust(t, 1); return t;
 }
 function addDaysIso(date, n) { const d = new Date(date + 'T00:00:00'); d.setDate(d.getDate() + n); return isoDate(d); }
 function rewardPayDate(r, period) {

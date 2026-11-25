@@ -12,6 +12,7 @@ function installmentPlan(t, countRaw, o) {
   if (!t || t.kind !== 'expense' || n < 2) return null;
   if (n > 60) return { error: '分期最多 60 期' };
   if (Array.isArray(t.splits) && t.splits.length) return { error: '分期交易不能同時拆帳' };
+  if (o?.how) return instFullPlan(t, n, o);
   if (Number(o?.rate) > 0) return instRatePlan(t, n, o);
   const total = Math.round(Math.abs(Number(t.amount || 0)) * 100);
   if (total < n) return { error: '金額太小，無法分期' };
