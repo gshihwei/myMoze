@@ -40,7 +40,7 @@ function invPopHTML(s, db, all, win) {
   return `<div class="inv-pop-bg" data-inv-pop-bg><div class="inv-receipt"><div class="inv-r-per">${invRoc(invPeriod(inv.date))}</div><div class="inv-r-no">${esc(inv.no.slice(0, 2))}-${esc(inv.no.slice(2))}</div><div class="inv-r-grid"><span>${esc(d)}</span><span>${esc(inv.time || '')}</span><span>隨機碼 ${esc(inv.code || '****')}</span><span>總計 ${Number(inv.total).toLocaleString()} 元</span><span>${inv.seller ? '統編 ' + esc(inv.seller) : ''}</span><span class="inv-r-prize${z !== '尚未開獎' && z !== '未中獎' ? ' win' : ''}">${esc(z)}</span></div>${code39SVG(invBarcode(inv))}<div class="inv-r-info">${inv.sellerName ? `<p>商家名稱：${esc(inv.sellerName)}</p>` : ''}${inv.sellerAddr ? `<p>商家地址：${esc(inv.sellerAddr)}</p>` : ''}<p>發票來源：${esc(invSource(inv))}</p>${inv.allowance ? '<p class="expense-text">這張發票有折讓</p>' : ''}${t ? `<p>記錄：${esc(t.name)} ${money(t.amount)}</p>` : ''}<p>商品明細：</p>${(inv.items || []).map(i => `<p>◎ ${esc(i[0])} ($${i[2]}) × ${i[1]} ＝ $${invItemAmount(i)}</p>`).join('') || '<p class="hint">沒有明細</p>'}</div></div><div class="inv-pop-acts">${acts}</div></div>`;
 }
 document.addEventListener('click', async e => {
-  const c = q => e.target.closest?.(q); let b; if (c('#moreInvoice')) { document.getElementById('moreBg')?.classList.remove('open'); openInvoices(); return; }
+  const c = q => e.target.closest?.(q); let b; if (c('#moreInvoice,#navInvoice')) { document.getElementById('moreBg')?.classList.remove('open'); openInvoices(); return; }
   if (!c('#invBg')) return; const s = invSt();
   if (c('[data-inv-menu]')) { s.menu = !s.menu; renderInvoices(); return; }
   if (s.menu && !c('.inv-menu')) { s.menu = false; renderInvoices(); return; }
