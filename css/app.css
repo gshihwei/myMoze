@@ -853,3 +853,9 @@ button.entry-cur{border:0;color:#eef4fa;font:inherit;font-weight:700;cursor:poin
 
 /* V26.118 category image preview shows the current emoji */
 .acct-image-preview.cat-preview{font-size:30px;line-height:1;display:flex;align-items:center;justify-content:center}
+
+/* V26.119 概覽排序 */
+#view-overview [data-ov-panel][hidden],#view-overview .rail[hidden],#view-overview .overview-cols[hidden]{display:none!important}
+.ov-pref-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)}.ov-pref-row label{display:flex;align-items:center;gap:8px}.ov-pref-row span{display:flex;gap:4px}.ov-pref-row button{min-width:34px;padding:4px 8px}.ov-pref-row button:disabled{opacity:.3}
+#view-overview.ov-flow .content>[data-ov-panel]{margin:0 0 16px!important}
+#prefOverviewPanels{display:flex!important;flex-direction:column;align-items:stretch;gap:0!important;width:100%}#prefOverviewPanels .ov-pref-row{width:100%}#prefOverviewPanels [data-ov-reset]{align-self:flex-start}

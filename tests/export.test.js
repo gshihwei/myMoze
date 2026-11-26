@@ -96,7 +96,7 @@ test('偏好：概覽區塊可隱藏；舊的「不顯示快速記帳」設定�
   run('setPref("hiddenPanels",["loans","recent"])');
   assert.deepEqual(J('overviewHidden().sort()'), ['loans', 'quick', 'recent']);
   assert.deepEqual(JSON.parse(store.get('moze-prefs-v1')).hiddenPanels, ['loans', 'recent']);
-  assert.equal(J('overviewPanels().length'), 7);
+  assert.equal(J('overviewPanels().length'), 11);
 });
 
 test('手動匯率：覆寫自動匯率並影響淨資產換算，清空後恢復自動', () => {

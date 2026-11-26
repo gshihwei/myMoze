@@ -3,7 +3,7 @@
 // ledgerEffects, isUnappliedPending, render, renderCalendar). Function declarations / var only.
 
 // ---------- app version (keep in step with sw.js CACHE, index.html and manifest.json) ----------
-function appVersion() { return 'V26.118'; }
+function appVersion() { return 'V26.119'; }
 function appReleaseDate() { return '2026-11-26'; }
 function appVersionLabel() { const [y, m, d] = appReleaseDate().split('-').map(Number); return { version: appVersion(), date: `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')}` }; }
 // newest app shell cache ('moze-v26.26-shell-v1' → 'V26.26'), compared numerically so V26.26 beats V26.9
@@ -41,11 +41,12 @@ function applyPrefs() {
   const hidden = new Set(overviewHidden(p));
   document.querySelectorAll('[data-ov-panel]').forEach(el => { el.hidden = hidden.has(el.dataset.ovPanel); });
   document.querySelectorAll('[data-ov-pref]').forEach(cb => { cb.checked = !hidden.has(cb.dataset.ovPref); });
+  if (typeof applyOverviewOrder === 'function') applyOverviewOrder();
   const dow = document.querySelector('.calendar .dow');
   if (dow) { const names = ['日', '一', '二', '三', '四', '五', '六']; dow.innerHTML = names.map((_, i) => `<span>${names[(i + p.weekStart) % 7]}</span>`).join(''); }
 }
 // Overview sections that can be hidden (settings → 偏好). The old showQuick switch maps to 'quick'.
-function overviewPanels() { return [['cards', '信用卡帳單'], ['pending', '待完成交易'], ['loans', '借還款追蹤'], ['budgets', '本月預算'], ['upcoming', '即將到來'], ['recent', '最近交易'], ['quick', '快速記帳']]; }
+function overviewPanels() { return [['metrics', '淨資產、支出、收入'], ['chart', '收支與淨資產'], ['cards', '信用卡帳單'], ['pending', '待完成交易'], ['loans', '借還款追蹤'], ['budgets', '本月預算'], ['upcoming', '即將到來'], ['recent', '最近交易'], ['calendar', '月曆'], ['daily', '當日明細'], ['quick', '快速記帳']]; }
 function overviewHidden(p = prefs()) { const h = Array.isArray(p.hiddenPanels) ? [...p.hiddenPanels] : []; if (p.showQuick === false && !h.includes('quick')) h.push('quick'); return h; }
 // ---------- manual exchange rates ----------
 // prefs().fx = { USD: 31.5 } means 1 USD = 31.5 TWD and overrides the fetched rate on this device.
@@ -81,8 +82,7 @@ function settingsInit() {
   const box = document.getElementById('prefOverviewPanels');
   if (box) {
     const hidden = new Set(overviewHidden(p));
-    box.innerHTML = overviewPanels().map(([k, l]) => `<label><input type="checkbox" data-ov-pref="${k}" ${hidden.has(k) ? '' : 'checked'}> ${l}</label>`).join('');
-    box.querySelectorAll('[data-ov-pref]').forEach(cb => cb.onchange = () => { const set = new Set(overviewHidden()); if (cb.checked) set.delete(cb.dataset.ovPref); else set.add(cb.dataset.ovPref); setPref('hiddenPanels', [...set]); });
+    if (typeof ovPrefsRender === 'function') ovPrefsRender(box); else box.innerHTML = overviewPanels().map(([k, l]) => `<label><input type="checkbox" data-ov-pref="${k}" ${hidden.has(k) ? '' : 'checked'}> ${l}</label>`).join('');
   }
   const jd = document.getElementById('prefJumpToTxDate'); if (jd) { jd.checked = !!p.jumpToTxDate; jd.onchange = () => setPref('jumpToTxDate', jd.checked); }
   const ro = document.getElementById('prefRemindOn'); if (ro) { ro.checked = p.remindOn !== false; ro.onchange = () => { setPref('remindOn', ro.checked); renderReminders(); }; }
