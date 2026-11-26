@@ -430,7 +430,8 @@ function acctAdjustFormHTML(a) {
   <div class="form-grid">
     <label>實際餘額${a.type === 'card' ? '（欠款請輸入負數）' : ''}<input name="abalance" type="number" step="any" required value="${esc(a.balance)}"></label>
     <label>日期<input name="adate" type="date" required max="${isoDate(new Date())}" value="${isoDate(new Date())}"></label>
-  </div>
+    <label>時間<input name="atime" type="time" required value="${nowTime()}"></label>
+  </div><p class="hint" id="adjNow">當前餘額 ${acctMoney(a.balance, a)}</p>
   <div class="form-grid form-grid-1"><label>備註<input name="anote" maxlength="100" placeholder="例如：對帳後修正"></label></div><p class="hint">選過去的日期時，填那一天結束時的實際餘額。之後在這個時間點之前補記或刪除記錄，都不會改變這個時間點的餘額。</p>`;
 }
 
@@ -446,13 +447,13 @@ function pinAbsorb(t, sign) {
     best.amount = Math.round((Number(best.amount || 0) - sign * v) * 100) / 100; acct(aid).balance = Math.round((Number(acct(aid).balance || 0) - sign * v) * 1e4) / 1e4;
   }
 }
-function pinBalanceAt(a, date) { let b = Number(a.balance || 0); for (const t of (state.transactions || [])) if (t.date > date) for (const [k, v] of ledgerEffects(t)) if (String(k) === String(a.id)) b -= v; return Math.round(b * 100) / 100; }
+function pinBalanceAt(a, date, time) { const at = date + ' ' + (time || '23:59'); let b = Number(a.balance || 0); for (const t of (state.transactions || [])) if (pinKey(t) > at) for (const [k, v] of ledgerEffects(t)) if (String(k) === String(a.id)) b -= v; return Math.round(b * 100) / 100; }
 // Adjust to an absolute balance by recording the difference as a balance_adjustment transaction.
-function acctAdjustTo(a, target, date, note) {
-  const today = isoDate(new Date()), past = date && date < today;
-  const now = past ? pinBalanceAt(a, date) : Number(a.balance || 0), diff = Math.round((Number(target) - now) * 100) / 100;
+function acctAdjustTo(a, target, date, note, time) {
+  const today = isoDate(new Date()), tm = /^([01]\d|2[0-3]):[0-5]\d$/.test(time || '') ? time : '', past = !!date && (date < today || (date === today && !!tm && tm < nowTime()));
+  const now = past ? pinBalanceAt(a, date, tm || '23:59') : Number(a.balance || 0), diff = Math.round((Number(target) - now) * 100) / 100;
   if (!Number.isFinite(diff) || Math.abs(diff) < 0.005) return null;
-  const t = { id: id(), date: date || today, time: past ? '23:59' : nowTime(), name: '餘額調整', amount: diff, kind: 'balance_adjustment', category: '', account: a.id, note: note || '', tags: [], balanceAdjustment: true, pinned: true };
+  const t = { id: id(), date: date || today, time: tm || (past ? '23:59' : nowTime()), name: '餘額調整', amount: diff, kind: 'balance_adjustment', category: '', account: a.id, note: note || '', tags: [], balanceAdjustment: true, pinned: true };
   state.transactions.push(t); adjust(t, 1);
   return t;
 }

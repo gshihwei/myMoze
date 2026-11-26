@@ -25,6 +25,7 @@ function projClearBudgets(p, onlyCats) {
   state.budgets = (state.budgets || []).filter(b => { const x = budgetNorm({ ...b }); return !((x.scope === 'category' && String(x.inProject) === String(p.id)) || (!onlyCats && x.scope === 'project' && String(x.project) === String(p.id))); });
   if (!onlyCats) p.budget = 0; return n - state.budgets.length;
 }
+function projBudgetList(p) { return (state.budgets || []).filter(b => { const x = budgetNorm({ ...b }); return (x.scope === 'project' && String(x.project) === String(p.id)) || (x.scope === 'category' && String(x.inProject) === String(p.id)); }); }
 function projExport(p) {
   const l = projTxs(p.id); if (!l.length) { alert('這個專案還沒有記錄'); return; }
   const x = document.createElement('a'); x.href = URL.createObjectURL(new Blob([txExportCsv(l)], { type: 'text/csv;charset=utf-8' })); x.download = `專案-${p.name}.csv`; x.click(); setTimeout(() => URL.revokeObjectURL(x.href), 1000);
@@ -54,11 +55,23 @@ document.addEventListener('click', async e => {
   if ((b = c('[data-proj-budget]'))) { openEntity('budget', { scope: 'category', category: b.dataset.cat, inProject: b.dataset.projBudget, limit: '' }); return; }
   if ((b = c('[data-proj-more]'))) {
     const p = (state.projects || []).find(x => String(x.id) === b.dataset.projMore); if (!p) return;
-    const k = await uiAsk({ icon: '⋮', title: '更多功能', options: [['budget', '設定專案預算'], ['clearCats', '清除類別預算'], ['clearAll', '清除所有預算', 'danger'], ['export', '匯出專案'], ['del', '刪除此專案', 'danger']] }); if (!k) return;
+    const k = await uiAsk({ icon: '⋮', title: '更多功能', options: [['budget', '設定專案預算'], ['copy', '沿用上期預算'], ['clearCats', '清除類別預算'], ['stop', '清除這期後所有預算', 'danger'], ['clearAll', '清除所有預算', 'danger'], ['export', '匯出專案'], ['del', '刪除此專案', 'danger']] }); if (!k) return;
     if (k === 'budget') { const pb = (state.budgets || []).find(x => x.scope === 'project' && String(x.project) === String(p.id)); openEntity('budget', pb || { scope: 'project', project: p.id, limit: '' }); return; }
     if (k === 'export') { projExport(p); return; }
+    if (k === 'copy' || k === 'stop') { const l = projBudgetList(p); if (!l.length) { alert('這個專案還沒有預算'); return; } if (k === 'stop' && !confirm(`「${p.name}」的預算從這一期起不再套用？之前各期保留。`)) return; const n = k === 'copy' ? budgetCopyPrev(l, monthKey()) : budgetStopFrom(l, monthKey()); await save(); render(); toast(k === 'copy' ? `已沿用上期，更新 ${n} 個預算` : `已清除 ${n} 個預算`); return; }
     if (k === 'del') { document.querySelector(`[data-proj-del="${CSS.escape(String(p.id))}"]`)?.click(); return; }
     if (!confirm(k === 'clearAll' ? `清除「${p.name}」的專案預算與所有類別預算？` : `清除「${p.name}」裡的類別預算？`)) return;
     const n = projClearBudgets(p, k === 'clearCats'); await save(); render(); toast(`已清除 ${n} 個預算`);
   }
+});
+document.addEventListener('click', async e => {
+  const b = e.target.closest?.('[data-budget-bulk]'); if (!b) return; const k = b.dataset.budgetBulk, l = state.budgets || [], [y, m] = monthKey().split('-');
+  if (k === 'stop' && !confirm(`所有預算從 ${y} 年 ${Number(m)} 月起不再套用？之前各期保留。`)) return;
+  const n = k === 'copy' ? budgetCopyPrev(l, monthKey()) : budgetStopFrom(l, monthKey()); await save(); render(); toast(k === 'copy' ? `已沿用上期，更新 ${n} 個預算` : `已清除 ${n} 個預算`);
+});
+// 調整餘額: show the balance at the chosen date and time.
+document.addEventListener('change', e => {
+  const n = e.target?.name; if (n !== 'adate' && n !== 'atime') return; const f = e.target.form, out = document.getElementById('adjNow'); if (!f || !out) return;
+  const a = (state.accounts || []).find(x => String(x.id) === String(f.dataset.editId)); if (!a) return; const d = f.elements.adate.value, t = f.elements.atime.value, now = isoDate(new Date()), past = d < now || (d === now && t < nowTime());
+  out.textContent = `${past ? `${fmtDate(d)} ${t} 的餘額` : '當前餘額'} ${acctMoney(past ? pinBalanceAt(a, d, t) : a.balance, a)}`;
 });

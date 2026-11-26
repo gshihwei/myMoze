@@ -762,3 +762,5 @@ button.entry-cur{border:0;color:#eef4fa;font:inherit;font-weight:700;cursor:poin
 
 /* V26.106 */
 .proj-alloc{margin-top:12px}.proj-alloc h3{margin:12px 0 4px;font-size:15px;color:#8ea0b2}.bc-kind{margin-left:6px;color:#8ea0b2;font-size:12px}.bc-subs{align-items:center;gap:8px}.bc-subs span{flex:1;min-width:0}.loan-chips{padding:0 0 10px}
+
+.budget-tools{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}

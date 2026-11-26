@@ -50,6 +50,7 @@ function budgetSpent(b, start, end) {
 function budgetKeyFor(b, key) { return b.period === 'year' ? key.slice(0, 4) : key; }
 function budgetKeyAdd(key, n) { return key.length === 4 ? String(Number(key) + n) : addMonths(key, n); }
 function budgetBase(b, key) {
+  if (budgetStopped(b, key)) return 0; const own = b.amounts?.[key]; if (own !== undefined && own !== null && own !== '') return Math.max(0, Number(own) || 0);
   if (b.inProject && Number(b.pct) > 0) { const pb = (state.budgets || []).map(budgetNorm).find(x => x.scope === 'project' && String(x.project) === String(b.inProject)); return pb ? Math.round(budgetLimit(pb, budgetKeyFor(pb, key)) * Number(b.pct) / 100) : 0; }
   return b.limit;
 }
@@ -66,6 +67,14 @@ function budgetLimitParts(b, key) {
   return { base, income, carry: Math.round(carry), limit: Math.max(0, Math.round(base + income + carry)) };
 }
 function budgetLimit(b, key) { return budgetLimitParts(b, key).limit; }
+// V26.107 每期預算: b.amounts = { periodKey: amount } overrides the default `limit` for one period; b.stop = first period it no longer applies.
+function budgetStopped(b, key) { return !!b.stop && String(key) >= String(budgetKeyFor(b, b.stop.length === 4 ? b.stop + '-01' : b.stop)); }
+function budgetRaw(b, key) { const o = b.amounts?.[key]; return o !== undefined && o !== null && o !== '' ? Math.max(0, Number(o) || 0) : b.limit; }
+// 沿用上期預算: this period gets the amount the previous period had. → number changed
+function budgetCopyPrev(list, key) { let n = 0; for (const b of list) { const k = budgetKeyFor(b, key), prev = budgetKeyAdd(k, -1); if (b.stop && String(b.stop) <= k) delete b.stop; const v = budgetStopped(b, prev) ? 0 : budgetRaw(b, prev); if (budgetRaw(b, k) !== v) { b.amounts = { ...(b.amounts || {}), [k]: v }; n++; } } return n; }
+// 清除這期後所有預算: the budgets end before this period (kept for earlier periods). → number changed
+function budgetStopFrom(list, key) { let n = 0; for (const b of list) { const k = budgetKeyFor(b, key); if (b.stop && String(b.stop) <= k) continue; b.stop = k; if (b.amounts) { for (const x of Object.keys(b.amounts)) if (x >= k) delete b.amounts[x]; if (!Object.keys(b.amounts).length) delete b.amounts; } n++; } return n; }
+function budgetBulkBtns() { return `<div class="budget-tools"><button type="button" class="secondary" data-budget-bulk="copy">沿用上期預算</button><button type="button" class="secondary danger-btn" data-budget-bulk="stop">清除這期後所有預算</button></div>`; }
 // Today's allowance. fixed: limit / days of the period; ratio: what is left before today / days left (today included).
 function budgetDaily(b, date) {
   if (!b.daily) return null;
@@ -84,7 +93,7 @@ function budgetStatus(spent, limit, alertPct) {
 }
 
 function budgetRows(key = monthKey(), today = new Date()) {
-  return (state.budgets || []).map(budgetNorm).map(b => {
+  return (state.budgets || []).map(budgetNorm).filter(b => !budgetStopped(b, budgetKeyFor(b, key))).map(b => {
     const bk = budgetKeyFor(b, key), M = budgetMonth(bk, today), L = budgetLimitParts(b, bk), limit = L.limit;
     const spent = budgetSpent(b, M.start, M.end), remaining = limit - spent, left = M.current ? M.days - M.elapsed + 1 : 0;
     return {
@@ -107,7 +116,7 @@ function budgetCardHTML(r, compact = false) {
     <div class="bc-head"><span class="bc-icon">${esc(r.icon)}</span><b>${esc(r.title)}</b><small class="bc-kind">${budgetKindLabel(r.budget)}</small><span class="bc-status ${r.status.key}"><i aria-hidden="true">${r.status.mark}</i>${r.status.label}</span></div>
     <div class="bc-fig"><strong>${money(r.spent)}</strong><span>/ ${money(r.limit)}</span><small>${Math.round(r.ratio * 100)}%</small></div>
     ${budgetMeterHTML(r)}
-    <div class="bc-foot"><span>${over ? `超出 ${money(-r.remaining)}` : `剩餘 ${money(r.remaining)}`}</span>${r.daysLeft && !over ? `<span>每日可用 ${money(r.perDay)} · 剩 ${r.daysLeft} 天</span>` : ''}</div>
+    ${r.budget.amounts?.[budgetKeyFor(r.budget, monthKey())] !== undefined ? `<div class="bc-foot"><span>本期單獨設定（每期預設 ${money(r.budget.limit)}）</span></div>` : ''}<div class="bc-foot"><span>${over ? `超出 ${money(-r.remaining)}` : `剩餘 ${money(r.remaining)}`}</span>${r.daysLeft && !over ? `<span>每日可用 ${money(r.perDay)} · 剩 ${r.daysLeft} 天</span>` : ''}</div>
     ${r.parts?.carry || r.parts?.income || r.daily ? `<div class="bc-foot">${r.parts.carry ? `<span>上期${r.parts.carry > 0 ? '累積' : '超支'} ${r.parts.carry > 0 ? '+' : '−'}${money(Math.abs(r.parts.carry))}</span>` : ''}${r.parts.income ? `<span>收入併入 +${money(r.parts.income)}</span>` : ''}${r.daily ? `<span>今日${r.daily.left < 0 ? `超支 ${money(-r.daily.left)}` : `可用 ${money(r.daily.left)}`}</span>` : ''}</div>` : ''}
     ${compact ? '' : budgetSubsHTML(r)}${compact ? '' : `<div class="bc-actions"><button type="button" class="secondary" data-budget-edit="${esc(r.budget.id)}">編輯</button><button type="button" class="secondary danger-btn" data-budget-del="${esc(r.budget.id)}">刪除</button></div>`}
   </div>`;
@@ -122,7 +131,7 @@ function renderBudgetPage() {
     const [y, m] = M.key.split('-');
     head.textContent = rows.length ? `${y} 年 ${Number(m)} 月 · ${rows.filter(r => r.status.key === 'over').length} 項超支 · ${rows.filter(r => r.status.key === 'near').length} 項接近上限${cats.length ? ` · 分類預算合計 ${money(spent)} / ${money(limit)}` : ''}` : '';
   }
-  grid.innerHTML = rows.length ? rows.map(r => budgetCardHTML(r)).join('') : '<div class="empty">尚未設定預算。可以設定每月總支出、各分類或各專案的上限。</div>';
+  grid.innerHTML = (state.budgets || []).length ? budgetBulkBtns() + (rows.length ? rows.map(r => budgetCardHTML(r)).join('') : '<div class="empty">這一期沒有預算。可以按「沿用上期預算」。</div>') : rows.length ? rows.map(r => budgetCardHTML(r)).join('') : '<div class="empty">尚未設定預算。可以設定每月總支出、各分類或各專案的上限。</div>';
 }
 
 function renderBudgetOverview() {
@@ -147,7 +156,7 @@ function budgetFormHTML(b) {
     <label class="b-cat">分配方式：按照比例（占專案預算 %，填了就不用金額）<input name="bpct" type="number" min="0" max="100" step="any" value="${esc(r.pct || '')}"></label>
     <label class="b-proj">專案<select name="bproject">${projOpts}</select></label>
     <label>週期<select name="bperiod"><option value="month">每月</option><option value="year"${r.period === 'year' ? ' selected' : ''}>每年</option></select></label>
-    <label>上限金額<input name="limit" type="number" min="0" step="any" value="${esc(r.limit || '')}"></label>
+    <label>上限金額（每一期）<input name="limit" type="number" min="0" step="any" value="${esc(r.limit || '')}"></label>${r.id ? `<label>本期金額（${esc(budgetKeyFor(r, monthKey()))}，留空＝同上）<input name="bthis" type="number" min="0" step="any" value="${esc(r.amounts?.[budgetKeyFor(r, monthKey())] ?? '')}"></label>` : ''}
     <label>名稱（可留空）<input name="bname" value="${esc(r.name || '')}" placeholder="預設使用分類或專案名稱"></label>
     <label>每日預算<select name="bdaily"><option value="">不用</option><option value="fixed"${r.daily === 'fixed' ? ' selected' : ''}>固定金額（預算÷天數）</option><option value="ratio"${r.daily === 'ratio' ? ' selected' : ''}>按照比例（剩餘÷剩餘天數）</option></select></label>
     <label>剩餘低於幾 % 提醒<input name="balert" type="number" min="0" max="100" step="any" value="${esc(r.alertPct || '')}" placeholder="預設 20"></label>
@@ -171,6 +180,7 @@ function budgetFromForm(f, old) {
   else { delete b.category; delete b.project; }
   const put = (k, v) => { if (v) b[k] = v; else delete b[k]; };
   put('inProject', inProject); put('pct', pct); put('period', f.get('bperiod') === 'year' ? 'year' : ''); put('daily', ['fixed', 'ratio'].includes(f.get('bdaily')) ? f.get('bdaily') : ''); put('alertPct', Math.max(0, Number(f.get('balert') || 0)));
+  const tk = budgetKeyFor(b, monthKey()), tv = String(f.get('bthis') ?? '').trim(); if (old) { const am = { ...(b.amounts || {}) }; if (tv === '') delete am[tk]; else am[tk] = Math.max(0, Number(tv) || 0); if (Object.keys(am).length) b.amounts = am; else delete b.amounts; }
   put('rollover', !!f.get('broll')); put('rollDebt', !!f.get('broll') && !!f.get('bdebt')); put('addIncome', scope !== 'category' && !!f.get('binc')); put('since', b.rollover ? old?.since || monthKey() : '');
   return { budget: b };
 }
