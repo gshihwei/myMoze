@@ -81,7 +81,7 @@ function catFormHTML(c) {
   const parents = catMains(kind).filter(m => String(m.id) !== String(r.id));
   const special = catSpecialKind(kind) || r.__sys, lockName = r.__sys || (r.id && r['name'] === '轉帳' && kind === 'transfer') ? 'readonly' : '';
   return `${special ? `<input type="hidden" name="ckind" value="${esc(kind)}">` : `<div class="seg"><label><input type="radio" name="ckind" value="expense" ${kind === 'expense' ? 'checked' : ''} ${r.parentId ? 'disabled' : ''}>支出</label><label><input type="radio" name="ckind" value="income" ${kind === 'income' ? 'checked' : ''} ${r.parentId ? 'disabled' : ''}>收入</label></div>`}
-  ${acctImageFieldHTML({ image: r.image, type: 'cash' })}
+  ${acctImageFieldHTML({ image: r.image, type: 'cash', preview: catIconShown(r), hint: '不想用 emoji 時可上傳自己的圖片，會縮成小圖並隨類別同步' })}
   <div class="form-grid">
     <label>名稱<input name="cname" required maxlength="30" value="${esc(r.name || '')}" placeholder="例如：早餐" ${lockName}></label>
     <label ${special ? 'hidden' : ''}>上層分類<select name="cparent" ${isMainWithKids || special ? 'disabled' : ''}><option value="">（主分類）</option>${parents.map(m => `<option value="${esc(m.id)}" ${String(m.id) === String(r.parentId) ? 'selected' : ''}>${esc(m.icon)} ${esc(m.name)}</option>`).join('')}</select></label>
@@ -200,3 +200,7 @@ document.addEventListener('click', async e => {
   if ((b = c('[data-cat-hide]'))) { const r = (state.categories || []).find(x => String(x.id) === b.dataset.catHide); if (r) { if (r.hidden) delete r.hidden; else r.hidden = true; await save(); render(); } return; }
   if ((b = c('[data-cat-merge]'))) { const r = (state.categories || []).find(x => String(x.id) === b.dataset.catMerge); if (!r) return; if (catChildren(r).length) { alert('底下還有子分類，請先合併或移動子分類。'); return; } openEntity('categoryDelete', r); return; }
 });
+// V26.118 the image preview follows the emoji while no picture is chosen
+function catPreviewSync() { const f = document.getElementById('entityForm'), pv = f?.querySelector('.cat-preview[data-acct-image-preview]'); if (!pv || f.querySelector('[name=aimage]')?.value) return; pv.textContent = f.querySelector('[name=cicon]')?.value || '•'; }
+document.addEventListener('input', e => { if (e.target?.name === 'cicon') catPreviewSync(); });
+document.addEventListener('click', e => { if (e.target.closest?.('#entityForm .cat-icons button')) setTimeout(catPreviewSync, 0); });

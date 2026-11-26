@@ -35,7 +35,7 @@ function acctImageValid(s) { return typeof s === 'string' && s.length <= 120000 
 function acctImageFromForm(f) { const v = String(f.get('aimage') ?? ''); return acctImageValid(v) ? { image: v } : {}; }
 function acctImageFieldHTML(a) {
   const has = acctImageValid(a?.image);
-  return `<div class="acct-image-field"><div class="acct-image-preview" data-acct-image-preview>${svgForAccount(a || {})}</div><div class="acct-image-actions"><label class="secondary file-btn">選擇圖片<input type="file" accept="image/*" id="acctImageFile" hidden></label><button type="button" class="secondary" data-acct-image-clear ${has ? '' : 'hidden'}>移除圖片</button><small>會縮成小圖並隨帳戶同步</small></div><input type="hidden" name="aimage" value="${has ? esc(a.image) : ''}"></div>`;
+  return `<div class="acct-image-field"><div class="acct-image-preview${a?.preview ? ' cat-preview' : ''}" data-acct-image-preview${a?.preview ? ` data-fallback="${esc(a.preview)}"` : ''}>${has || !a?.preview ? svgForAccount(a || {}) : esc(a.preview)}</div><div class="acct-image-actions"><label class="secondary file-btn">選擇圖片<input type="file" accept="image/*" id="acctImageFile" hidden></label><button type="button" class="secondary" data-acct-image-clear ${has ? '' : 'hidden'}>移除圖片</button><small>${esc(a?.hint || '會縮成小圖並隨帳戶同步')}</small></div><input type="hidden" name="aimage" value="${has ? esc(a.image) : ''}"></div>`;
 }
 // Center-crop to a square and scale to `size` px; resolves a data URL (webp when the browser can, else png).
 function acctResizeImage(file, size) {
@@ -113,7 +113,7 @@ document.addEventListener('click', e => {
   const form = clr.closest('#entityForm'); if (!form) return;
   form.querySelector('[name=aimage]').value = '';
   const pv = form.querySelector('[data-acct-image-preview]'), typeSel = form.querySelector('[name=atype],[name=accountType]');
-  if (pv) pv.innerHTML = svg(accountIcon({ type: typeSel?.value || 'bank' })); clr.hidden = true;
+  if (pv) pv.innerHTML = pv.dataset.fallback !== undefined ? esc(form.querySelector('[name=cicon]')?.value || pv.dataset.fallback) : svg(accountIcon({ type: typeSel?.value || 'bank' })); clr.hidden = true;
 });
 
 // Apply a { 帳戶名稱: data URL } map to the accounts with the same name (spaces normalised).

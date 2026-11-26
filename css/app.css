@@ -850,3 +850,6 @@ button.entry-cur{border:0;color:#eef4fa;font:inherit;font-weight:700;cursor:poin
  .inv-th.inv-r{grid-template-columns:200px 120px minmax(120px,1fr) 130px 100px 80px 120px}.inv-th .inv-dt u{text-underline-offset:4px}.inv-r:not(.inv-th){margin:0}
  .inv-foot{display:none}.inv-menu{top:64px;right:22px}.inv-src,.inv-th>*{font-weight:400}
 }
+
+/* V26.118 category image preview shows the current emoji */
+.acct-image-preview.cat-preview{font-size:30px;line-height:1;display:flex;align-items:center;justify-content:center}
