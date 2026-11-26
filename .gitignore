@@ -36,3 +36,5 @@ venv/
 
 # e-invoice CSVs downloaded from the MOF portal (personal purchases)
 einvoice/
+# reference screenshots from the user (contain real invoice data)
+參考圖/

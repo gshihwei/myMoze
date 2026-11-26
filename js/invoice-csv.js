@@ -16,7 +16,7 @@ function invCsvNum(v) { const n = Number(String(v || '').replace(/[,\s$]/g, ''))
 function invCsvParse(text) {
   const rows = invCsvRows(text), h = rows.findIndex(r => r.includes('發票號碼') && r.includes('發票日期'));
   if (h < 0) return { error: '這不是財政部的發票明細 CSV（找不到「發票號碼」「發票日期」欄位）', invoices: [], voided: 0, masked: 0 };
-  const hd = rows[h], ix = n => hd.indexOf(n), I = { car: ix('載具自訂名稱'), date: ix('發票日期'), no: ix('發票號碼'), amt: ix('發票金額'), st: ix('發票狀態'), al: ix('折讓'), sid: ix('賣方統一編號'), sn: ix('賣方名稱'), q: ix('消費明細_數量'), p: ix('消費明細_單價'), a: ix('消費明細_金額'), name: ix('消費明細_品名') };
+  const hd = rows[h], ix = n => hd.indexOf(n), I = { car: ix('載具自訂名稱'), date: ix('發票日期'), no: ix('發票號碼'), amt: ix('發票金額'), st: ix('發票狀態'), al: ix('折讓'), sid: ix('賣方統一編號'), sn: ix('賣方名稱'), addr: ix('賣方地址'), q: ix('消費明細_數量'), p: ix('消費明細_單價'), a: ix('消費明細_金額'), name: ix('消費明細_品名') };
   const map = new Map(), voided = new Set(), masked = new Set();
   for (const r of rows.slice(h + 1)) {
     const no = String(r[I.no] || '').toUpperCase(), d = String(r[I.date] || '').replace(/\D/g, '');
@@ -24,7 +24,7 @@ function invCsvParse(text) {
     if (!/^[A-Z]{2}\d{8}$/.test(no)) { masked.add(no); continue; }
     if (/作廢/.test(r[I.st] || '')) { voided.add(no); continue; }
     let inv = map.get(no);
-    if (!inv) { inv = { no, code: '', date: `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`, total: 0, seller: r[I.sid] || '', sellerName: r[I.sn] || '', carrier: r[I.car] || '', allowance: r[I.al] === '是', items: [] }; map.set(no, inv); }
+    if (!inv) { inv = { no, code: '', date: `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`, total: 0, seller: r[I.sid] || '', sellerName: r[I.sn] || '', sellerAddr: r[I.addr] || '', carrier: r[I.car] || '', allowance: r[I.al] === '是', items: [] }; map.set(no, inv); }
     const name = (r[I.name] || '').slice(0, 60), q = invCsvNum(r[I.q]), p = invCsvNum(r[I.p]); let a = invCsvNum(r[I.a]); if (!Number.isFinite(a)) a = invCsvNum(r[I.amt]);
     if (!name && !Number.isFinite(a)) continue; if (!Number.isFinite(a)) a = 0;
     inv.items.push(Number.isFinite(q) && Number.isFinite(p) && q && Math.round(q * p) === Math.round(a) ? [name || '品項', q, p] : [name || '品項', 1, a]);
@@ -48,8 +48,8 @@ function invCsvImport(text) {
   let added = 0, dup = 0, linked = 0, latest = '';
   for (const x of p.invoices) {
     const r = invAdd({ ...x, count: x.items.length });
-    if (r.error) { linked++; continue; } if (r.dup) { dup++; continue; }
-    const e = invDb().list.find(i => i.no === x.no); if (e) { e.sellerName = x.sellerName; e.carrier = x.carrier; if (x.allowance) e.allowance = true; }
+    if (r.error) { linked++; continue; } const e = invDb().list.find(i => i.no === x.no);
+    if (e) for (const k of ['sellerName', 'sellerAddr', 'carrier']) if (x[k] && !e[k]) e[k] = x[k]; if (e && x.allowance) e.allowance = true; if (r.dup) { dup++; continue; }
     added++; if (x.date > latest) latest = x.date;
   }
   invStore(); return { added, dup, linked, voided: p.voided, masked: p.masked, latest, total: p.invoices.length };
@@ -94,7 +94,7 @@ function invBulkSave(picks, account) {
 }
 // ---- 一次記帳 sheet ----
 function invBulkSt() { return window.__invBulk || (window.__invBulk = { off: {}, cats: {}, account: '' }); }
-function invBulkList() { return invDb().list.filter(i => Number(i.total) > 0).sort((a, b) => String(a.date).localeCompare(String(b.date))); }
+function invBulkList() { return invDb().list.filter(i => Number(i.total) > 0 && !i.hidden).sort((a, b) => String(a.date).localeCompare(String(b.date))); }
 function invBulkHTML() {
   const b = invBulkSt(), l = invBulkList(), accts = (state.accounts || []).filter(a => !a.archived && !a.hidden);
   if (!b.account || !accts.some(a => String(a.id) === String(b.account))) { const last = (state.transactions || []).filter(t => t.kind === 'expense' && invOfTx(t).length).pop(); b.account = String(last?.account || accts[0]?.id || ''); }
@@ -120,7 +120,7 @@ document.addEventListener('change', async e => {
   if (t.dataset?.ivbSel) { B.off[t.dataset.ivbSel] = !t.checked; renderInvoices(); return; }
   if (t.dataset?.ivbCat) { B.cats[t.dataset.ivbCat] = t.value; return; }
   if (t.id === 'ivbAcct') { B.account = t.value; return; }
-  if (t.id === 'invCsvFile') {
+  if (t.id === 'invCsvFile' || t.dataset?.invCsv !== undefined) {
     const files = [...t.files]; t.value = ''; let r = { added: 0, dup: 0, linked: 0, voided: 0, masked: 0, latest: '' }, err = '';
     for (const f of files) { const buf = await f.arrayBuffer(); let text = new TextDecoder('utf-8').decode(buf); if (text.includes('�')) try { text = new TextDecoder('big5').decode(buf); } catch { } const x = invCsvImport(text); if (x.error) { err = x.error; continue; } for (const k of ['added', 'dup', 'linked', 'voided', 'masked']) r[k] += x[k]; if (x.latest > r.latest) r.latest = x.latest; }
     const s = invSt(); if (r.latest) { s.period = invPeriod(r.latest); s.tab = 'un'; } renderInvoices();

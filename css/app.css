@@ -805,3 +805,48 @@ button.entry-cur{border:0;color:#eef4fa;font:inherit;font-weight:700;cursor:poin
 
 /* V26.114 發票一次記帳 */
 .ivb-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.07)}.ivb-row.off{opacity:.5}.ivb-check input{width:20px;height:20px;margin-top:2px}.ivb-main{display:flex;flex-direction:column;gap:3px;min-width:0}.ivb-main b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ivb-main select{margin-top:4px;max-width:100%;background:#152638;color:inherit;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:6px 8px}.ivb-amt{white-space:nowrap}
+
+/* V26.115 電子發票 (MOZE look) */
+#invBg .inv-sheet{width:min(1180px,100%);background:#1f2330;color:#eef1f6}
+.inv-ico{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;display:block}
+.inv-head{display:grid;grid-template-columns:52px 1fr auto;grid-template-areas:"back title tools" "per per per";align-items:center;gap:6px 8px;padding:12px 14px 4px;border-bottom:1px solid rgba(255,255,255,.07)}
+.inv-head>[data-sheet-close]{grid-area:back}.inv-title{grid-area:title;text-align:center;font-size:19px}.inv-tools{grid-area:tools;display:flex;gap:10px}.inv-per{grid-area:per;padding:2px 0 6px}
+.inv-per button{border:0;background:none;color:#cfd6e2}.inv-per strong{font-size:17px;font-weight:500;letter-spacing:.5px}
+.inv-round{width:46px;height:46px;border-radius:50%;background:#14171f;border:0;color:#eef1f6;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.inv-wide-only{display:none!important}
+.inv-sub{display:flex;justify-content:center}
+.inv-tabs{display:grid;grid-template-columns:1fr 1fr;width:100%}.inv-tabs button{background:none;border:0;border-bottom:3px solid transparent;color:#9aa3b2;font-size:17px;padding:10px 0 9px;cursor:pointer}.inv-tabs button.active{color:#fff;border-color:#4fb3e8}
+.inv-bulk{display:flex;justify-content:flex-end;padding:6px 14px 0}.inv-bulk button{color:#4fb3e8}
+.inv-list{flex:1;overflow:auto;padding:4px 0 10px}
+.inv-r{display:grid;grid-template-columns:64px 1fr auto;grid-template-areas:"badge no amt" "badge dt acts" "badge shop acts";column-gap:12px;row-gap:1px;align-items:center;padding:10px 16px;cursor:pointer}
+.inv-r.hid{opacity:.45}.inv-r:hover{background:rgba(255,255,255,.03)}
+.inv-badge{grid-area:badge;width:58px;height:58px;border-radius:50%;background:#3a3e4c;color:#c8ccd6;display:flex;align-items:center;justify-content:center;text-align:center;font-size:14px;line-height:1.25}.inv-badge.win{background:#c0392b;color:#fff}
+.inv-no{grid-area:no;font-size:20px;letter-spacing:.5px;display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}.inv-ok{color:#8d93a0;display:inline-flex}.inv-ok .inv-ico{width:18px;height:18px}
+.inv-dt{grid-area:dt;color:#9aa3b2;font-size:14px}.inv-w{display:none}.inv-shop{grid-area:shop;color:#b4bac6;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inv-src,.inv-prize{display:none}.inv-amt{grid-area:amt;justify-self:end;color:#ff5b57;font-size:19px;font-weight:500}
+.inv-acts{grid-area:acts;justify-self:end;display:flex;gap:14px;color:#b4bac6}.inv-act{background:none;border:0;color:inherit;padding:2px;cursor:pointer}
+.inv-th{display:none}
+.inv-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 18px calc(14px + env(safe-area-inset-bottom));background:#181b24;border-top:1px solid rgba(255,255,255,.08)}
+.inv-draw{background:none;border:0;color:#eef1f6;font-size:16px;cursor:pointer;padding:0}.inv-dl{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:16px}
+.inv-menu{position:absolute;top:68px;right:14px;z-index:5;background:#2a2f3d;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;min-width:190px;overflow:hidden}
+.inv-menu>*{background:none;border:0;color:#eef1f6;text-align:left;padding:13px 16px;font-size:15px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06)}
+.inv-pop-bg{position:absolute;inset:0;z-index:6;background:rgba(0,0,0,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:18px}
+.inv-receipt{background:#f7f7f8;color:#2b2e3a;border-radius:22px;padding:26px 30px;width:min(420px,100%);max-height:72vh;overflow:auto}
+.inv-r-per{text-align:center;font-size:28px;font-weight:600}.inv-r-no{text-align:center;font-size:36px;font-weight:800;letter-spacing:1px;margin:2px 0 10px}
+.inv-r-grid{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:16px;margin-bottom:12px}.inv-r-grid span:nth-child(even){text-align:right}.inv-r-prize{color:#9a9da6}.inv-r-prize.win{color:#c0392b;font-weight:700}
+.inv-receipt .code39{width:100%;height:64px;display:block;margin:0 0 14px}
+.inv-r-info p{margin:4px 0;font-size:15px;line-height:1.45;word-break:break-word}.inv-r-info .hint{color:#8a8e98}
+.inv-pop-acts{background:#f7f7f8;color:#2b2e3a;border-radius:18px;display:flex;gap:6px;padding:8px 14px}.inv-pop-acts button{background:none;border:0;color:inherit;padding:10px 12px;cursor:pointer;font-size:14px}
+.inv-carrier{text-align:center}.inv-carrier .inv-r-no{font-size:28px}.inv-drawbox .form-grid{margin:10px 0}.inv-drawbox input{background:#fff;color:#222;border:1px solid #ccc}
+@media(min-width:900px){
+ .inv-head{grid-template-columns:auto auto 1fr auto;grid-template-areas:"back title per tools";border:0;padding:16px 22px 4px}.inv-title{font-size:26px;text-align:left}.inv-head>[data-sheet-close]{width:40px;height:40px;background:none}
+ .inv-tools .inv-round{background:none;width:40px;height:40px}.inv-tools .inv-ico{width:28px;height:28px}.inv-wide-only{display:flex!important}
+ .inv-sub{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 22px}.inv-won{color:#9aa3b2;font-size:17px;background:none;border:0;cursor:pointer;justify-self:start}
+ .inv-tabs{width:auto;background:#181b24;border-radius:12px;padding:4px}.inv-tabs button{border:0;border-radius:9px;padding:8px 46px}.inv-tabs button.active{background:#4fb3e8;color:#fff}
+ .inv-r{grid-template-columns:200px 120px minmax(120px,1fr) 130px 100px 80px 120px;grid-template-areas:none;column-gap:16px;padding:9px 22px}
+ .inv-r>*{grid-area:auto!important}.inv-badge{display:none}.inv-no{font-size:17px}.inv-ok .inv-ico{width:16px;height:16px}.inv-n{display:none}.inv-w{display:inline}.inv-dt{color:#eef1f6;font-size:16px}
+ .inv-shop{font-size:16px;white-space:normal}.inv-src{display:block;font-size:16px}.inv-amt{color:#eef1f6;font-size:16px;text-align:right}.inv-prize{display:block;color:#8d93a0;font-size:16px}.inv-prize.win{color:#ff5b57}
+ .inv-acts{color:#4fb3e8;gap:18px}.inv-th{display:grid;color:#c8ccd6;font-size:15px;border-bottom:1px solid rgba(255,255,255,.1);cursor:default;margin:6px 22px 4px;padding:8px 0}.inv-th:hover{background:none}
+ .inv-th.inv-r{grid-template-columns:200px 120px minmax(120px,1fr) 130px 100px 80px 120px}.inv-th .inv-dt u{text-underline-offset:4px}.inv-r:not(.inv-th){margin:0}
+ .inv-foot{display:none}.inv-menu{top:64px;right:22px}.inv-src,.inv-th>*{font-weight:400}
+}

@@ -675,6 +675,33 @@ html[data-theme="light"][data-swap="1"] .income-text{color:#cc0012!important}
 :root[data-theme="light"] #advSheet .adv-card>.form-actions button{background:#869fb6;color:#141b22}
 :root[data-theme="light"] .ivb-row{border-bottom:1px solid rgba(15,23,32,0.084)}
 :root[data-theme="light"] .ivb-main select{background:#f2f5f7;border:1px solid rgba(15,23,32,0.168)}
+:root[data-theme="light"] #invBg .inv-sheet{background:#f2f3f7;color:#151a23}
+:root[data-theme="light"] .inv-head{border-bottom:1px solid rgba(15,23,32,0.084)}
+:root[data-theme="light"] .inv-per button{color:#212936}
+:root[data-theme="light"] .inv-round{background:#f6f7f9;color:#151a23}
+:root[data-theme="light"] .inv-tabs button{color:#4f5968}
+:root[data-theme="light"] .inv-tabs button.active{color:#141414;border-color:#4fb3e8}
+:root[data-theme="light"] .inv-bulk button{color:#187eb4}
+:root[data-theme="light"] .inv-r:hover{background:rgba(15,23,32,0.036)}
+:root[data-theme="light"] .inv-badge{background:#edeef1;color:#2a2e38}
+:root[data-theme="light"] .inv-badge.win{background:#c0392b;color:#141414}
+:root[data-theme="light"] .inv-ok{color:#5f6572}
+:root[data-theme="light"] .inv-dt{color:#4f5968}
+:root[data-theme="light"] .inv-shop{color:#4f5868}
+:root[data-theme="light"] .inv-amt{color:#cc0500}
+:root[data-theme="light"] .inv-acts{color:#4f5868}
+:root[data-theme="light"] .inv-foot{background:#f5f6f8;border-top:1px solid rgba(15,23,32,0.096)}
+:root[data-theme="light"] .inv-draw{color:#151a23}
+:root[data-theme="light"] .inv-menu{background:#f0f1f5;box-shadow:0 10px 30px rgba(15,23,32,0.16)}
+:root[data-theme="light"] .inv-menu>*{color:#151a23;border-bottom:1px solid rgba(15,23,32,0.072)}
+:root[data-theme="light"] .inv-pop-bg{background:rgba(255,255,255,0.55)}
+:root[data-theme="light"] .inv-receipt{background:#17171b;color:#f0f1f4}
+:root[data-theme="light"] .inv-r-prize{color:#595c65}
+:root[data-theme="light"] .inv-r-prize.win{color:#a73125}
+:root[data-theme="light"] .inv-r-info .hint{color:#676b75}
+:root[data-theme="light"] .inv-pop-acts{background:#17171b;color:#f0f1f4}
+:root[data-theme="light"] .inv-drawbox input{background:#141414;color:#f6f6f6;border:1px solid #333333}
+@media(min-width:900px){:root[data-theme="light"] .inv-won{color:#4f5968}:root[data-theme="light"] .inv-tabs{background:#f5f6f8}:root[data-theme="light"] .inv-tabs button.active{background:#4fb3e8;color:#141414}:root[data-theme="light"] .inv-dt{color:#151a23}:root[data-theme="light"] .inv-amt{color:#151a23}:root[data-theme="light"] .inv-prize{color:#5f6572}:root[data-theme="light"] .inv-prize.win{color:#cc0500}:root[data-theme="light"] .inv-acts{color:#187eb4}:root[data-theme="light"] .inv-th{color:#2a2e38;border-bottom:1px solid rgba(15,23,32,0.12)}}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}
