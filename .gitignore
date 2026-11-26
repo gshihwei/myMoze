@@ -33,3 +33,6 @@ venv/
 
 # release ZIPs are built into 壓縮檔/
 壓縮檔/
+
+# e-invoice CSVs downloaded from the MOF portal (personal purchases)
+einvoice/

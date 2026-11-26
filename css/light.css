@@ -673,6 +673,8 @@ html[data-theme="light"][data-swap="1"] .income-text{color:#cc0012!important}
 :root[data-theme="light"] .wp-multi button i{color:#217eab}
 :root[data-theme="light"] .wp-multi button.on{background:rgba(63,167,218,0.12)}
 :root[data-theme="light"] #advSheet .adv-card>.form-actions button{background:#869fb6;color:#141b22}
+:root[data-theme="light"] .ivb-row{border-bottom:1px solid rgba(15,23,32,0.084)}
+:root[data-theme="light"] .ivb-main select{background:#f2f5f7;border:1px solid rgba(15,23,32,0.168)}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}

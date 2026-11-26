@@ -802,3 +802,6 @@ button.entry-cur{border:0;color:#eef4fa;font:inherit;font-weight:700;cursor:poin
 .wp-multi{padding:8px 14px;display:grid;gap:4px;max-height:330px;overflow:auto}.wp-multi button{display:flex;justify-content:space-between;padding:12px;border:0;border-radius:10px;background:none;color:#eef4fa;font:inherit;font-size:16px;cursor:pointer}.wp-multi button i{visibility:hidden;color:#5fb6e0;font-style:normal}.wp-multi button.on{background:rgba(95,182,224,.12)}.wp-multi button.on i{visibility:visible}
 #advSheet .adv-card>.form-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:14px}#advSheet .adv-card>.form-actions button{padding:13px;border-radius:12px;border:0;background:#34506b;color:#eef4fa;font-size:16px;min-height:48px}
 #advSheet .adv-card>h3{text-align:center}
+
+/* V26.114 發票一次記帳 */
+.ivb-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.07)}.ivb-row.off{opacity:.5}.ivb-check input{width:20px;height:20px;margin-top:2px}.ivb-main{display:flex;flex-direction:column;gap:3px;min-width:0}.ivb-main b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ivb-main select{margin-top:4px;max-width:100%;background:#152638;color:inherit;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:6px 8px}.ivb-amt{white-space:nowrap}
