@@ -867,3 +867,7 @@ button.entry-cur{border:0;color:#eef4fa;font:inherit;font-weight:700;cursor:poin
 @media(min-width:900px){.inv-menu-dl{top:64px;bottom:auto}}
 .einv-sheet .form-grid{grid-template-columns:1fr;margin:10px 0}.einv-sheet .check{display:flex;align-items:center;gap:8px}
 .einv-sheet .recon-list{padding:4px 18px 18px}.einv-sheet label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:#b8c7d3}.einv-sheet label.check{flex-direction:row}.einv-sheet input:not([type=checkbox]){width:100%;box-sizing:border-box;background:#0f1b27;border:1px solid #2a4054;border-radius:10px;color:#eef4fa;padding:11px 12px;font-size:16px}
+
+/* V26.122 財政部帳號提醒 */
+.einv-warn{margin:8px 0;padding:10px 12px;border-radius:10px;background:rgba(255,176,32,.14);color:#ffcf70;font-size:14px;line-height:1.5}
+.einv-sheet select{width:100%;background:#152638;border:1px solid var(--line);color:#e8eff5;border-radius:10px;padding:12px;font-size:16px;outline:none;margin-top:6px}

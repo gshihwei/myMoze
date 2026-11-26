@@ -73,7 +73,7 @@ test('App 端下載：新增、補明細、已歸帳與刪除過的略過、明�
       {no:'EF12345678',date:'2026-11-01',api:'2026/11/01',total:10},{no:'GH12345678',date:'2026-11-02',api:'2026/11/02',total:30,sellerName:'某店'},{no:'JK12345678',date:'2026-11-03',api:'2026/11/03',total:5}]:[]}};
       if(body.action==='detail')return body.invNum==='CD12345678'?{error:'逾時'}:{data:{items:[['品項',1,90]]}};return{error:'?'}}}`);
   const r = await b.run('einvDownload()');
-  assert.deepEqual({ ...r }, { added: 2, filled: 1, skipped: 2, failed: 1, total: 5 });
+  const { added, filled, skipped, failed, total } = r; assert.deepEqual({ added, filled, skipped, failed, total }, { added: 2, filled: 1, skipped: 2, failed: 1, total: 5 });
   const l = b.J('invDb().list'), by = n => l.find(x => x.no === n);
   assert.equal(by('AB12345678').time, '14:05'); assert.equal(by('AB12345678').carrier, '手機條碼'); assert.equal(by('AB12345678').code, '1234'); assert.deepEqual(by('AB12345678').items, [['品項', 1, 90]]);
   assert.deepEqual(by('CD12345678').items, []); assert.deepEqual(by('GH12345678').items, [['品項', 1, 90]]); assert.equal(by('GH12345678').sellerName, '某店');
