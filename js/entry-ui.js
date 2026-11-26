@@ -84,7 +84,7 @@ import { svg, accountIcon, svgForAccount } from './icons.js';
 
   // ---- categories / presets / accounts ----
   function colorFor(c,mains,kind){const own=c.color||(c.parentId&&mains.find(x=>String(x.id)===String(c.parentId))?.color);if(/^#[0-9a-f]{6}$/i.test(own||''))return own;if(kind==='income')return COLOR.income;const main=c.parentId?mains.find(x=>String(x.id)===String(c.parentId))||c:c;const i=mains.findIndex(x=>String(x.id)===String(main.id));return PALETTE[(i<0?0:i)%PALETTE.length];}
-  function iconHTML(c){return c.image?catIconHTML(c):(typeof iconPaths!=='undefined'&&iconPaths[c.id])?svg(c.id):`<span class="emoji">${esc(c.icon||'🏷️')}</span>`;}
+  function iconHTML(c){return c.image?catIconHTML(c):(typeof iconPaths!=='undefined'&&iconPaths[c.id])?svg(c.id):`<span class="emoji">${esc(typeof catIconShown==='function'?catIconShown(c):(c.icon||'🏷️'))}</span>`;}
   function fillCategorySelect(prev){
     const cs=$('formCategory');if(!cs)return;
     const kind=curKind(),ordered=typeof catOrdered==='function'?catOrdered():state.categories;

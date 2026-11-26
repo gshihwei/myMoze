@@ -29,15 +29,26 @@ function catIconTable() {
   };
 }
 // Keyword fallbacks for names that are not in the table (first match wins).
+// V26.113 more specific names first (MOZE default subcategories and common ones), then the general keywords.
+function catIconKeywordsMore() {
+  return [['youtube', '▶️'], ['netflix', '🎬'], ['disney', '🎬'], ['spotify', '🎵'], ['kkbox', '🎵'], ['apple music', '🎵'], ['icloud', '☁️'], ['google', '☁️'], ['雲端', '☁️'], ['steam', '🎮'], ['switch', '🎮'], ['ps5', '🎮'], ['uber eats', '🛵'], ['ubereats', '🛵'], ['foodpanda', '🛵'], ['熊貓', '🛵'], ['外送', '🛵'], ['uber', '🚕'], ['ubike', '🚲'], ['etc', '🛣️'], ['過路', '🛣️'], ['高速公路', '🛣️'],
+    ['車貸', '🏦'], ['房貸', '🏦'], ['貸款', '🏦'], ['還款', '🤝'], ['補助', '🤲'], ['津貼', '🤲'], ['補貼', '🤲'], ['零用', '👛'], ['教育', '🎓'], ['補習', '🎓'], ['學費', '🎓'], ['才藝', '🎨'], ['保母', '🍼'], ['尿布', '🍼'], ['奶粉', '🍼'], ['寶寶', '🍼'], ['小孩', '🧒'], ['孩子', '🧒'], ['父母', '👵'], ['孝親', '👵'],
+    ['點心', '🍰'], ['甜點', '🍰'], ['蛋糕', '🍰'], ['零食', '🍿'], ['宵夜', '🌙'], ['早午餐', '🥞'], ['便當', '🍱'], ['火鍋', '🍲'], ['麵', '🍜'], ['飯', '🍚'], ['冰', '🍦'], ['聚餐', '🍻'], ['食材', '🥬'], ['菜', '🥬'], ['超商', '🏪'], ['便利', '🏪'], ['超市', '🛒'], ['量販', '🛒'], ['網購', '📦'], ['團購', '📦'],
+    ['電信', '📱'], ['電話', '📱'], ['手機', '📱'], ['電腦', '💻'], ['3c', '💻'], ['相機', '📷'], ['耳機', '🎧'], ['電器', '📺'], ['第四台', '📺'], ['有線電視', '📺'], ['串流', '🎬'], ['訂閱', '🔁'], ['月費', '🔁'], ['年費', '💳'], ['會員', '🎫'], ['軟體', '📲'], ['app', '📲'],
+    ['管理費', '🏢'], ['清潔', '🧹'], ['家事', '🧹'], ['衛生', '🧻'], ['洗車', '🚿'], ['保養', '🧴'], ['美髮', '💇'], ['理髮', '💇'], ['剪髮', '💇'], ['化妝', '💄'], ['美妝', '💄'], ['香水', '🌸'], ['醫美', '💉'], ['眼鏡', '👓'], ['飾品', '💍'], ['首飾', '💍'], ['手錶', '⌚'], ['包', '👜'],
+    ['健身', '🏋️'], ['球', '⚽'], ['游泳', '🏊'], ['登山', '⛰️'], ['演唱會', '🎤'], ['ktv', '🎤'], ['唱歌', '🎤'], ['門票', '🎫'], ['票', '🎫'], ['景點', '🗺️'], ['飯店', '🏨'], ['旅館', '🏨'], ['民宿', '🏨'], ['雜誌', '📰'], ['報紙', '📰'], ['菸', '🚬'], ['樂透', '🎰'], ['彩券', '🎰'],
+    ['股利', '📈'], ['股息', '📈'], ['股', '📈'], ['基金', '📈'], ['儲蓄', '🐷'], ['存款', '🐷'], ['捐', '💝'], ['婚', '💒'], ['喪', '🕯️'], ['奠', '🕯️'], ['禮金', '🧧'], ['紅包', '🧧'], ['生日', '🎂'], ['花', '💐'], ['植物', '🪴'], ['獸醫', '🐾'], ['中醫', '🌿'], ['診所', '🏥'], ['看診', '🏥'], ['保健', '💊'], ['維他命', '💊'],
+    ['健保', '🏥'], ['勞保', '🛡️'], ['年金', '🛡️'], ['罰', '🚨'], ['規費', '🧾'], ['兼職', '💼'], ['打工', '💼'], ['外快', '💼'], ['接案', '💼'], ['年終', '🏆'], ['分紅', '🏆'], ['退款', '↩️'], ['中獎', '🎰'], ['發票', '🧾'], ['回饋', '💳'], ['點數', '🪙'], ['租金', '🏠'], ['停車', '🅿️'], ['機車', '🛵'], ['腳踏車', '🚲'], ['自行車', '🚲']];
+}
 function catIconKeywords() {
-  return [['早餐', '🍳'], ['午餐', '🍱'], ['晚餐', '🍽️'], ['餐', '🍱'], ['飲', '🥤'], ['茶', '🥤'], ['咖啡', '☕'], ['酒', '🍺'], ['果', '🍎'], ['油', '⛽'], ['停車', '🅿️'], ['車', '🚗'], ['機', '✈️'],
+  return [...catIconKeywordsMore(), ['早餐', '🍳'], ['午餐', '🍱'], ['晚餐', '🍽️'], ['餐', '🍱'], ['飲', '🥤'], ['茶', '🥤'], ['咖啡', '☕'], ['酒', '🍺'], ['果', '🍎'], ['油', '⛽'], ['停車', '🅿️'], ['車', '🚗'], ['機', '✈️'],
     ['醫', '🏥'], ['藥', '💊'], ['牙', '🦷'], ['薪', '💵'], ['獎金', '🏆'], ['保險', '🛡️'], ['電', '💡'], ['水', '💧'], ['網', '🌐'], ['房', '🏠'], ['租', '🏠'], ['衣', '👕'], ['鞋', '👟'], ['書', '📚'], ['學', '🎓'],
     ['課', '🎓'], ['旅', '🧳'], ['寵', '🐾'], ['貓', '🐾'], ['狗', '🐾'], ['稅', '🧾'], ['利息', '🏦'], ['卡', '💳'], ['投資', '📈'], ['禮', '🎁'], ['電影', '🎥'], ['遊戲', '🎮'], ['音樂', '🎵'], ['運動', '🏃'], ['美容', '💇'], ['按摩', '💆']];
 }
 function catIconLookup(name) {
   const n = String(name || '').trim(); if (!n) return '';
   const t = catIconTable(); if (Object.prototype.hasOwnProperty.call(t, n)) return t[n];
-  const k = catIconKeywords().find(([w]) => n.includes(w)); return k ? k[1] : '';
+  const low = n.toLowerCase(), k = catIconKeywords().find(([w]) => low.includes(w)); return k ? k[1] : '';
 }
 // Default icon for a category. parentName is the main category's name for a subcategory.
 // Unknown names fall back to the parent's icon, then to the old placeholders ('＄' income, '•' expense).
@@ -53,7 +64,7 @@ function catIconPlan() {
   for (const c of cats) {
     if (!catIconIsPlaceholder(c.icon)) continue;
     const parent = c.parentId ? cats.find(x => String(x.id) === String(c.parentId)) : null;
-    const icon = catIconLookup(c.name) || (parent ? (catIconLookup(parent.name) || '') : '');
+    const icon = catIconLookup(c.name) || (parent ? (catIconLookup(parent.name) || (catIconIsPlaceholder(parent.icon) ? '' : parent.icon)) : '');
     if (icon && icon !== c.icon) plan.push({ category: c, icon });
   }
   return plan;
@@ -67,3 +78,6 @@ async function catApplyDefaultIcons() {
   alert(`已更新 ${plan.length} 個分類的圖示。`);
 }
 document.addEventListener('click', e => { if (e.target.closest?.('#catApplyIcons')) catApplyDefaultIcons(); });
+// V26.113 Runs when the app opens: categories still showing a placeholder (•, ＄…) get the icon their name (or main category) suggests.
+// Only placeholders change; icons the user picked stay. → true when something changed.
+function catIconAuto() { if (!state?.categories) return false; const plan = catIconPlan(); for (const x of plan) x.category.icon = x.icon; return plan.length > 0; }

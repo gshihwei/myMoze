@@ -163,7 +163,9 @@ document.addEventListener('click', async e => {
 });
 
 // ---- V26.92 類別圖片與轉帳／應收／應付／系統類別 ----
-function catIconHTML(c) { return c?.image && acctImageValid(c.image) ? `<img class="cat-img" src="${c.image}" alt="">` : esc(c?.icon || '🏷️'); }
+function catIconHTML(c) { return c?.image && acctImageValid(c.image) ? `<img class="cat-img" src="${c.image}" alt="">` : esc(catIconShown(c)); }
+// Placeholder icons (•, ＄…) are shown as the icon the name or the main category suggests.
+function catIconShown(c) { if (!c) return '🏷️'; if (!catIconIsPlaceholder(c.icon)) return c.icon; const p = c.parentId ? (state?.categories || []).find(x => String(x.id) === String(c.parentId)) : null; return (typeof catIconLookup === 'function' && (catIconLookup(c.name) || (p && (catIconLookup(p.name) || (!catIconIsPlaceholder(p.icon) && p.icon))))) || c.icon || '🏷️'; }
 function catKinds() { return [['expense', '支出'], ['income', '收入'], ['transfer', '轉帳'], ['receivable', '應收款項'], ['payable', '應付款項'], ['system', '系統']]; }
 function catSpecialKind(k) { return ['transfer', 'receivable', 'payable', 'system'].includes(k); }
 // Built-in entries of a special kind. 系統 ones that are real income / expense categories are edited there (kind in `as`).
