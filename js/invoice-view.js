@@ -49,9 +49,13 @@ document.addEventListener('click', async e => {
   if (c('[data-inv-carrier]')) { s.pop = 'carrier'; s.open = null; renderInvoices(); return; }
   if (c('[data-inv-draw]')) { s.pop = 'draw'; s.open = null; renderInvoices(); return; }
   if ((b = c('[data-inv-pop-bg]')) && e.target === b) { s.pop = null; s.open = null; renderInvoices(); return; }
-  if ((b = c('[data-inv-hide]'))) { e.stopPropagation(); const inv = invDb().list.find(x => x.no === b.dataset.invHide); if (inv) { if (inv.hidden) delete inv.hidden; else inv.hidden = true; invStore(); } renderInvoices(); return; }
+  if ((b = c('[data-inv-hide]'))) { e.stopPropagation(); const inv = invDb().list.find(x => x.no === b.dataset.invHide); if (inv) { if (inv.hidden) delete inv.hidden; else inv.hidden = true; inv.mt = Date.now(); invStore(); } renderInvoices(); return; }
   if (c('[data-inv-win]')) setTimeout(() => { if (invDb().win[s.period]) { s.pop = null; renderInvoices(); } }, 0);
   if (c('[data-inv-golink],[data-inv-new],[data-inv-multi],[data-inv-del],[data-inv-unlink]')) { s.pop = null; setTimeout(() => { if (!invAll().some(x => x.inv.no === s.open)) s.open = null; }, 0); }
 }, true);
 document.addEventListener('change', e => { if (e.target?.closest?.('.inv-menu')) invSt().menu = false; }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target?.matches?.('#invBg [data-inv-open]')) e.target.click(); });
+
+// 同步發票 setting (V26.117)
+function renderInvSyncPref() { const c = document.getElementById('prefInvSync'); if (c) c.checked = prefs().invSync !== false; }
+document.addEventListener('change', async e => { if (e.target?.id !== 'prefInvSync') return; setPref('invSync', !!e.target.checked); if (e.target.checked && inboxOn()) { inboxPull(); if (inboxPush()) await save(); } });

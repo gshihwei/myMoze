@@ -49,7 +49,7 @@ function invCsvImport(text) {
   for (const x of p.invoices) {
     const r = invAdd({ ...x, count: x.items.length });
     if (r.error) { linked++; continue; } const e = invDb().list.find(i => i.no === x.no);
-    if (e) for (const k of ['sellerName', 'sellerAddr', 'carrier']) if (x[k] && !e[k]) e[k] = x[k]; if (e && x.allowance) e.allowance = true; if (r.dup) { dup++; continue; }
+    if (e) for (const k of ['sellerName', 'sellerAddr', 'carrier']) if (x[k] && !e[k]) { e[k] = x[k]; e.mt = Date.now(); } if (e && x.allowance) e.allowance = true; if (r.dup) { dup++; continue; }
     added++; if (x.date > latest) latest = x.date;
   }
   invStore(); return { added, dup, linked, voided: p.voided, masked: p.masked, latest, total: p.invoices.length };

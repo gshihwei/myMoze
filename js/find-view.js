@@ -101,21 +101,36 @@ document.addEventListener('click', e => {
 function modeCats(kind) { const m = modeActive(), l = (m?.categories || []).map(String); if (!l.length) return []; return catOrdered(kind).filter(c => l.includes(String(c.id)) && catVisible(c)); }
 function modeSummary(m) { const n = k => (m[k] || []).length; return [m.cur, acct(m.account).id !== undefined ? acct(m.account).name : '', (state.projects || []).find(p => String(p.id) === String(m.project))?.name, n('accounts') ? `${n('accounts')} 組帳戶` : '', n('projects') ? `${n('projects')} 組專案` : '', n('categories') ? `${n('categories')} 組類別` : ''].filter(Boolean).join('・') || '未設定'; }
 // ---- 發票與草稿同步: one hidden record like the preferences (id __inbox__); newest change of each item wins ----
+// V26.117 On for every signed-in account (setting 「同步發票」, default on), no longer tied to 偏好同步.
+// The pool on this device belongs to one account: when another account signs in here, it starts empty.
+function inboxOn() {
+  const u = prefSyncUser(); if (!u || prefs().invSync === false) return false;
+  if (String(prefs().inboxOwner ?? '') !== u) {
+    if (prefs().inboxOwner) { const v = invDb(), d = draftDb(); v.list = []; v.win = {}; d.list = []; window.__inboxQuiet = true; invStore(); draftStore(); window.__inboxQuiet = false; prefs().inboxGone = []; }
+    prefs().inboxOwner = u; prefs().inboxAt = 0; try { localStorage.setItem(prefsKey(), JSON.stringify(prefsCache)); } catch { }
+  }
+  return true;
+}
+function inboxStamp(x) { return Number(x?.mt || x?.at || 0); }
 function inboxHost() { return (state?.categories || []).find(c => c.id === '__inbox__') || null; }
 function inboxData() { const d = draftDb(), v = invDb(); return { drafts: d.list, rules: d.rules, accts: d.accts, invoices: v.list, win: v.win, gone: (prefs().inboxGone || []).slice(-300) }; }
 function inboxPush() {
-  if (!prefSyncOn() || !state) return false; const d = JSON.parse(JSON.stringify(inboxData())), h = inboxHost(); if (h && JSON.stringify(h.data) === JSON.stringify(d)) return false;
+  if (!inboxOn() || !state) return false; const d = JSON.parse(JSON.stringify(inboxData())), h = inboxHost(); if (h && JSON.stringify(h.data) === JSON.stringify(d)) return false;
   const rec = { id: '__inbox__', kind: 'prefs', name: '通知草稿與發票（同步用）', icon: '⚙', hidden: true, order: 1e9, data: d, at: Date.now() }; if (h) Object.assign(h, rec); else (state.categories = state.categories || []).push(rec); inboxSeen(rec.at); return true;
 }
 function inboxSeen(at) { prefs().inboxAt = at; try { localStorage.setItem(prefsKey(), JSON.stringify(prefsCache)); } catch { } }
 // Merges the shared inbox: items of both sides, minus everything either side finished.
 function inboxMerge(local, remote) {
-  const gone = [...new Set([...(local.gone || []), ...(remote.gone || [])])].slice(-300), g = new Set(gone), key = x => x.no ? 'i' + x.no : 'd' + x.at + '|' + String(x.text).slice(0, 40), join = (a, b) => { const m = new Map(); for (const x of [...(b || []), ...(a || [])]) if (!g.has(key(x))) m.set(key(x), x); return [...m.values()].sort((x, y) => (y.at || 0) - (x.at || 0)); };
+  const gone = [...new Set([...(local.gone || []), ...(remote.gone || [])])].slice(-300), g = new Set(gone), key = x => x.no ? 'i' + x.no : 'd' + x.at + '|' + String(x.text).slice(0, 40), join = (a, b) => { const m = new Map(); for (const x of [...(b || []), ...(a || [])]) if (!g.has(key(x)) && !(m.has(key(x)) && inboxStamp(m.get(key(x))) > inboxStamp(x))) m.set(key(x), x); return [...m.values()].sort((x, y) => (y.at || 0) - (x.at || 0)); };
   return { drafts: join(local.drafts, remote.drafts), invoices: join(local.invoices, remote.invoices), rules: { ...local.rules, ...remote.rules }, accts: { ...local.accts, ...remote.accts }, win: { ...local.win, ...remote.win }, gone };
 }
 function inboxPull() {
-  const h = inboxHost(); if (!prefSyncOn() || !h?.data || !(Number(h.at) > Number(prefs().inboxAt || 0))) return false; const m = inboxMerge(inboxData(), h.data), d = draftDb(), v = invDb();
-  d.list = m.drafts.map(x => ({ ...x, id: x.id && d.list.some(y => y.id === x.id && y.at === x.at) ? x.id : 'd' + (++d.seq) })); d.rules = m.rules; d.accts = m.accts; v.list = m.invoices; v.win = m.win; prefs().inboxGone = m.gone; window.__inboxQuiet = true; draftStore(); invStore(); window.__inboxQuiet = false; inboxSeen(Number(h.at)); return true;
+  const h = inboxHost(); if (!h && inboxOn() && (invDb().list.length || Object.keys(invDb().win).length || draftDb().list.length)) { inboxTouch(); return false; }
+  if (!inboxOn() || !h?.data || !(Number(h.at) > Number(prefs().inboxAt || 0))) return false; const m = inboxMerge(inboxData(), h.data), d = draftDb(), v = invDb();
+  d.list = m.drafts.map(x => ({ ...x, id: x.id && d.list.some(y => y.id === x.id && y.at === x.at) ? x.id : 'd' + (++d.seq) })); d.rules = m.rules; d.accts = m.accts; v.list = m.invoices; v.win = m.win; prefs().inboxGone = m.gone; window.__inboxQuiet = true; draftStore(); invStore(); window.__inboxQuiet = false; inboxSeen(Number(h.at));
+  // this device had items the cloud copy lacks → send the merged list back
+  if (JSON.stringify(JSON.parse(JSON.stringify(inboxData()))) !== JSON.stringify(h.data)) inboxTouch();
+  if (typeof renderInvoices === 'function') renderInvoices(); return true;
 }
 function inboxGone(x) { const k = x.no ? 'i' + x.no : 'd' + x.at + '|' + String(x.text).slice(0, 40), l = [...(prefs().inboxGone || []).filter(y => y !== k), k].slice(-300); prefs().inboxGone = l; try { localStorage.setItem(prefsKey(), JSON.stringify(prefsCache)); } catch { } }
-function inboxTouch() { if (window.__inboxQuiet || !prefSyncOn()) return; clearTimeout(window.__inboxTimer); window.__inboxTimer = setTimeout(async () => { if (inboxPush()) await save(); }, 1200); }
+function inboxTouch() { if (window.__inboxQuiet || !inboxOn()) return; clearTimeout(window.__inboxTimer); window.__inboxTimer = setTimeout(async () => { if (inboxPush()) await save(); }, 1200); }

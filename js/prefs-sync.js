@@ -40,7 +40,7 @@ function prefSyncTouch(k) {
   clearTimeout(window.__prefSyncTimer);
   window.__prefSyncTimer = setTimeout(async () => { if (prefSyncPush()) await save(); }, 800);
 }
-function renderPrefSync() { const c = document.getElementById('prefSync'); if (c) c.checked = prefSyncOn(); }
+function renderPrefSync() { const c = document.getElementById('prefSync'); if (c) c.checked = prefSyncOn(); if (typeof renderInvSyncPref === 'function') renderInvSyncPref(); }
 document.addEventListener('change', async e => {
   if (e.target?.id !== 'prefSync') return;
   if (e.target.checked) { prefSyncEnable(); await save(); } else setPref('prefSync', false);

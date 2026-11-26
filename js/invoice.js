@@ -24,7 +24,7 @@ function invKnown(no) { return (state.transactions || []).find(t => invOfTx(t).s
 // → the pool entry, or { error }. A right-hand code adds its items to the invoice scanned just before.
 function invAdd(p) {
   const db = invDb(); if (!p) return { error: '這不是電子發票的 QRCode（請掃左邊那一個）' };
-  if (p.right) { const last = db.list[0]; if (last && last.items.length < (last.count || 99) && !last.rightDone) { last.items.push(...p.items.filter(x => !last.items.some(y => y[0] === x[0] && y[2] === x[2]))); last.rightDone = true; invStore(); return last; } return { error: '先掃左邊的 QRCode' }; }
+  if (p.right) { const last = db.list[0]; if (last && last.items.length < (last.count || 99) && !last.rightDone) { last.mt = Date.now(); last.items.push(...p.items.filter(x => !last.items.some(y => y[0] === x[0] && y[2] === x[2]))); last.rightDone = true; invStore(); return last; } return { error: '先掃左邊的 QRCode' }; }
   if (db.list.some(x => x.no === p.no)) return { ...db.list.find(x => x.no === p.no), dup: true }; const t = invKnown(p.no); if (t) return { error: `發票 ${p.no} 已歸在「${t.name}」` };
   const i = { no: p.no, code: p.code, date: p.date, total: p.total, seller: p.seller || '', count: p.count || 0, items: p.items || [], at: Date.now() }; prefs().inboxGone = (prefs().inboxGone || []).filter(k => k !== 'i' + i.no); db.list.unshift(i); invStore(); return i;
 }
