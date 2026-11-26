@@ -431,7 +431,7 @@ function acctAdjustFormHTML(a) {
     <label>實際餘額${a.type === 'card' ? '（欠款請輸入負數）' : ''}<input name="abalance" type="number" step="any" required value="${esc(a.balance)}"></label>
     <label>日期<input name="adate" type="date" required max="${isoDate(new Date())}" value="${isoDate(new Date())}"></label>
     <label>時間<input name="atime" type="time" required value="${nowTime()}"></label>
-  </div><p class="hint" id="adjNow">當前餘額 ${acctMoney(a.balance, a)}</p>
+  </div><p class="hint" id="adjNow">當前餘額 ${acctMoney(a.balance, a)}</p><label class="proj-archive"><input type="checkbox" name="akeep" checked> 調整過去的餘額時，之後的餘額維持不變（差額由之後最近的一筆餘額調整吸收；沒有的話，會在現在補一筆餘額調整）</label>
   <div class="form-grid form-grid-1"><label>備註<input name="anote" maxlength="100" placeholder="例如：對帳後修正"></label></div><p class="hint">選過去的日期時，填那一天結束時的實際餘額。之後在這個時間點之前補記或刪除記錄，都不會改變這個時間點的餘額。</p>`;
 }
 
@@ -439,7 +439,7 @@ function acctAdjustFormHTML(a) {
 // instead of the balances after it. Called by adjust() before the effect of `t` is applied; the effect itself is cancelled there.
 function pinKey(t) { return (t.date || '') + ' ' + (t.time || '00:00'); }
 function pinAbsorb(t, sign) {
-  if (t.pinned) return;
+  if (t.pinned && !t.keepLater) return;
   for (const [aid, v] of ledgerEffects(t)) {
     if (!v) continue; let best = null;
     for (const p of (state.transactions || [])) if (p.pinned && p !== t && p.id !== t.id && String(p.account) === String(aid) && pinKey(p) > pinKey(t) && (!best || pinKey(p) < pinKey(best))) best = p;
@@ -449,11 +449,12 @@ function pinAbsorb(t, sign) {
 }
 function pinBalanceAt(a, date, time) { const at = date + ' ' + (time || '23:59'); let b = Number(a.balance || 0); for (const t of (state.transactions || [])) if (pinKey(t) > at) for (const [k, v] of ledgerEffects(t)) if (String(k) === String(a.id)) b -= v; return Math.round(b * 100) / 100; }
 // Adjust to an absolute balance by recording the difference as a balance_adjustment transaction.
-function acctAdjustTo(a, target, date, note, time) {
+function acctAdjustTo(a, target, date, note, time, keep) {
   const today = isoDate(new Date()), tm = /^([01]\d|2[0-3]):[0-5]\d$/.test(time || '') ? time : '', past = !!date && (date < today || (date === today && !!tm && tm < nowTime()));
   const now = past ? pinBalanceAt(a, date, tm || '23:59') : Number(a.balance || 0), diff = Math.round((Number(target) - now) * 100) / 100;
   if (!Number.isFinite(diff) || Math.abs(diff) < 0.005) return null;
   const t = { id: id(), date: date || today, time: tm || (past ? '23:59' : nowTime()), name: '餘額調整', amount: diff, kind: 'balance_adjustment', category: '', account: a.id, note: note || '', tags: [], balanceAdjustment: true, pinned: true };
+  if (past && keep) { t.keepLater = true; const k = pinKey(t); if (!(state.transactions || []).some(p => p.pinned && String(p.account) === String(a.id) && pinKey(p) > k)) state.transactions.push({ id: id(), date: today, time: nowTime(), name: '餘額調整', amount: 0, kind: 'balance_adjustment', category: '', account: a.id, note: '維持目前餘額', tags: [], balanceAdjustment: true, pinned: true }); }
   state.transactions.push(t); adjust(t, 1);
   return t;
 }
