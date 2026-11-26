@@ -52,6 +52,7 @@ function efBarText() {
   if (rw.length) out.push('預計可獲得回饋：' + rw.join(' / '));
   if (el.fxFeeOn?.checked) { const v = fxFeeAmount(acct(el.account.value), fx && !fx.hidden && Number(el.convAmount?.value) ? Number(el.convAmount.value) : n); if (v) out.push('國外交易手續費：' + money(v)); }
   if (el.postMode?.value === 'offset') out.push('這筆記錄將會自動折抵最新一期帳單');
+  if (el.postMode?.value === 'postpone' && el.postOn?.value) out.push(`這筆記錄將延後至 ${fmtDate(el.postOn.value)} 入帳`);
   if (el.postMode?.value === 'remind' && el.postOn?.value) out.push(`這筆記錄將會在 ${fmtDate(el.postOn.value)} 詢問你是否完成入帳`);
   return out.join('\n');
 }

@@ -77,9 +77,9 @@ function projCardHTML(p) {
 function projDetailHTML(p) {
   const s = projStats(p, p.cycle ? projSt().off : 0);
   return `<div class="panel proj-detail">
-    <div class="panel-head"><div><h2>${esc(p.name)}</h2><p>${projPeriodText(p, s)} · ${s.count} 筆 · 支出 ${money(s.spent)}${p.budget ? ` / 預算 ${money(p.budget)}` : ''}</p></div><button type="button" class="ghost" data-proj-close>關閉</button></div>
+    <div class="panel-head"><div><h2>${esc(p.name)}</h2><p>${projPeriodText(p, s)} · ${s.count} 筆 · 支出 ${money(s.spent)}${p.budget ? ` / 預算 ${money(p.budget)}` : ''}</p></div><span><button type="button" class="ghost" data-proj-more="${esc(p.id)}" aria-label="更多功能">⋮</button><button type="button" class="ghost" data-proj-close>關閉</button></span></div>
     ${p.note ? `<p class="hint proj-note">${esc(p.note)}</p>` : ''}
-    ${projDetailExtra(p, s)}
+    ${projDetailExtra(p, s)}${projAllocHTML(p)}
     <div class="proj-detail-grid">
       <div><h3>分類花費</h3>${anRankHTML(s.categories, { empty: '這個專案還沒有支出' })}</div>
       <div><h3>交易</h3><div class="proj-tx">${s.txs.length ? s.txs.slice(0, 100).map(t => `<div class="proj-tx-row" data-proj-tx="${esc(t.id)}"><span class="proj-tx-date">${esc(t.date)}</span>${txRow(t)}</div>`).join('') + (s.txs.length > 100 ? `<p class="hint">只列出最近 100 筆，共 ${s.txs.length} 筆；可到交易頁以「專案」篩選查看全部。</p>` : '') : '<div class="empty">還沒有交易。記帳時在「專案」欄選擇這個專案即可。</div>'}</div></div>

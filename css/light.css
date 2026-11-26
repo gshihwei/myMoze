@@ -642,6 +642,8 @@ html[data-theme="light"][data-swap="1"] .income-text{color:#cc0012!important}
 :root[data-theme="light"] .fv-tabs .on,:root[data-theme="light"] .fv-chips .on{background:#2f7fb0;border-color:#2f7fb0;color:#141414}
 :root[data-theme="light"] .fv-pick{border-bottom:1px solid #eef1f5}
 :root[data-theme="light"] .fv-cond h4{color:#4d5f71}
+:root[data-theme="light"] .proj-alloc h3{color:#4d5f71}
+:root[data-theme="light"] .bc-kind{color:#4d5f71}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}

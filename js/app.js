@@ -355,13 +355,13 @@ function renderLoans(){
   if(cards)cards.innerHTML=`<article class="loan-summary-card receivable"><small>應收款項</small><strong>${money(sum.receivable)}</strong><span>尚未收回的借款／代付款</span></article><article class="loan-summary-card payable"><small>應付款項</small><strong>${money(sum.payable)}</strong><span>尚未償還的借款／負債</span></article><article class="loan-summary-card net"><small>借還款淨額</small><strong>${money(sum.net)}</strong><span>${sum.active} 筆進行中 · ${sum.completed} 筆已完成</span></article>`;
   const filter=window.__mozeLoanFilter||'all';
   document.querySelectorAll('[data-loan-filter]').forEach(b=>b.classList.toggle('active',b.dataset.loanFilter===filter));
-  const ls=(state.loans||[]).filter(l=>loanFilterMatch(l,filter));
+  const chips=loanPersonChips(filter),ls=(state.loans||[]).filter(l=>loanFilterMatch(l,filter)&&loanPersonOk(l));
   if(count)count.textContent=`${ls.length} 筆`;
   const groups=new Map();
   ls.forEach(l=>{const p=l.person||'未指定對象';if(!groups.has(p))groups.set(p,[]);groups.get(p).push(l)});
-  if(!ls.length){grid.innerHTML='<div class="panel empty">目前沒有符合條件的借還款</div>'}
+  if(!ls.length){grid.innerHTML=chips+'<div class="panel empty">目前沒有符合條件的借還款</div>'}
   else{
-    grid.innerHTML=[...groups.entries()].map(([person,list])=>{
+    grid.innerHTML=chips+[...groups.entries()].map(([person,list])=>{
       const personNet=list.reduce((s,l)=>s+(loanDirection(l)==='receivable'?1:-1)*loanOutstanding(l),0);
       const active=list.filter(l=>loanStatus(l)==='active').length;
       return `<div class="loan-person-group"><div class="loan-person-head"><div class="loan-person-title"><b>${esc(person)}</b><button type="button" class="ghost" data-person-history="${esc(person)}" aria-label="借還款歷史">歷史</button><button type="button" class="ghost" data-person-rename="${esc(person)}" aria-label="修改對象名稱">✎</button><span>${active} 筆進行中 · ${list.length-active} 筆已完成</span></div><div class="loan-person-total"><b class="${personNet>=0?'income-text':'expense-text'}">${personNet>=0?'+':''}${money(personNet)}</b><span>未結餘額</span></div></div>${list.map(l=>{const dir=loanDirection(l),outstanding=loanOutstanding(l),pct=l.amount?Math.min(100,(l.paid/l.amount)*100):100;const done=loanStatus(l)!=='active';return `<div class="loan-row" data-loan-id="${l.id}"><span class="loan-direction ${dir}">${done?'':`<button type="button" class="loan-check ${window.__loanSel?.has(String(l.id))?'on':''}" data-loan-check="${l.id}" aria-label="選取">✓</button>`}${l.existing?(dir==='payable'?'既有欠款':'既有應收'):loanLabel(dir)}</span><div class="loan-main"><b>${esc(l.name||((dir==='receivable'?'借出':'借入')+' · '+person))}</b><span>${l.date||'未設定日期'}${esc(l.account?' · '+acct(l.account).name:'')}${l.dueDate?' · 到期 '+l.dueDate:''}</span></div><div class="loan-progress"><div class="loan-progress-track"><i style="width:${pct}%"></i></div><div class="loan-progress-label"><span>已 ${money(l.paid)}</span><span>${pct.toFixed(0)}%</span></div></div><div class="loan-row-amount"><b class="${done?'':'income-text'}">${money(outstanding)}</b><span>${done?'已完成':'剩餘'}</span></div><button type="button" class="loan-action" data-loan-action="${l.id}" ${done?'disabled':''}>${loanActionLabel(dir)}</button></div>`}).join('')}</div>`;

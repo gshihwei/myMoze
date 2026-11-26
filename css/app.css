@@ -759,3 +759,6 @@ button.entry-cur{border:0;color:#eef4fa;font:inherit;font-weight:700;cursor:poin
 .fv-tabs,.fv-chips{display:flex;gap:8px;overflow-x:auto;padding:8px 10px}.fv-chips{flex-wrap:wrap;padding:8px 0}.fv-tabs button,.fv-chips button{flex:none;border:1px solid #3a526a;background:none;color:#c6d2de;border-radius:10px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer}.fv-tabs .on,.fv-chips .on{background:#2f7fb0;border-color:#2f7fb0;color:#fff}
 .fv-pick{display:flex;gap:10px;padding:11px 6px;border-bottom:1px solid #22354a;align-items:center}.fv-cond h4{margin:12px 0 0;color:#8ea0b2}
 #rptForm .adv-rows label[hidden]{display:none}
+
+/* V26.106 */
+.proj-alloc{margin-top:12px}.proj-alloc h3{margin:12px 0 4px;font-size:15px;color:#8ea0b2}.bc-kind{margin-left:6px;color:#8ea0b2;font-size:12px}.bc-subs{align-items:center;gap:8px}.bc-subs span{flex:1;min-width:0}.loan-chips{padding:0 0 10px}

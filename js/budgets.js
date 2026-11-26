@@ -104,12 +104,12 @@ function budgetMeterHTML(r) {
 function budgetCardHTML(r, compact = false) {
   const over = r.remaining < 0;
   return `<div class="budget-card2 ${r.status.key}">
-    <div class="bc-head"><span class="bc-icon">${esc(r.icon)}</span><b>${esc(r.title)}</b><span class="bc-status ${r.status.key}"><i aria-hidden="true">${r.status.mark}</i>${r.status.label}</span></div>
+    <div class="bc-head"><span class="bc-icon">${esc(r.icon)}</span><b>${esc(r.title)}</b><small class="bc-kind">${budgetKindLabel(r.budget)}</small><span class="bc-status ${r.status.key}"><i aria-hidden="true">${r.status.mark}</i>${r.status.label}</span></div>
     <div class="bc-fig"><strong>${money(r.spent)}</strong><span>/ ${money(r.limit)}</span><small>${Math.round(r.ratio * 100)}%</small></div>
     ${budgetMeterHTML(r)}
     <div class="bc-foot"><span>${over ? `超出 ${money(-r.remaining)}` : `剩餘 ${money(r.remaining)}`}</span>${r.daysLeft && !over ? `<span>每日可用 ${money(r.perDay)} · 剩 ${r.daysLeft} 天</span>` : ''}</div>
     ${r.parts?.carry || r.parts?.income || r.daily ? `<div class="bc-foot">${r.parts.carry ? `<span>上期${r.parts.carry > 0 ? '累積' : '超支'} ${r.parts.carry > 0 ? '+' : '−'}${money(Math.abs(r.parts.carry))}</span>` : ''}${r.parts.income ? `<span>收入併入 +${money(r.parts.income)}</span>` : ''}${r.daily ? `<span>今日${r.daily.left < 0 ? `超支 ${money(-r.daily.left)}` : `可用 ${money(r.daily.left)}`}</span>` : ''}</div>` : ''}
-    ${compact ? '' : `<div class="bc-actions"><button type="button" class="secondary" data-budget-edit="${esc(r.budget.id)}">編輯</button><button type="button" class="secondary danger-btn" data-budget-del="${esc(r.budget.id)}">刪除</button></div>`}
+    ${compact ? '' : budgetSubsHTML(r)}${compact ? '' : `<div class="bc-actions"><button type="button" class="secondary" data-budget-edit="${esc(r.budget.id)}">編輯</button><button type="button" class="secondary danger-btn" data-budget-del="${esc(r.budget.id)}">刪除</button></div>`}
   </div>`;
 }
 
@@ -144,7 +144,7 @@ function budgetFormHTML(b) {
   <div class="form-grid">
     <label class="b-cat">分類（主分類含子分類）<select name="bcategory">${mains.map(c => opt(c.id, `${c.parentId ? '└ ' : ''}${esc(c.icon)} ${esc(c.name)}`, r.category)).join('')}</select></label>
     <label class="b-cat">只算某專案內<select name="binproject"><option value="">不限</option>${inOpts}</select></label>
-    <label class="b-cat">占專案預算 %（填了就不用金額）<input name="bpct" type="number" min="0" max="100" step="any" value="${esc(r.pct || '')}"></label>
+    <label class="b-cat">分配方式：按照比例（占專案預算 %，填了就不用金額）<input name="bpct" type="number" min="0" max="100" step="any" value="${esc(r.pct || '')}"></label>
     <label class="b-proj">專案<select name="bproject">${projOpts}</select></label>
     <label>週期<select name="bperiod"><option value="month">每月</option><option value="year"${r.period === 'year' ? ' selected' : ''}>每年</option></select></label>
     <label>上限金額<input name="limit" type="number" min="0" step="any" value="${esc(r.limit || '')}"></label>
