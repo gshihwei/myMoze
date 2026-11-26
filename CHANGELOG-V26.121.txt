@@ -1,0 +1,2 @@
+V26.121
+- 補上 V26.120 漏放的 Edge Function 檔案（supabase/functions/einvoice：protocol.js、index.ts、README.md、LICENSE-ALLSET）。原因是忽略規則把同名資料夾也排除了，現在只排除專案根目錄放個人發票 CSV 的 einvoice 資料夾。
