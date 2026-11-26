@@ -778,3 +778,27 @@ button.entry-cur{border:0;color:#eef4fa;font:inherit;font-weight:700;cursor:poin
 .dp-kb{padding:16px}.dp-kb input{width:100%;box-sizing:border-box;background:#1b2e41;border:1px solid #3a526a;border-radius:12px;color:#eef4fa;padding:12px;font:inherit;font-size:18px}
 .dp-act{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:8px 16px 16px}.dp-act button{padding:13px;border-radius:12px;border:0;background:#34506b;color:#eef4fa;font:inherit;font-size:16px;cursor:pointer}
 #modalBg input[type=date][readonly]{cursor:pointer}
+
+/* V26.110 進階設定列表 */
+#advSheet .adv-rows[hidden],#advSheet .post-box[hidden],#advSheet #instCountField[hidden],#advSheet .entry-pair[hidden]{display:none!important}
+#modalBg:not([data-etab=receivable]):not([data-etab=payable]) #advSheet label.adv-row.loan-only{display:none!important}
+#advSheet label.adv-row{display:flex!important;align-items:center;justify-content:space-between;gap:12px;padding:13px 4px;margin:0;border-bottom:1px solid rgba(255,255,255,.06);font-size:16px;color:#eef4fa;cursor:pointer;min-height:24px;flex-direction:row}
+#advSheet label.adv-row[hidden]{display:none!important}
+#advSheet label.adv-row .entry-lbl{position:static;font-size:16px;color:#eef4fa;margin:0}
+#advSheet label.adv-row>select,#advSheet label.adv-row>input[type=date],#advSheet label.adv-row>.adv-inline,#advSheet label.adv-row>input[name=rcStartNo],#advSheet label.adv-row>input[name=instStart],#advSheet label.adv-row>input[name=instCount],#advSheet label.adv-row>input[name=instGrace],#advSheet #rcDayText,#advSheet #rcDaysBox,#advSheet #rcCountRow{display:none!important}
+#advSheet .adv-val{color:#9fb1c3;text-align:right;margin-left:auto}
+#advSheet label.adv-row>b{color:#9fb1c3;font-weight:400;margin-left:auto}
+#advSheet label.adv-row[data-adv-kind=input]>input{background:none;border:0;color:#9fb1c3;text-align:right;font:inherit;font-size:16px;width:45%;padding:0;box-shadow:none;margin-left:auto}
+#advSheet label.adv-row[data-adv-kind=switch]>input{order:2;margin-left:auto;appearance:none;-webkit-appearance:none;width:46px;height:28px;border-radius:14px;background:#3a4c5e;position:relative;cursor:pointer;flex:none;transition:background .15s}
+#advSheet label.adv-row[data-adv-kind=switch]>input::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .15s}
+#advSheet label.adv-row[data-adv-kind=switch]>input:checked{background:#4fb0d8}#advSheet label.adv-row[data-adv-kind=switch]>input:checked::after{left:21px}
+#advSheet label.adv-row[data-adv-kind=switch]>span{order:1}
+#advSheet .entry-pair:not([hidden]){display:block}
+.wp-top{grid-template-columns:20px 1fr 20px}
+.wp-cols{position:relative;display:grid;height:220px;margin:6px 10px}
+.wp-col{height:220px;overflow-y:auto;scroll-snap-type:y mandatory;padding:88px 0;box-sizing:border-box;scrollbar-width:none;position:relative;z-index:1}.wp-col::-webkit-scrollbar{display:none}
+.wp-opt{display:block;width:100%;height:44px;scroll-snap-align:center;border:0;background:none;color:#7f93a7;font:inherit;font-size:18px;cursor:pointer;opacity:.6}.wp-opt.on{color:#5fb6e0;opacity:1}
+.wp-band{position:absolute;left:0;right:0;top:88px;height:44px;background:rgba(255,255,255,.05);border-radius:8px;pointer-events:none}
+.wp-multi{padding:8px 14px;display:grid;gap:4px;max-height:330px;overflow:auto}.wp-multi button{display:flex;justify-content:space-between;padding:12px;border:0;border-radius:10px;background:none;color:#eef4fa;font:inherit;font-size:16px;cursor:pointer}.wp-multi button i{visibility:hidden;color:#5fb6e0;font-style:normal}.wp-multi button.on{background:rgba(95,182,224,.12)}.wp-multi button.on i{visibility:visible}
+#advSheet .adv-card>.form-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:14px}#advSheet .adv-card>.form-actions button{padding:13px;border-radius:12px;border:0;background:#34506b;color:#eef4fa;font-size:16px;min-height:48px}
+#advSheet .adv-card>h3{text-align:center}
