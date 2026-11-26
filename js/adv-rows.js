@@ -7,10 +7,11 @@
 function wpSt() { return window.__wp || (window.__wp = {}); }
 function wpOpen(o) {
   const s = window.__wp = { ...o }; const el = sheetEl('wpBg'); el.className = 'dp-bg'; el.hidden = false;
-  const body = o.multi ? `<div class="wp-multi">${o.multi.opts.map(([v, l]) => `<button type="button" data-wp-tog="${esc(v)}" class="${o.multi.vals.includes(String(v)) ? 'on' : ''}">${esc(l)}<i>✓</i></button>`).join('')}</div>`
+  const body = o.kb ? `<div class="dp-kb"><input id="wpKb" inputmode="numeric" autocomplete="off" value="${esc(o.kbValue || '')}" placeholder="${esc(o.kbHint || '')}"></div>` : o.multi ? `<div class="wp-multi">${o.multi.opts.map(([v, l]) => `<button type="button" data-wp-tog="${esc(v)}" class="${o.multi.vals.includes(String(v)) ? 'on' : ''}">${esc(l)}<i>✓</i></button>`).join('')}</div>`
     : `<div class="wp-cols" style="grid-template-columns:repeat(${o.cols.length},1fr)">${o.cols.map((c, i) => `<div class="wp-col" data-wp-col="${i}">${c.opts.map(([v, l], j) => `<button type="button" class="wp-opt" data-wp-i="${j}">${esc(l)}</button>`).join('')}</div>`).join('')}<i class="wp-band"></i></div>`;
-  el.innerHTML = `<div class="dp-card wp-card" role="dialog" aria-label="${esc(o.title)}"><div class="dp-top wp-top"><span></span><b>${esc(o.title)}</b><span></span></div>${body}<div class="dp-act"><button type="button" data-wp-cancel>取消</button><button type="button" data-wp-ok>確定</button></div></div>`;
-  if (!o.multi) el.querySelectorAll('.wp-col').forEach((col, i) => { const k = Math.max(0, o.cols[i].opts.findIndex(([v]) => String(v) === String(o.cols[i].val))); col.scrollTop = k * 44; wpMark(col); col.addEventListener('scroll', () => wpMark(col), { passive: true }); });
+  el.innerHTML = `<div class="dp-card wp-card" role="dialog" aria-label="${esc(o.title)}"><div class="dp-top${o.left || o.right ? '' : ' wp-top'}">${o.left ? `<button type="button" class="dp-icon" data-wp-left aria-label="${esc(o.leftLabel || '')}">${o.left}</button>` : '<span></span>'}<b>${esc(o.title)}</b>${o.right ? `<button type="button" class="dp-link" data-wp-right>${esc(o.right)}</button>` : '<span></span>'}</div>${body}<div class="dp-act"><button type="button" data-wp-cancel>取消</button><button type="button" data-wp-ok>確定</button></div></div>`;
+  if (o.kb) setTimeout(() => document.getElementById('wpKb')?.focus(), 30);
+  if (!o.multi && !o.kb) el.querySelectorAll('.wp-col').forEach((col, i) => { const k = Math.max(0, o.cols[i].opts.findIndex(([v]) => String(v) === String(o.cols[i].val))); col.scrollTop = k * 44; wpMark(col); col.addEventListener('scroll', () => wpMark(col), { passive: true }); });
 }
 function wpIndex(col) { return Math.max(0, Math.min(col.children.length - 1, Math.round(col.scrollTop / 44))); }
 function wpMark(col) { const k = wpIndex(col); [...col.children].forEach((b, j) => b.classList.toggle('on', j === k)); }
@@ -18,9 +19,10 @@ function wpClose() { const el = document.getElementById('wpBg'); if (el) el.hidd
 document.addEventListener('click', e => {
   const c = s => e.target.closest?.(s); if (!c('#wpBg')) return; const s = wpSt(), el = document.getElementById('wpBg'); let b;
   if (e.target === el || c('[data-wp-cancel]')) { wpClose(); return; }
+  if (c('[data-wp-left]')) { s.onLeft?.(); return; } if (c('[data-wp-right]')) { s.onRight?.(); return; }
   if ((b = c('[data-wp-tog]'))) { b.classList.toggle('on'); return; }
   if ((b = c('.wp-opt'))) { const col = b.parentElement; col.scrollTop = Number(b.dataset.wpI) * 44; wpMark(col); return; }
-  if (c('[data-wp-ok]')) { const vals = s.multi ? [...el.querySelectorAll('[data-wp-tog].on')].map(x => x.dataset.wpTog) : [...el.querySelectorAll('.wp-col')].map((col, i) => s.cols[i].opts[wpIndex(col)][0]); wpClose(); s.onOk?.(vals); }
+  if (c('[data-wp-ok]')) { const vals = s.kb ? [document.getElementById('wpKb')?.value || ''] : s.multi ? [...el.querySelectorAll('[data-wp-tog].on')].map(x => x.dataset.wpTog) : [...el.querySelectorAll('.wp-col')].map((col, i) => s.cols[i].opts[wpIndex(col)][0]); wpClose(); s.onOk?.(vals); }
 });
 
 // ---- 進階設定列 ----
@@ -78,3 +80,23 @@ document.addEventListener('change', e => { if (e.target?.closest?.('#txForm')) s
 document.addEventListener('input', e => { if (e.target?.closest?.('#txForm')) setTimeout(advRowsSync, 0); });
 document.addEventListener('click', e => { if (e.target.closest?.('[data-adv-tab], #efEvent, [data-ef=event], .ef-pill')) setTimeout(advRowsSync, 30); });
 (function advWatch() { const s = document.getElementById('advSheet'); if (!s || typeof MutationObserver !== 'function') return; advDecorate(); new MutationObserver(() => { if (!s.hidden) advRowsSync(); }).observe(s, { attributes: true, attributeFilter: ['hidden'] }); })();
+
+// ---- 時間選擇器（時／分兩欄滾輪、鍵盤輸入、現在）----
+function wpSetCols(vals) { document.querySelectorAll('#wpBg .wp-col').forEach((col, i) => { const k = Math.max(0, window.__wp.cols[i].opts.findIndex(([v]) => String(v) === String(vals[i]))); col.scrollTop = k * 44; wpMark(col); }); }
+// '930' / '0930' / '9:30' / '9點30' → 'HH:MM' or ''.
+function tpParse(t) { const s = String(t || '').trim(); let r = s.match(/^(\d{1,2})\s*[:：點時.]\s*(\d{1,2})分?$/) || s.match(/^(\d{1,2})(\d{2})$/); if (!r) { r = s.match(/^(\d{1,2})$/); if (!r) return ''; r = [s, r[1], '0']; } const h = Number(r[1]), m = Number(r[2]); return h < 24 && m < 60 ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}` : ''; }
+function tpOpen(input, kb) {
+  const cur = /^\d{2}:\d{2}/.test(input.value) ? input.value.slice(0, 5) : nowTime(), H = [], M = [];
+  for (let i = 0; i < 24; i++) H.push([String(i).padStart(2, '0'), String(i).padStart(2, '0')]); for (let i = 0; i < 60; i++) M.push([String(i).padStart(2, '0'), String(i).padStart(2, '0')]);
+  const set = v => { input.value = v; advFire(input); };
+  wpOpen({ title: '時間', left: kb ? '🕘' : '⌨', leftLabel: kb ? '滾輪' : '鍵盤輸入', right: '現在', kb, kbValue: cur, kbHint: '例如 09:30、930', cols: [{ opts: H, val: cur.slice(0, 2) }, { opts: M, val: cur.slice(3, 5) }],
+    onLeft: () => { const v = kb ? tpParse(document.getElementById('wpKb')?.value) : [...document.querySelectorAll('#wpBg .wp-col')].map((col, i) => window.__wp.cols[i].opts[wpIndex(col)][0]).join(':'); tpOpen(input, !kb); if (v) { if (kb) wpSetCols(v.split(':')); else { const k = document.getElementById('wpKb'); if (k) k.value = v; } } },
+    onRight: () => { const n = nowTime(); if (window.__wp.kb) { const k = document.getElementById('wpKb'); if (k) k.value = n; } else wpSetCols(n.split(':')); },
+    onOk: vals => { const v = kb ? tpParse(vals[0]) : vals.join(':'); if (!v) { alert('時間格式不正確'); return; } set(v); } });
+}
+function tpBind() { for (const i of document.querySelectorAll('#modalBg input[type=time]')) { i.readOnly = true; i.dataset.tp = '1'; } }
+tpBind();
+document.addEventListener('click', e => {
+  const inp = e.target.matches?.('input[type=time][data-tp]') ? e.target : e.target.closest?.('.ef-pick-native')?.querySelector('input[type=time]');
+  if (!inp) return; e.preventDefault(); e.stopImmediatePropagation(); tpBind(); tpOpen(inp, false);
+}, true);
