@@ -306,6 +306,8 @@
         }
       },0);
     },
+    // V26.120 calls one of this project's Edge Functions as the signed-in user → { data } or { error }
+    invoke:async(name,body)=>{try{if(!getCfg().url)return{error:'尚未設定雲端同步'};await ensureClient();if(!state.user)return{error:'需先登入雲端同步'};const r=await state.client.functions.invoke(name,{body});if(r.error){const m=String(r.error.message||r.error);return{error:/not found|404/i.test(m)?'找不到 Edge Function「'+name+'」，請先部署（見 supabase/functions/einvoice/README.md）':m}}return{data:r.data}}catch(e){return{error:e.message||String(e)}}},
     isLoggedIn:()=>!!state.user,pullAllFromCloud,resolveAllConflicts:resolveAll,markDirty,queueStateDiff,queueAllLocal,syncNow,signIn,signUp,signOut,getCfg,requestPasswordReset,updatePassword
   };
 })();

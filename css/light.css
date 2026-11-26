@@ -703,6 +703,9 @@ html[data-theme="light"][data-swap="1"] .income-text{color:#cc0012!important}
 :root[data-theme="light"] .inv-drawbox input{background:#141414;color:#f6f6f6;border:1px solid #333333}
 @media(min-width:900px){:root[data-theme="light"] .inv-won{color:#4f5968}:root[data-theme="light"] .inv-tabs{background:#f5f6f8}:root[data-theme="light"] .inv-tabs button.active{background:#4fb3e8;color:#141414}:root[data-theme="light"] .inv-dt{color:#151a23}:root[data-theme="light"] .inv-amt{color:#151a23}:root[data-theme="light"] .inv-prize{color:#5f6572}:root[data-theme="light"] .inv-prize.win{color:#cc0500}:root[data-theme="light"] .inv-acts{color:#187eb4}:root[data-theme="light"] .inv-th{color:#2a2e38;border-bottom:1px solid rgba(15,23,32,0.12)}}
 :root[data-theme="light"] .ov-pref-row{border-bottom:1px solid rgba(15,23,32,0.06)}
+:root[data-theme="light"] .inv-progress{background:#f0f1f5;color:#187ab4}
+:root[data-theme="light"] .einv-sheet label{color:#2a3844}
+:root[data-theme="light"] .einv-sheet input:not([type=checkbox]){background:#f5f7f9;border:1px solid #ecf0f4;color:#141b22}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}

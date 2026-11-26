@@ -859,3 +859,11 @@ button.entry-cur{border:0;color:#eef4fa;font:inherit;font-weight:700;cursor:poin
 .ov-pref-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)}.ov-pref-row label{display:flex;align-items:center;gap:8px}.ov-pref-row span{display:flex;gap:4px}.ov-pref-row button{min-width:34px;padding:4px 8px}.ov-pref-row button:disabled{opacity:.3}
 #view-overview.ov-flow .content>[data-ov-panel]{margin:0 0 16px!important}
 #prefOverviewPanels{display:flex!important;flex-direction:column;align-items:stretch;gap:0!important;width:100%}#prefOverviewPanels .ov-pref-row{width:100%}#prefOverviewPanels [data-ov-reset]{align-self:flex-start}
+
+/* V26.120 財政部下載 */
+.inv-dl{background:none;border:0;color:inherit;font:inherit;font-size:16px;cursor:pointer;display:flex;align-items:center;gap:6px;padding:0}
+.inv-progress{margin:8px 14px 0;padding:8px 12px;border-radius:10px;background:#2a2f3d;color:#9fd3f2;font-size:14px}
+.inv-menu-dl{top:auto;bottom:74px}
+@media(min-width:900px){.inv-menu-dl{top:64px;bottom:auto}}
+.einv-sheet .form-grid{grid-template-columns:1fr;margin:10px 0}.einv-sheet .check{display:flex;align-items:center;gap:8px}
+.einv-sheet .recon-list{padding:4px 18px 18px}.einv-sheet label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:#b8c7d3}.einv-sheet label.check{flex-direction:row}.einv-sheet input:not([type=checkbox]){width:100%;box-sizing:border-box;background:#0f1b27;border:1px solid #2a4054;border-radius:10px;color:#eef4fa;padding:11px 12px;font-size:16px}
