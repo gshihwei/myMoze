@@ -890,12 +890,17 @@ html[data-framed] body::before{content:'為了安全，帳小簿不能在其他�
 /* V26.126 銀行同步 */
 .bank-setup{padding:12px 14px;line-height:1.6}.bank-setup ol{padding-left:20px;margin:8px 0}.bank-setup code{background:var(--line);padding:1px 5px;border-radius:5px;font-size:13px}
 .bank-feed{margin:8px 14px;padding:10px 12px;border-radius:12px;background:#142638}
-.bank-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px}.bank-head small{color:var(--muted)}
+.bank-head{display:flex;align-items:center;gap:8px;width:100%;margin:0 0 4px;padding:2px 0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}.bank-head b{flex:1;font-size:19px;letter-spacing:.5px}.bank-head small{color:var(--muted);font-size:12px}
+.bank-caret{flex:none;width:9px;height:9px;margin:0 6px 4px 4px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s}.bank-feed.shut .bank-caret{transform:rotate(-45deg);margin-bottom:0}.bank-feed.shut .bank-head{margin:0}.bank-sum{display:block;margin:2px 0 0 24px;color:var(--muted);font-size:12px}
+.bank-acct .day-main>b{font-size:15px}
 .bank-err{margin:6px 0;padding:6px 10px;border-radius:8px;background:#3a1f26;color:#f3c1cb;font-size:13px}
 .bank-acct{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 10px;padding:8px 0;border-top:1px solid var(--line)}
 .bank-acct small{display:block;color:var(--muted);font-size:12px}
-.bank-map{display:flex;flex-direction:column;align-items:flex-end;gap:4px}.bank-map select{max-width:180px}
-.bank-from{font-size:12px;color:var(--muted)}.bank-from input{font-size:12px;padding:2px 4px}
+.bank-map{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.bank-map select,.bank-from input{color-scheme:dark;background:#101f2e;border:1px solid #30485d;color:#eef4fa;border-radius:10px;font:inherit;font-size:13px;outline:none}.bank-map select:focus,.bank-from input:focus{border-color:var(--blue)}
+.bank-map select{max-width:190px;padding:7px 30px 7px 12px;appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,#8194a7 50%),linear-gradient(135deg,#8194a7 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px;background-repeat:no-repeat;cursor:pointer}.bank-map option{background:#1a2a3b;color:#eef4fa}
+:root[data-theme="light"] .bank-map select,:root[data-theme="light"] .bank-from input{color-scheme:light}:root[data-theme="light"] .bank-map select{background-image:linear-gradient(45deg,transparent 50%,#6b7b8c 50%),linear-gradient(135deg,#6b7b8c 50%,transparent 50%)!important;background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%!important;background-size:5px 5px!important;background-repeat:no-repeat!important}
+.bank-from{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}.bank-from input{font-size:12px;padding:5px 8px}
 .notice-row.bank-row{grid-template-columns:1fr auto;gap:4px 12px}.bank-row .day-main b{white-space:normal}
 .bank-where{margin:10px 0;padding:10px 12px;border-radius:10px;background:#142638}.bank-where small{display:block;color:var(--muted);font-size:12px}.bank-where b{display:block;word-break:break-all;margin:2px 0}.bank-where .hint{margin:8px 0 0}
 .bank-adj{padding:2px 10px;font-size:12px;margin-top:4px;border:1px solid #4d8fd6;border-radius:14px;color:#8cc4ff}

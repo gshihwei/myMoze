@@ -126,14 +126,18 @@ function renderBank() {
   const head = sheetHead('銀行同步', window.MozeSync?.isLoggedIn?.() ? '<button type="button" class="ghost" data-bank-refresh>重新整理</button>' : '');
   if (!feeds.length) { el.innerHTML = `<div class="recon-sheet">${head}<div class="recon-list notice-list">${bankSetupHTML()}</div></div>`; return; }
   const fut = acctFuture(), all = bankItems(ix), todo = bankTodo(all), done = all.filter(i => i.t), skip = all.filter(i => i.skip && !i.t), unmapped = all.filter(i => !i.a).length;
-  const heads = feeds.map(f => `<div class="bank-feed"><div class="bank-head"><b>${esc(f.name)}</b><small>${f.ok ? `${bankAge(f.at)} 同步` : `上次成功 ${bankAge(f.okAt) || '—'}`}</small></div>
+  const folded = bankFolded(), heads = feeds.map(f => { const shut = folded.includes(f.source), l = f.accounts || [], open = l.filter(b => !bankLinked(b.id)).length;
+    return `<div class="bank-feed${shut ? ' shut' : ''}"><button type="button" class="bank-head" data-bank-fold="${esc(f.source)}" aria-expanded="${!shut}"><span class="bank-caret" aria-hidden="true"></span><b>${esc(f.name)}</b><small>${f.ok ? `${bankAge(f.at)} 同步` : `上次成功 ${bankAge(f.okAt) || '—'}`}</small></button>
     ${f.ok ? '' : `<div class="bank-err">${f.need ? '需要你處理：' : '同步失敗：'}${esc(f.error || '')}</div>`}${f.ok && bankStale(f) >= 3 ? `<div class="bank-err">已經 ${bankStale(f)} 天沒有同步，請確認電腦上的同步程式有在執行。</div>` : ''}
-    ${(f.accounts || []).map(b => bankAcctHTML(f, b, fut)).join('')}</div>`).join('');
+    ${shut ? `<small class="bank-sum">${l.length} 個帳戶${open ? `，${open} 個還沒對應` : ''}</small>` : l.map(b => bankAcctHTML(f, b, fut)).join('')}</div>`; }).join('');
   const list = bankNewest(s.tab === 'done' ? done : s.tab === 'skip' ? skip : s.tab === 'all' ? all : todo);
   const tabs = `<div class="entry-tabs">${[['todo', `待處理 ${todo.length || ''}`], ['done', `已對應 ${done.length || ''}`], ['skip', `已略過 ${skip.length || ''}`], ['all', `全部明細 ${all.length || ''}`]].map(([k, l]) => `<button type="button" data-bank-tab="${k}" class="${k === s.tab ? 'active' : ''}">${l}</button>`).join('')}</div>`;
   const hint = s.tab === 'todo' ? `<p class="hint">同一個帳戶、金額相同、前後 3 天內只有一筆的記錄，會自動對應。${unmapped ? `還有 ${unmapped} 筆明細的帳戶沒有對應，請先在上面選擇帳小簿帳戶。` : ''}</p>` : '';
   el.innerHTML = `<div class="recon-sheet">${head}<div class="recon-list notice-list">${heads}${tabs}${hint}${list.slice(0, 300).map(i => bankRowHTML(i, s.tab)).join('') || '<div class="recon-empty">沒有項目</div>'}</div></div>`;
 }
+// Banks folded on this device (the list of sources), kept in localStorage only.
+function bankFolded() { try { const l = JSON.parse(localStorage.getItem('moze-bank-fold') || '[]'); return Array.isArray(l) ? l.map(String) : []; } catch { return []; } }
+function bankFold(src) { const l = bankFolded(), on = !l.includes(src), n = on ? [...l, src] : l.filter(x => x !== src); try { localStorage.setItem('moze-bank-fold', JSON.stringify(n.slice(-50))); } catch { /* private mode */ } return on; }
 // Until any bank account is mapped there is nothing to do yet, so the page opens on every bank row.
 function bankAnyMapped() { return bankFeeds().some(f => (f.accounts || []).some(b => bankLinked(b.id))); }
 async function bankPull(manual) {
@@ -162,6 +166,7 @@ document.addEventListener('click', async e => {
   const c = q => e.target.closest?.(q); let b;
   if (c('#moreBank') || c('[data-bank-open]')) { document.getElementById('moreBg')?.classList.remove('open'); const n = document.getElementById('noticeBg'); if (n) n.hidden = true; await openBank(); return; }
   if (!c('#bankBg')) return; const s = bankSt();
+  if ((b = c('[data-bank-fold]'))) { bankFold(b.dataset.bankFold); renderBank(); return; }
   if ((b = c('[data-bank-tab]'))) { s.tab = b.dataset.bankTab; s.picked = true; renderBank(); return; }
   if ((b = c('[data-bank-refresh]'))) { b.disabled = true; b.textContent = '更新中…'; if (await bankPull(true)) toast('已更新銀行資料'); renderBank(); return; }
   if ((b = c('[data-bank-sug]'))) { const f = bankFeeds().find(x => x.source === b.dataset.bankSrc); if (f && acct(b.dataset.bankTo)) { bankMap(b.dataset.bankSug, b.dataset.bankTo, f); const n = bankAutoMatch(); await save(); render(); toast(n ? `已對應，並自動對應 ${n} 筆明細` : '已對應'); } renderBank(); return; }

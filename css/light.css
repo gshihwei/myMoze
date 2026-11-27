@@ -713,6 +713,10 @@ html[data-theme="light"][data-framed] body::before{color:#171f26}
 :root[data-theme="light"] .inv-result{background:#f1f7f4;color:#233a2e}
 :root[data-theme="light"] .bank-feed{background:#f2f5f7}
 :root[data-theme="light"] .bank-err{background:#f6f1f2;color:#352024}
+:root[data-theme="light"] .bank-map select,:root[data-theme="light"] .bank-from input{background:#f4f6f8;border:1px solid #eaeff3;color:#141b22}
+:root[data-theme="light"] .bank-map select{background-image:linear-gradient(45deg,transparent 50%,#586b7e 50%),linear-gradient(135deg,#586b7e 50%,transparent 50%)}
+:root[data-theme="light"] .bank-map option{background:#f1f4f7;color:#141b22}
+:root[data-theme="light"][data-theme="light"] .bank-map select{background-image:linear-gradient(45deg,transparent 50%,#738394 50%),linear-gradient(135deg,#738394 50%,transparent 50%)!important}
 :root[data-theme="light"] .bank-where{background:#f2f5f7}
 :root[data-theme="light"] .bank-adj{border:1px solid #4d8fd6;color:#0063cc}
 :root[data-theme="light"] .bank-chip{background:rgba(15,23,32,0.12)}

@@ -53,3 +53,11 @@ test('沒有銀行資料時說明這台裝置讀哪個雲端帳號；畫面更�
   assert.match(fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8'), /renderAccounts\(\);if\(typeof renderBank==='function'\)renderBank\(\);/);
   assert.match(fs.readFileSync(path.join(root, 'js', 'sync.js'), 'utf8'), /account:\(\)=>String\(state\.user\?\.email\|\|''\)/);
 });
+test('銀行可以收合（只記在這台裝置），收合時顯示帳戶數', () => {
+  const b = bundle(base([{ id: 'x', name: '薪轉', type: 'bank', balance: 0 }]));
+  b.run("var __ls={};localStorage={getItem:k=>__ls[k]??null,setItem:(k,v)=>{__ls[k]=String(v)}}");
+  assert.deepEqual(b.J('bankFolded()'), []); assert.equal(b.J("bankFold('esun')"), true); assert.deepEqual(b.J('bankFolded()'), ['esun']);
+  assert.equal(b.J("bankFold('esun')"), false); assert.deepEqual(b.J('bankFolded()'), []);
+  const js = fs.readFileSync(path.join(root, 'js', 'bank-feed.js'), 'utf8'); assert.match(js, /data-bank-fold=/); assert.match(js, /個帳戶\$\{open \? `，\$\{open\} 個還沒對應`/);
+  const css = fs.readFileSync(path.join(root, 'css', 'app.css'), 'utf8'); assert.match(css, /\.bank-map select,\.bank-from input\{color-scheme:dark;background:#101f2e/);
+});
