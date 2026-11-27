@@ -875,3 +875,14 @@ button.entry-cur{border:0;color:#eef4fa;font:inherit;font-weight:700;cursor:poin
 /* V26.124 不在其他網站的框架內顯示 */
 html[data-framed] body>*{display:none!important}
 html[data-framed] body::before{content:'為了安全，帳小簿不能在其他網站內開啟，請直接開啟帳小簿網址。';display:block;padding:40px 24px;color:#e8eff5;font-size:18px}
+
+/* V26.125 發票品項比價、配對、下載結果 */
+.fv-price{margin:8px 14px;padding:10px 12px;border-radius:12px;background:#142638}
+.fv-price-sum{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted);margin-bottom:6px}
+.fv-item{display:grid;grid-template-columns:72px 1fr auto auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+.fv-item-n small{display:block;color:var(--muted);font-size:12px}.fv-item-d,.fv-item-q{color:var(--muted);font-size:13px;white-space:nowrap}
+.fv-item-lines{display:flex;flex-direction:column;gap:2px;margin:-4px 0 6px 52px;font-size:12px;color:var(--muted)}
+.inv-cand{color:var(--green);font-weight:700}
+.inv-result{display:flex;align-items:center;gap:8px;margin:8px 14px 0;padding:6px 10px 6px 12px;border-radius:10px;background:#1d3a2f;color:#bfe8d2;font-size:14px}.inv-result span{flex:1}
+.inv-bulk{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.inv-dlres .notice-list{max-height:55vh;overflow:auto;text-align:left}

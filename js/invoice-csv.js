@@ -61,7 +61,11 @@ function invCatByNames(names) {
   return null;
 }
 function invCatRules() {
-  return [[/停車/, ['停車費', '停車']], [/(加油|汽油|柴油|中油|台塑石化)/, ['加油', '油錢', '油資']], [/(貓|狗|寵物|飼料|貓砂|罐罐)/, ['寵物']],
+  // V26.125: utilities, subscriptions, transport and clinics (keyword rules as in ALL SET) come first.
+  return [[/(中華電信|遠傳電信|台灣大哥大|台灣之星|亞太電信|電信費|電話費|寬頻|HiNet)/i, ['電信', '電話費', '手機費', '網路費', '通訊', '生活繳費']], [/(台灣電力|台電|電費)/, ['電費', '水電', '生活繳費']], [/(自來水|水費)/, ['水費', '水電', '生活繳費']], [/(瓦斯|天然氣)/, ['瓦斯', '水電', '生活繳費']],
+    [/(openai|chatgpt|anthropic|claude|cursor|github|google\s*(one|cloud|workspace|play)|icloud|apple\.com|netflix|spotify|youtube|disney|kkbox|adobe|notion|dropbox|microsoft|office\s*365)/i, ['訂閱', '軟體', '數位服務', '娛樂']],
+    [/(高鐵|台灣高速鐵路|台鐵|臺鐵|捷運|悠遊卡|一卡通|客運|uber|計程車|大車隊|yoxi)/i, ['交通', '大眾運輸', '計程車']], [/(診所|醫院|藥局|牙醫|藥妝)/, ['醫療', '藥品', '保健']],
+    [/停車/, ['停車費', '停車']], [/(加油|汽油|柴油|中油|台塑石化)/, ['加油', '油錢', '油資']], [/(貓|狗|寵物|飼料|貓砂|罐罐)/, ['寵物']],
     [/(耳機|滑鼠|鍵盤|電腦|筆電|手機|充電|行動電源|記憶卡|硬碟|螢幕|3C)/i, ['3C', '電子', '電腦', '數位']], [/(咖啡|拿鐵|奶茶|紅茶|綠茶|鮮乳|牛乳|牛奶|豆漿|飲料|燕麥飲|果汁)/, ['飲料', '飲品', '咖啡']],
     [/(衛生紙|洗衣|洗碗|牙膏|洗髮|沐浴|垃圾袋|清潔)/, ['日用品', '生活用品', '家用']], [/(藥|維他命|口罩|OK繃)/, ['藥品', '醫療', '保健']],
     [/(便當|餐|麵|飯|堡|雞|披薩|壽司|早午)/, ['外食', '餐飲', '午餐', '晚餐']], [/(全家|7-ELEVEN|統一超商|萊爾富|OK超商|便利商店)/, ['超商', '便利商店', '零食', '日用品']],
@@ -70,6 +74,8 @@ function invCatRules() {
 // Category last used for this seller, else from the item names, else from the shop. → category id or ''
 function invGuessCat(inv) {
   const last = invCategory(inv); if (last?.category && cat(last.category)) return String(last.category);
+  // learned from the shop name too (chains can use several 統編)
+  const shopN = inv.sellerName ? invShopName(inv.sellerName) : ''; if (shopN) { const t = (state.transactions || []).filter(x => x.kind === 'expense' && x.merchant === shopN && x.category && cat(x.category)).pop(); if (t) return String(t.category); }
   const items = (inv.items || []).filter(x => invItemAmount(x) > 0).map(x => x[0]).join(' '), shop = `${inv.sellerName || ''} ${invShopName(inv.sellerName)}`;
   for (const text of [items, shop]) for (const [re, names] of invCatRules()) if (re.test(text)) { const c = invCatByNames(names); if (c) return String(c.id); }
   const o = invCatByNames(['其他']); return o ? String(o.id) : '';
@@ -123,8 +129,9 @@ document.addEventListener('change', async e => {
   if (t.id === 'invCsvFile' || t.dataset?.invCsv !== undefined) {
     const files = [...t.files]; t.value = ''; let r = { added: 0, dup: 0, linked: 0, voided: 0, masked: 0, latest: '' }, err = '';
     for (const f of files) { const buf = await f.arrayBuffer(); let text = new TextDecoder('utf-8').decode(buf); if (text.includes('�')) try { text = new TextDecoder('big5').decode(buf); } catch { } const x = invCsvImport(text); if (x.error) { err = x.error; continue; } for (const k of ['added', 'dup', 'linked', 'voided', 'masked']) r[k] += x[k]; if (x.latest > r.latest) r.latest = x.latest; }
+    const auto = r.added && typeof invAutoMatch === 'function' ? invAutoMatch() : []; if (auto.length) { await save(); render(); }
     const s = invSt(); if (r.latest) { s.period = invPeriod(r.latest); s.tab = 'un'; } renderInvoices();
-    const msg = [`新增 ${r.added} 張發票`, r.dup && `${r.dup} 張已在清單`, r.linked && `${r.linked} 張已歸帳`, r.voided && `${r.voided} 張已作廢略過`, r.masked && `${r.masked} 張號碼不完整略過`].filter(Boolean).join('，');
+    const msg = [`新增 ${r.added} 張發票`, auto.length && `${auto.length} 張自動歸帳到同一天、同金額的記錄`, r.dup && `${r.dup} 張已在清單`, r.linked && `${r.linked} 張已歸帳`, r.voided && `${r.voided} 張已作廢略過`, r.masked && `${r.masked} 張號碼不完整略過`].filter(Boolean).join('，');
     if (err && !r.added && !r.dup && !r.linked) alert(err); else alert(msg + (r.added ? '\n\n可以一張張「新增記錄／連結」，或按「一次記帳」全部記成支出。' : ''));
   }
 });

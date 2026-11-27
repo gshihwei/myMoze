@@ -89,16 +89,21 @@ async function einvDownload(opts = {}) {
     await einvPool(todo, 3, async h => { try { got.set(h.no, einvCleanItems((await einvCall({ action: 'detail', session: s, invNum: h.no, invDate: h.api })).items)); } catch { res.failed++; } einvProgress(`下載發票明細 ${++done}/${todo.length}`); });
     for (const h of todo) {
       const items = got.get(h.no) || [], e = db.list.find(i => i.no === h.no);
-      if (e) { if (items.length) e.items = items; einvFill(e, h); e.mt = Date.now(); res.filled++; continue; }
+      if (e) { if (items.length) e.items = items; einvFill(e, h); e.mt = Date.now(); res.filled++; (res.filledNos = res.filledNos || []).push(h.no); continue; }
       const r = invAdd({ no: h.no, code: h.code || '', date: h.date, total: Number(h.total) || 0, seller: h.seller || '', count: items.length, items });
-      if (r.error || r.dup) { res.skipped++; continue; } const n = db.list.find(i => i.no === h.no); if (n) einvFill(n, h); res.added++;
+      if (r.error || r.dup) { res.skipped++; continue; } const n = db.list.find(i => i.no === h.no); if (n) einvFill(n, h); res.added++; (res.addedNos = res.addedNos || []).push(h.no);
     }
     invStore(); einvLs('moze-einv-last', isoDate(new Date())); return res;
   } finally { window.__einvBusy = false; einvProgress(''); if (typeof renderInvoices === 'function') renderInvoices(); }
 }
-function einvResultText(r) { return [r.oldest ? `最早到 ${r.oldest}` : '財政部沒有發票', r.stopped && '更早的期別查詢失敗', `新增 ${r.added} 張`, r.filled && `補上 ${r.filled} 張明細`, r.skipped && `${r.skipped} 張已有`, r.failed && `${r.failed} 張明細下載失敗（下次會再試）`].filter(Boolean).join('，'); }
+function einvResultText(r) { return [r.oldest ? `最早到 ${r.oldest}` : '財政部沒有發票', r.stopped && '更早的期別查詢失敗', `新增 ${r.added} 張`, r.auto && `自動歸帳 ${r.auto} 張`, r.filled && `補上 ${r.filled} 張明細`, r.skipped && `${r.skipped} 張已有`, r.failed && `${r.failed} 張明細下載失敗（下次會再試）`].filter(Boolean).join('，'); }
 async function einvRun(quiet) {
-  try { const r = await einvDownload({ back: quiet ? 2 : einvBack(einvCred()) }); if (r.busy) return; if (!quiet || r.added) toast(`財政部發票：${einvResultText(r)}`); }
+  try {
+    const r = await einvDownload({ back: quiet ? 2 : einvBack(einvCred()) }); if (r.busy) return;
+    const auto = typeof invAutoMatch === 'function' ? invAutoMatch() : []; if (auto.length) { await save(); render(); } r.auto = auto.length;
+    if (typeof einvResultSave === 'function' && (r.added || auto.length || !quiet)) einvResultSave(r, auto);
+    if (!quiet || r.added) toast(`財政部發票：${einvResultText(r)}`); if (typeof renderInvoices === 'function') renderInvoices();
+  }
   catch (e) { if (e.nocred) { if (!quiet) einvOpenSetup(); return; } if (!quiet) alert('下載發票失敗：' + e.message); else console.warn('einvoice', e.message); }
 }
 // Once a day when the app opens (after sync has had time to sign in).
