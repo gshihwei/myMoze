@@ -114,6 +114,13 @@ test('Windows 加密存放：檔案裡沒有明文，可以解回來', { skip: p
   assert.ok(!fs.readFileSync(path.join(tmp, 'secrets.dat'), 'utf8').includes('測試'));
   assert.equal((await s.loadSecrets()).banks.esun.password, 'pässwörd-測試');
 });
+test('登入被銀行拒絕後暫停：不再自動登入，狀態會提示重新輸入', { skip: process.platform !== 'win32' }, async () => {
+  const cli = fs.readFileSync(path.join(root, 'bank-agent', 'cli.mjs'), 'utf8');
+  assert.match(cli, /LOGIN_REJECTED = new Set\(\['CTBC_LOGIN_FAILED', 'ESUN_LOGIN', 'ESUN_FORM'\]\)/); assert.match(cli, /if \(cfg\.paused\)/); assert.match(cli, /delete cfg\.paused/);
+  const s = await lib('secure-store.mjs'); await s.saveSecrets({ banks: { ctbc: { userId: 'A1', account: 'u', password: 'p', paused: true } } });
+  const out = execFileSync(process.execPath, [path.join(root, 'bank-agent', 'cli.mjs'), 'status'], { env: { ...process.env, ZXB_BANK_DIR: tmp }, encoding: 'utf8' });
+  assert.match(out, /中國信託：已暫停（上次登入被拒絕，執行 node cli\.mjs add ctbc 重新輸入）/);
+});
 test('命令列說明是中文，不帶參數不會出錯', () => {
   const out = execFileSync(process.execPath, [path.join(root, 'bank-agent', 'cli.mjs')], { env: { ...process.env, ZXB_BANK_DIR: tmp }, encoding: 'utf8' });
   assert.match(out, /node cli\.mjs setup/); assert.match(out, /銀行密碼只用 Windows 加密/);

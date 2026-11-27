@@ -26,6 +26,8 @@ import { createEsun } from './lib/esun.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url)), ROOT = path.resolve(HERE, '..');
 const BANKS = { esun: { name: '玉山銀行', fields: [['userId', '身分證字號'], ['account', '使用者名稱'], ['password', '網銀密碼']] }, ctbc: { name: '中國信託', fields: [['userId', '身分證字號'], ['account', '使用者代號'], ['password', '網銀密碼']] } };
 const TASK = '帳小簿銀行同步';
+// Error codes that mean the bank refused the user id or password.
+const LOGIN_REJECTED = new Set(['CTBC_LOGIN_FAILED', 'ESUN_LOGIN', 'ESUN_FORM']);
 const HELP = `帳小簿銀行同步：在這台電腦登入銀行，把最近三個月的明細和餘額寫進你的帳小簿雲端。
 
   node cli.mjs setup                    第一次使用：登入帳小簿雲端，再設定銀行
@@ -66,7 +68,8 @@ async function cmdLogin(secrets) {
 async function cmdAdd(secrets, bank) {
   const b = BANKS[bank]; if (!b) throw new Error(`不支援的銀行：${bank}（可以用 ${Object.keys(BANKS).join('、')}）`);
   say(`設定${b.name}。輸入的內容不會顯示，只加密存在這台電腦。`);
-  const old = secrets.banks[bank] || {}, cfg = { ...old };
+  const old = secrets.banks[bank] || {}, cfg = { ...old }; delete cfg.paused;
+  if (old.paused) say(`${b.name}上次登入被銀行拒絕。請先用銀行 App 或網銀確認帳號密碼可以登入，再在這裡輸入（輸錯太多次網銀會被鎖住）。`);
   for (const [k, label] of b.fields) { const v = await askHidden(`${label}${old[k] ? '（直接按 Enter 保留原本的）' : ''}：`); if (v) cfg[k] = k === 'userId' ? v.trim().toUpperCase() : v; if (!cfg[k]) throw new Error(`${label}不能空白`); }
   if (bank === 'ctbc' && (old.userId !== cfg.userId || old.account !== cfg.account)) { delete cfg.deviceCode; delete cfg.deviceSeed; }
   secrets.banks[bank] = cfg; await saveSecrets(secrets); say(`已儲存${b.name}。可以執行 node cli.mjs sync ${bank} 試一次。`);
@@ -75,9 +78,18 @@ async function cmdAdd(secrets, bank) {
 async function syncBank(supa, secrets, bank, { auto, show }) {
   const b = BANKS[bank], cfg = secrets.banks[bank], interact = !auto && process.stdin.isTTY ? { ask, say } : null;
   const connector = bank === 'ctbc' ? createCtbc({ interact, onDevice: async d => { secrets.banks.ctbc = { ...secrets.banks.ctbc, ...d }; await saveSecrets(secrets); } }) : createEsun({ log, show });
-  log(`${b.name}：開始同步`);
   let result, error, needUser = false;
-  try { result = await connector.sync(cfg); } catch (e) { error = e?.message || String(e); needUser = !!e?.needUser; }
+  if (cfg.paused) {
+    // Banks lock online banking after a few wrong passwords: after one rejected login, stop trying until the user re-enters it.
+    error = `${b.name}上次登入被銀行拒絕（帳號或密碼不對），為了避免網銀被鎖住，已暫停自動登入。請先用銀行 App 或網銀確認可以登入，再執行 node cli.mjs add ${bank} 重新輸入。`; needUser = true;
+    log(`${b.name}：已暫停（上次登入被拒絕）`);
+  } else {
+    log(`${b.name}：開始同步`);
+    try { result = await connector.sync(cfg); } catch (e) {
+      error = e?.message || String(e); needUser = !!e?.needUser;
+      if (LOGIN_REJECTED.has(e?.code)) { secrets.banks[bank] = { ...secrets.banks[bank], paused: true }; await saveSecrets(secrets); error += `\n為了避免網銀被鎖住，之後不會再自動登入${b.name}，直到你執行 node cli.mjs add ${bank} 重新輸入。`; }
+    }
+  }
   await supa.update('categories', feedId(bank), prev => buildFeed(prev, { source: bank, name: b.name, result, error, needUser }));
   const st = readStatus(); st[bank] = { at: new Date().toISOString(), ok: !!result, error: error || '', accounts: result?.accounts.length, tx: result?.tx.length }; writeStatus(st);
   if (result) log(`${b.name}：完成，${result.accounts.length} 個帳戶、${result.tx.length} 筆明細`); else log(`${b.name}：${needUser ? '需要你處理' : '失敗'}：${error}`);
@@ -111,8 +123,8 @@ async function cmdUnschedule() { await powershell('Unregister-ScheduledTask -Tas
 async function cmdStatus(secrets) {
   say(`資料夾：${DIR}`); say(`雲端帳號：${secrets.supabase?.email || '（尚未登入）'}`);
   const st = readStatus();
-  for (const [k, b] of Object.entries(BANKS)) { const s = st[k]; say(`${b.name}：${secrets.banks[k] ? '已設定' : '未設定'}${s ? `，上次 ${new Date(s.at).toLocaleString('zh-TW', { hour12: false })} ${s.ok ? `成功（${s.accounts} 個帳戶、${s.tx} 筆）` : `失敗：${s.error}`}` : ''}`); }
-  try { say(`每天自動同步：${await powershell("$t=Get-ScheduledTask -TaskName $env:ZXB_TASK -ErrorAction SilentlyContinue; if($t){($t.Triggers | ForEach-Object { ([datetime]$_.StartBoundary).ToString('HH:mm') }) -join '、'}else{'未設定'}", { ZXB_TASK: TASK }) || '未設定'}`); } catch { /* not on Windows */ }
+  for (const [k, b] of Object.entries(BANKS)) { const s = st[k]; say(`${b.name}：${secrets.banks[k] ? (secrets.banks[k].paused ? '已暫停（上次登入被拒絕，執行 node cli.mjs add ' + k + ' 重新輸入）' : '已設定') : '未設定'}${s ? `，上次 ${new Date(s.at).toLocaleString('zh-TW', { hour12: false })} ${s.ok ? `成功（${s.accounts} 個帳戶、${s.tx} 筆）` : `失敗：${s.error}`}` : ''}`); }
+  try { say(`每天自動同步：${(await powershell("$t=Get-ScheduledTask -TaskName $env:ZXB_TASK -ErrorAction SilentlyContinue; if($t){($t.Triggers | ForEach-Object { ([datetime]$_.StartBoundary).ToString('HH:mm') }) -join ','}else{''}", { ZXB_TASK: TASK })).trim().replace(/,/g, '、') || '未設定'}`); } catch { /* not on Windows */ }
 }
 
 async function main(argv) {

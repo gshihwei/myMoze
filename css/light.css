@@ -713,6 +713,10 @@ html[data-theme="light"][data-framed] body::before{color:#171f26}
 :root[data-theme="light"] .inv-result{background:#f1f7f4;color:#233a2e}
 :root[data-theme="light"] .bank-feed{background:#f2f5f7}
 :root[data-theme="light"] .bank-err{background:#f6f1f2;color:#352024}
+:root[data-theme="light"] .bank-adj{border:1px solid #4d8fd6;color:#0063cc}
+:root[data-theme="light"] .bank-chip{background:rgba(15,23,32,0.12)}
+:root[data-theme="light"] .bank-chip.bank-todo{background:#f7f5f1;color:#b57a17}
+:root[data-theme="light"] .bank-chip.bank-done{background:#f1f7f3;color:#62913b}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="light"] body{background:#f3f5f8!important;color:#142130}
 :root[data-theme="light"] .panel,:root[data-theme="light"] .metric,:root[data-theme="light"] .budget-card2,:root[data-theme="light"] .proj-card,:root[data-theme="light"] .cat-card{background:#ffffff!important;border-color:#dde3ea!important;box-shadow:0 1px 2px rgba(15,23,32,.06)!important}

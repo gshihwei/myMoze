@@ -897,4 +897,8 @@ html[data-framed] body::before{content:'為了安全，帳小簿不能在其他�
 .bank-map{display:flex;flex-direction:column;align-items:flex-end;gap:4px}.bank-map select{max-width:180px}
 .bank-from{font-size:12px;color:var(--muted)}.bank-from input{font-size:12px;padding:2px 4px}
 .notice-row.bank-row{grid-template-columns:1fr auto;gap:4px 12px}.bank-row .day-main b{white-space:normal}
+.bank-adj{padding:2px 10px;font-size:12px;margin-top:4px;border:1px solid #4d8fd6;border-radius:14px;color:#8cc4ff}
+.bank-acct .day-main small{white-space:normal;overflow:visible}
+.bank-chip{display:inline-block;margin-right:6px;padding:0 6px;border-radius:6px;font-size:11px;font-weight:500;vertical-align:1px;background:rgba(255,255,255,.1);color:var(--muted)}
+.bank-chip.bank-todo{background:#3a2f1a;color:#f0c987}.bank-chip.bank-done{background:#1d3a2a;color:#a9cf89}
 .bank-act{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.bank-act button{padding:4px 10px;font-size:13px}

@@ -135,7 +135,7 @@ class Session {
     if (isLogin && data(r).forcePwdChange != null) throw new NeedUserError(PASSWORD_CHANGE, 'CTBC_PASSWORD_CHANGE');
     if (isTwo) throw EXPIRED();
     if (isVerificationResponse(r)) throw new NeedUserError('中國信託登入需要重新驗證，請先到官方 App 完成驗證。', 'CTBC_VERIFY_IN_APP');
-    if (isLogin && /密碼|代號|身分證|錯誤/.test(str(r.desc || r.message))) throw new NeedUserError(`中國信託登入失敗：${str(r.desc || r.message).slice(0, 60)}（請確認帳號密碼，執行 node cli.mjs setup 更新）`, 'CTBC_LOGIN_FAILED');
+    if (isLogin && /密碼|代號|身分證|錯誤/.test(str(r.desc || r.message))) throw new NeedUserError(`中國信託登入失敗：${str(r.desc || r.message).slice(0, 200)}（請確認帳號密碼，執行 node cli.mjs setup 更新）`, 'CTBC_LOGIN_FAILED');
     throw new BankError('中國信託資料同步暫時無法完成。');
   }
 }
