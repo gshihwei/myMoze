@@ -55,6 +55,13 @@ function einvPeriods(now, n) {
 async function einvPool(list, n, fn) { let i = 0; await Promise.all(Array.from({ length: Math.min(n, list.length) }, async () => { while (i < list.length) await fn(list[i++]); })); }
 function einvProgress(text) { window.__einvMsg = text || ''; const el = document.getElementById('einvProgress'); if (el) { el.textContent = window.__einvMsg; el.hidden = !text; } }
 function einvFill(e, h) { let ch = false; for (const k of ['sellerName', 'sellerAddr', 'time', 'code', 'seller']) if (h[k] && !e[k]) { e[k] = h[k]; ch = true; } if (!e.carrier) { e.carrier = '手機條碼'; ch = true; } if (ch) e.mt = Date.now(); return ch; }
+// Data from the MOF is checked before it is stored: well-formed values only, text trimmed to a sane length.
+function einvClean(h) {
+  const t = (v, n) => String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n), m = (v, re) => (re.test(String(v ?? '')) ? String(v) : '');
+  if (!/^[A-Z]{2}\d{8}$/.test(String(h?.no || '')) || !/^\d{4}-\d{2}-\d{2}$/.test(String(h?.date || ''))) return null;
+  return { no: h.no, date: h.date, api: m(h.api, /^\d{4}\/\d{2}\/\d{2}$/) || h.date.replace(/-/g, '/'), time: m(h.time, /^\d{2}:\d{2}(:\d{2})?$/), total: Number(h.total) || 0, code: m(h.code, /^\d{4}$/), seller: m(h.seller, /^\d{8}$/), sellerName: t(h.sellerName, 120), sellerAddr: t(h.sellerAddr, 200) };
+}
+function einvCleanItems(l) { return (Array.isArray(l) ? l : []).filter(Array.isArray).slice(0, 300).map(i => [String(i?.[0] ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 200), Number(i?.[1]) || 0, Number(i?.[2]) || 0]).filter(i => i[0]); }
 // opts.back = how many periods to check (default 2). → { added, filled, skipped, failed, total, oldest, stopped }
 // oldest = the oldest period that had any invoice.
 // A failing period beyond the first two ends the look-back (the MOF may not serve it) and keeps what was found.
@@ -69,7 +76,7 @@ async function einvDownload(opts = {}) {
       for (let page = 1; page <= 10; page++) {
         let l; try { l = (await einvCall({ action: 'headers', session: s, startDate: p.startDate, endDate: p.endDate, page })).invoices || []; }
         catch (e) { if (!retried) { retried = true; s = await einvSession(true); page--; continue; } if (pi < 2) throw e; res.stopped = true; break look; }
-        if (l.length) had = true; const fresh = l.filter(x => x?.no && !heads.has(x.no)); fresh.forEach(x => heads.set(x.no, x)); if (!fresh.length) break;
+        if (l.length) had = true; const fresh = l.map(einvClean).filter(x => x && !heads.has(x.no)); fresh.forEach(x => heads.set(x.no, x)); if (!fresh.length) break;
       }
       if (had) res.oldest = p.label;
     }
@@ -79,7 +86,7 @@ async function einvDownload(opts = {}) {
       const e = db.list.find(i => i.no === h.no); if (e?.items?.length) { if (einvFill(e, h)) res.filled++; else res.skipped++; continue; } todo.push(h);
     }
     let done = 0; const got = new Map();
-    await einvPool(todo, 3, async h => { try { got.set(h.no, (await einvCall({ action: 'detail', session: s, invNum: h.no, invDate: h.api })).items || []); } catch { res.failed++; } einvProgress(`下載發票明細 ${++done}/${todo.length}`); });
+    await einvPool(todo, 3, async h => { try { got.set(h.no, einvCleanItems((await einvCall({ action: 'detail', session: s, invNum: h.no, invDate: h.api })).items)); } catch { res.failed++; } einvProgress(`下載發票明細 ${++done}/${todo.length}`); });
     for (const h of todo) {
       const items = got.get(h.no) || [], e = db.list.find(i => i.no === h.no);
       if (e) { if (items.length) e.items = items; einvFill(e, h); e.mt = Date.now(); res.filled++; continue; }

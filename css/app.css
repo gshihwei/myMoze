@@ -871,3 +871,7 @@ button.entry-cur{border:0;color:#eef4fa;font:inherit;font-weight:700;cursor:poin
 /* V26.122 財政部帳號提醒 */
 .einv-warn{margin:8px 0;padding:10px 12px;border-radius:10px;background:rgba(255,176,32,.14);color:#ffcf70;font-size:14px;line-height:1.5}
 .einv-sheet select{width:100%;background:#152638;border:1px solid var(--line);color:#e8eff5;border-radius:10px;padding:12px;font-size:16px;outline:none;margin-top:6px}
+
+/* V26.124 不在其他網站的框架內顯示 */
+html[data-framed] body>*{display:none!important}
+html[data-framed] body::before{content:'為了安全，帳小簿不能在其他網站內開啟，請直接開啟帳小簿網址。';display:block;padding:40px 24px;color:#e8eff5;font-size:18px}

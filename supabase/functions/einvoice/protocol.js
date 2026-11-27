@@ -129,13 +129,28 @@ export function makeClient(fetchFn = (...a) => fetch(...a), hosts = HOSTS) {
     async detail(s, invNum, invDateApi) { return normDetail(await big('/einvoice/carriers/query-invoices-details', await signInvoiceJwt({ version: '1.0', cardType: '3J0002', cardNo: s.carrierCode || '', action: 'carrierInvDetail', invNum, invDate: invDateApi }, s))); },
   };
 }
+// Browsers may call this function only from these sites (plus localhost for development). Add others with the
+// ALLOWED_ORIGINS secret (comma separated). Requests still need a signed-in user of this Supabase project.
+export const DEFAULT_ORIGINS = ['https://gshihwei.github.io'];
+export function allowOrigin(origin, extra = '') {
+  const o = String(origin || ''); if (!o) return '';
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/.test(o)) return o;
+  return [...DEFAULT_ORIGINS, ...String(extra || '').split(',').map(x => x.trim()).filter(Boolean)].includes(o) ? o : '';
+}
+// Only well-formed values are passed on to the MOF.
+function need(v, re, what) { const x = str(v); if (!re.test(x)) throw new Error(`${what}格式不正確`); return x; }
+const RE_DATE = /^\d{4}\/\d{2}\/\d{2}$/;
 // One request from the app → one reply. Shared by the Edge Function and the tests.
 export async function handle(body, fetchFn) {
   const c = makeClient(fetchFn), a = body?.action, s = rec(body?.session);
-  if (a === 'login') { if (!body.mobile || !body.password) throw new Error('需要手機號碼與密碼'); return { session: await c.login({ mobile: String(body.mobile), password: String(body.password), carrier: str(body.carrier).toUpperCase(), androidId: str(body.androidId) || undefined }) }; }
+  if (a === 'login') {
+    if (!body.mobile || !body.password) throw new Error('需要手機號碼與密碼'); const pw = String(body.password); if (pw.length > 64) throw new Error('密碼格式不正確');
+    const carrier = str(body.carrier).toUpperCase(); if (carrier && !/^\/[0-9A-Z.+-]{7}$/.test(carrier)) throw new Error('手機條碼格式不正確');
+    return { session: await c.login({ mobile: need(body.mobile, /^09\d{8}$/, '手機號碼'), password: pw, carrier, androidId: str(body.androidId) || undefined }) };
+  }
   if (!s) throw new Error('缺少 session');
   if (a === 'logintoken') return { session: await c.loginToken(s, { androidId: str(body.androidId) || undefined }) };
-  if (a === 'headers') return { invoices: await c.headers(s, str(body.startDate), str(body.endDate), Number(body.page) || 1) };
-  if (a === 'detail') return { items: await c.detail(s, str(body.invNum), str(body.invDate)) };
+  if (a === 'headers') { const page = Math.trunc(Number(body.page) || 1); if (page < 1 || page > 50) throw new Error('頁碼不正確'); return { invoices: await c.headers(s, need(body.startDate || periods()[0].startDate, RE_DATE, '日期'), need(body.endDate || periods()[0].endDate, RE_DATE, '日期'), page) }; }
+  if (a === 'detail') return { items: await c.detail(s, need(body.invNum, /^[A-Z]{2}\d{8}$/, '發票號碼'), need(body.invDate, RE_DATE, '日期')) };
   throw new Error('未知的 action');
 }

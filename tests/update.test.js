@@ -6,9 +6,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const inlinePath = path.join(require('node:os').tmpdir(), `moze-inline-${process.pid}.js`);
-fs.writeFileSync(inlinePath, html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>')));
+// V26.124: the registration script moved out of index.html (the CSP forbids inline scripts).
+const inlinePath = path.join(root, 'js', 'sw-register.js');
 const swPath = path.join(root, 'sw.js');
 const VERSION = fs.readFileSync(swPath, 'utf8').match(/moze-v([\d.]+)-shell/)[1];
 

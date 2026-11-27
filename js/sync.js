@@ -2,7 +2,8 @@
   'use strict';
   const LS_DEVICE='moze-sync-device-v25', LS_QUEUE_LEGACY='moze-sync-queue-v25', LS_META_LEGACY='moze-sync-meta-v25', LS_LAST_USER='moze-sync-last-user-v25';
   const LS_QUEUE_ITEM='moze-sync-q-item-v26', LS_META_ITEM='moze-sync-meta-item-v26', LS_META_STATE='moze-sync-meta-state-v26', LS_DIRTY='moze-sync-dirty-v26';
-  const CDN='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  // V26.124: pinned copy shipped with the app (npm @supabase/supabase-js 2.119.2, integrity-checked), not a floating CDN version.
+  const CDN='./js/vendor/supabase.js';
   const ENTITIES=['accounts','categories','projects','transactions','budgets','recurring','loans'];
   const state={client:null,user:null,ready:false,loading:false,timer:null,authSub:null,clientKey:'',conflicts:[],metaCache:null,metaKey:'',progress:{done:0,total:0},passwordMode:''};
   // V25.10: a password-reset email link lands here with #...type=recovery (implicit flow).

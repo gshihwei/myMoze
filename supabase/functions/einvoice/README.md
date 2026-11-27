@@ -4,6 +4,8 @@
 
 - 只有登入你這個 Supabase 專案的人能呼叫（預設的 JWT 檢查，不要關掉）。
 - 它不保存任何資料，也不記錄手機號碼、密碼或憑證。
+- 瀏覽器只能從帳小簿自己的網站（https://gshihwei.github.io）或 localhost 呼叫。用其他網址開帳小簿時，在 Supabase 後台 → Edge Functions → Secrets 新增 `ALLOWED_ORIGINS`（多個用逗號分隔，例如 `https://my.site`）。
+- 只會連到財政部的兩個主機，輸入格式（手機號碼、日期、發票號碼、頁碼）不對時直接拒絕，不轉送。
 - 帳號與密碼只存在你的裝置上：密碼用瀏覽器內不可匯出的金鑰加密，不會同步。
 
 > ⚠️ 這不是財政部公開的 API，而是依照「統一發票兌獎」App 的通訊方式實作（參考 [ALL SET](https://github.com/TedLin1993/all-set-tw)，MIT 授權，見 LICENSE-ALLSET）。App 改版後可能失效，屆時需要更新程式。只用在自己的帳號。
