@@ -1,0 +1,11 @@
+{
+  "name": "zhangxiaobu-bank-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "帳小簿銀行同步：在自己的電腦上讀取銀行明細，寫進自己的帳小簿雲端資料",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": { "setup": "node cli.mjs setup", "sync": "node cli.mjs sync" },
+  "dependencies": { "puppeteer-core": "25.19.0" }
+}
