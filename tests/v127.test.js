@@ -1,6 +1,6 @@
 // 銀行同步 (V26.127): every bank row visible before mapping, suggested mapping, adjust to the bank balance, refresh.
 'use strict';
-const { bundle, test, assert } = require('./_bundle.js');
+const { bundle, test, assert, fs, path, root } = require('./_bundle.js');
 const feed = tx => ({ id: '__bank_esun__', kind: 'prefs', name: '銀行同步：玉山銀行', hidden: true, order: 1e9, bank: { v: 1, source: 'esun', name: '玉山銀行', at: new Date().toISOString(), ok: true, okAt: new Date().toISOString(),
   accounts: [{ id: 'esun:dep:5434', name: '玉山臺幣 末四碼 5434', type: 'bank', currency: 'TWD', balance: 21089 }, { id: 'esun:dep:3579:JPY', name: '玉山日圓', type: 'bank', currency: 'JPY', balance: 100031 }, { id: 'esun:card', name: '玉山信用卡', type: 'card', currency: 'TWD', balance: -29094 }], tx } });
 const row = (id, acct, date, amount) => ({ id: 'esun:' + id, acct, date, amount, currency: 'TWD', desc: '交易' + id });
@@ -43,4 +43,13 @@ test('開啟頁面時先拉雲端資料，有對應時開在待處理', async ()
   await b.run('openBank()');
   assert.equal(b.J('__n'), 1); assert.deepEqual(b.J('__tabs'), ['all', 'todo'], '先開在全部明細，拉到對應後換到待處理');
   b.run("window.__bank.picked=true;window.__bank.tab='skip'"); await b.run('openBank()'); assert.equal(b.J('window.__bank.tab'), 'skip', '自己選過的分頁不改');
+});
+test('沒有銀行資料時說明這台裝置讀哪個雲端帳號；畫面更新時銀行頁也跟著更新', () => {
+  const b = bundle({ accounts: [], projects: [], budgets: [], loans: [], recurring: [], transactions: [], categories: [] });
+  b.run("window.MozeSync={isLoggedIn:()=>false}"); assert.match(b.run('bankSetupHTML()'), /還沒登入雲端同步/);
+  b.run("window.MozeSync={isLoggedIn:()=>true,offline:()=>true}"); assert.match(b.run('bankSetupHTML()'), /離線模式/);
+  b.run("window.MozeSync={isLoggedIn:()=>true,offline:()=>false,account:()=>'me<b>@x.tw',lastSyncAt:()=>new Date().toISOString()}");
+  const h = b.run('bankSetupHTML()'); assert.match(h, /me&lt;b&gt;@x\.tw/); assert.match(h, /node cli\.mjs status/); assert.match(h, /data-bank-refresh/);
+  assert.match(fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8'), /renderAccounts\(\);if\(typeof renderBank==='function'\)renderBank\(\);/);
+  assert.match(fs.readFileSync(path.join(root, 'js', 'sync.js'), 'utf8'), /account:\(\)=>String\(state\.user\?\.email\|\|''\)/);
 });

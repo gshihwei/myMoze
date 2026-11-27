@@ -83,10 +83,16 @@ function bankMap(bankId, value, feed) {
 // ---- page ----
 function bankAge(iso) { const t = Date.parse(iso || ''); if (!Number.isFinite(t)) return ''; const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
 function bankStale(f) { const t = Date.parse(f.okAt || ''); return !Number.isFinite(t) ? 99 : Math.floor((Date.now() - t) / 864e5); }
+// Which cloud account this device reads: the computer program must sign in to the same one.
+function bankWhereHTML() {
+  const m = window.MozeSync, who = m?.account?.() || '', at = m?.lastSyncAt?.() || '';
+  if (m?.offline?.()) return '<div class="bank-err">這台裝置在「離線模式」，不會讀取雲端資料。請到「設定 → 雲端同步」關閉離線模式。</div>';
+  if (!m?.isLoggedIn?.()) return '<div class="bank-err">這台裝置還沒登入雲端同步，讀不到電腦程式寫進雲端的資料。請先到「設定 → 雲端同步」登入，電腦程式要用同一個帳號。</div>';
+  return `<div class="bank-where"><small>這台裝置的雲端帳號</small><b>${esc(who)}</b><small>上次同步 ${at ? esc(bankAge(at)) : '—'}</small><button type="button" class="ghost bank-adj" data-bank-refresh>立即同步</button>
+  <p class="hint">如果電腦已經同步成功，這裡還是沒有資料：請在電腦執行 <code>node cli.mjs status</code>，看「雲端帳號」是否跟上面一樣。不一樣的話，執行 <code>node cli.mjs login</code> 改登入這個帳號，再執行 <code>node cli.mjs sync</code>。</p></div>`;
+}
 function bankSetupHTML() {
-  const signed = typeof prefSyncUser === 'function' && prefSyncUser();
-  return `<div class="bank-setup"><b>還沒有銀行資料</b><p>銀行同步要在你的 Windows 電腦上執行一支小程式：它在電腦上登入銀行，讀取最近三個月的明細和餘額，再寫進你的帳小簿雲端，這一頁就會出現。銀行密碼只用 Windows 加密存在那台電腦，不會上傳。</p>
-  ${signed ? '' : '<p class="expense-text">請先在「設定 → 雲端同步」登入，電腦程式要用同一個帳號。</p>'}
+  return `<div class="bank-setup"><b>還沒有銀行資料</b>${bankWhereHTML()}<p>銀行同步要在你的 Windows 電腦上執行一支小程式：它在電腦上登入銀行，讀取最近三個月的明細和餘額，再寫進你的帳小簿雲端，這一頁就會出現。銀行密碼只用 Windows 加密存在那台電腦，不會上傳。</p>
   <ol><li>安裝 Node.js 22 以上（nodejs.org）</li><li>下載帳小簿程式碼，在 <code>bank-agent</code> 資料夾執行 <code>npm install</code></li><li>執行 <code>node cli.mjs setup</code>，依提示登入雲端、輸入銀行帳密</li><li>執行 <code>node cli.mjs schedule</code> 設定每天自動同步</li></ol>
   <p class="hint">目前支援玉山銀行、中國信託。詳細說明在 <a href="https://github.com/gshihwei/myMoze/blob/main/bank-agent/README.md" target="_blank" rel="noopener noreferrer">bank-agent/README.md</a>。</p></div>`;
 }
